@@ -1,0 +1,27 @@
+// Database Schema
+// This is your Prisma schema file for the main database
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-bd"
+}
+
+datasource db {
+  provider = "postgresql" // Change to "mysql" or "sqlite" if needed
+  url      = env("DATABASE_URL")
+}
+
+enum InvoiceStatus {
+  PROCESSING
+  PENDING_TO_SEND
+  PENDING_VALIDATION
+}
+
+model Invoice {
+  id      Int           @id @default(autoincrement())
+  externalId Int 
+  status  InvoiceStatus
+  data    Json?
+
+  @@map("invoice")
+}

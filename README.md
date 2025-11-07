@@ -23,38 +23,190 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+TAP Conector es una aplicación NestJS que gestiona **3 conexiones simultáneas a bases de datos** usando Prisma ORM:
 
-## Project setup
+- 🔵 **Base de Datos Local** (PostgreSQL/MySQL/SQLite) - Configuración y datos locales
+- 🟢 **Base de Datos MySQL Externa** - Productos y catálogos
+- 🔴 **Base de Datos SQL Server** - Sistema de órdenes y transacciones
+
+## Características Principales
+
+✅ **Multi-Database Support** - 3 conexiones independientes a diferentes bases de datos
+✅ **Prisma ORM** - Type-safe database access con clientes generados automáticamente
+✅ **Health Checks** - Endpoints para monitorear el estado de cada base de datos
+✅ **Global Services** - Servicios disponibles en toda la aplicación
+✅ **Example Module** - Módulo completo de ejemplo con operaciones CRUD
+✅ **TypeScript** - Type safety completo en toda la aplicación
+✅ **Production Ready** - Logging, error handling y configuración para producción
+
+## 🚀 Quick Start
+
+### 1. Install dependencies
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+### 2. Configure environment variables
 
 ```bash
-# development
-$ npm run start
+# Copy the example file
+cp .env.example .env
 
-# watch mode
-$ npm run start:dev
+# Edit .env with your database credentials
+```
+
+### 3. Generate Prisma clients
+
+```bash
+npm run prisma:generate
+```
+
+### 4. Apply database schemas
+
+```bash
+# Development (quick push)
+npm run prisma:push:local
+npm run prisma:push:mysql
+npm run prisma:push:sqlserver
+
+# Production (with migrations)
+npm run prisma:migrate:local
+npm run prisma:migrate:mysql
+npm run prisma:migrate:sqlserver
+```
+
+### 5. Start the application
+
+```bash
+# development mode with hot-reload
+npm run start:dev
 
 # production mode
-$ npm run start:prod
+npm run build
+npm run start:prod
 ```
 
-## Run tests
+### 6. Verify connections
+
+```bash
+# Check all databases
+curl http://localhost:3000/health/database
+
+# Get statistics
+curl http://localhost:3000/example/statistics
+```
+
+## 📚 Documentation
+
+- **[QUICK_START.md](QUICK_START.md)** - Guía de inicio rápido
+- **[DATABASE_SETUP.md](DATABASE_SETUP.md)** - Configuración detallada de bases de datos
+- **[API_EXAMPLES.md](API_EXAMPLES.md)** - Ejemplos de uso de la API
+- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Resumen completo del proyecto
+- **[CHECKLIST.md](CHECKLIST.md)** - Checklist de configuración
+- **[CONFIGURACION_COMPLETADA.md](CONFIGURACION_COMPLETADA.md)** - Estado de la configuración
+
+## 🏗️ Project Structure
+
+```
+tap-conector/
+├── prisma/                    # Prisma schemas
+│   ├── schema-local.prisma
+│   ├── schema-mysql.prisma
+│   └── schema-sqlserver.prisma
+├── src/
+│   ├── database/              # Database module
+│   │   ├── services/          # Prisma services
+│   │   ├── database.module.ts
+│   │   └── database-health.controller.ts
+│   ├── example/               # Example module
+│   └── app.module.ts
+└── .env                       # Environment variables
+```
+
+## 🔌 API Endpoints
+
+### Health Checks
+- `GET /health/database` - Check all databases
+- `GET /health/database/local` - Check local database
+- `GET /health/database/mysql` - Check MySQL database
+- `GET /health/database/sqlserver` - Check SQL Server database
+
+### Example Endpoints
+- `GET /example/all` - Get all data from all databases
+- `GET /example/users` - Get users from local database
+- `GET /example/products` - Get products from MySQL
+- `GET /example/orders` - Get orders from SQL Server
+- `GET /example/statistics` - Get statistics from all databases
+- `GET /example/search?q=term` - Search across databases
+- `POST /example/sync` - Sync product to order
+
+## 🧪 Run tests
 
 ```bash
 # unit tests
-$ npm run test
+npm run test
 
 # e2e tests
-$ npm run test:e2e
+npm run test:e2e
 
 # test coverage
-$ npm run test:cov
+npm run test:cov
+```
+
+## 🗄️ Database Scripts
+
+```bash
+# Generate Prisma clients
+npm run prisma:generate
+
+# Migrations
+npm run prisma:migrate:local
+npm run prisma:migrate:mysql
+npm run prisma:migrate:sqlserver
+
+# Push schemas (development)
+npm run prisma:push:local
+npm run prisma:push:mysql
+npm run prisma:push:sqlserver
+
+# Prisma Studio (GUI)
+npm run prisma:studio:local
+npm run prisma:studio:mysql
+npm run prisma:studio:sqlserver
+```
+
+## 💡 Usage Example
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { PrismaLocalService } from './database/services/prisma-local.service';
+import { PrismaMysqlService } from './database/services/prisma-mysql.service';
+import { PrismaSqlServerService } from './database/services/prisma-sqlserver.service';
+
+@Injectable()
+export class MyService {
+  constructor(
+    private readonly prismaLocal: PrismaLocalService,
+    private readonly prismaMysql: PrismaMysqlService,
+    private readonly prismaSqlServer: PrismaSqlServerService,
+  ) {}
+
+  async getData() {
+    // Use local database
+    const users = await this.prismaLocal.user.findMany();
+
+    // Use MySQL database
+    const products = await this.prismaMysql.product.findMany();
+
+    // Use SQL Server database
+    const orders = await this.prismaSqlServer.order.findMany({
+      include: { items: true }
+    });
+
+    return { users, products, orders };
+  }
+}
 ```
 
 ## Deployment

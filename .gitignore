@@ -3,6 +3,7 @@
 /node_modules
 /build
 
+/prisma/generated
 # Logs
 logs
 *.log
@@ -54,3 +55,8 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Prisma
+prisma/migrations/
+*.db
+*.db-journal

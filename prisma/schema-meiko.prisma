@@ -1,0 +1,24 @@
+// Meiko Database Schema
+// This is your Prisma schema file for the Meiko MySQL database
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-meiko"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_MEIKO_URL")
+}
+
+model Invoice {
+  id                 Int     @id @default(autoincrement()) @map("id_factura")
+  surveyRecordId     Int?    @map("idRegistroEncuesta")
+  responseId         Int?
+  stickerQR          String?
+  variableName       String? @map("nombre_variable")
+  photoType          String? @map("tipo_foto")
+  link               String?
+
+  @@map("factura")
+}

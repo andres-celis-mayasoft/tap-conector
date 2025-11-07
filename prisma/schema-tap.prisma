@@ -1,0 +1,44 @@
+// TAP Database Schema
+// This is your Prisma schema file for the TAP SQL Server database
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-tap"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_TAP_URL")
+}
+
+// Example model - replace with your actual models
+model Order {
+  id          String   @id @default(uuid())
+  orderNumber String   @unique
+  customerId  String
+  totalAmount Decimal  @db.Decimal(10, 2)
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@map("orders")
+  @@index([customerId])
+  @@index([status])
+}
+
+model OrderItem {
+  id         String  @id @default(uuid())
+  orderId    String
+  productId  String
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(10, 2)
+  totalPrice Decimal @db.Decimal(10, 2)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+  @@index([orderId])
+  @@index([productId])
+}
