@@ -11,6 +11,8 @@ export class TapService {
   private readonly tapServiceUrl: string | undefined;
   private readonly tapProjectId: number | undefined;
 
+  private PROJECT_PARAMS_DICTIONARY : Map<string, string> = new Map()
+
   constructor(private readonly configService: ConfigService) {
     this.tapServiceUrl = this.configService.get<string>('TAP_SERVICE_URL');
     const projectIdStr = this.configService.get<string>('TAP_PROJECT_ID');
@@ -30,25 +32,10 @@ export class TapService {
    * @param projectId Optional project ID, defaults to TAP_PROJECT_ID from env
    * @returns Parameters from TAP service
    */
-  async getParameters(projectId?: number) {
-    const id = projectId || this.tapProjectId;
-
-    if (!id) {
-      throw new HttpException(
-        'Project ID is required. Provide it as parameter or set TAP_PROJECT_ID in environment variables.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    if (!this.tapServiceUrl) {
-      throw new HttpException(
-        'TAP_SERVICE_URL is not configured in environment variables.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
+  async getParameters(projectId: number, parameter?: string) {
+    
     try {
-      const url = `${this.tapServiceUrl}proyecto/get-parametros?id=${id}`;
+      const url = `${this.tapServiceUrl}proyecto/get-parametros?id=${projectId}`;
       this.logger.log(`Fetching parameters from TAP service: ${url}`);
 
       const response = await fetch(url, {
@@ -66,9 +53,12 @@ export class TapService {
       }
 
       const data = await response.json();
-      this.logger.log(`Successfully fetched parameters for project ${id}`);
+      this.logger.log(`Successfully fetched parameters for project ${projectId}`);
 
-      return data;
+      this.PROJECT_PARAMS_DICTIONARY.set(projectId.toString(), data);
+      if(parameter)
+        return data[parameter];
+      else data;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

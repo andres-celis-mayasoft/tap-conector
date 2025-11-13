@@ -11,34 +11,72 @@ datasource db {
   url      = env("DATABASE_TAP_URL")
 }
 
-// Example model - replace with your actual models
-model Order {
-  id          String   @id @default(uuid())
-  orderNumber String   @unique
-  customerId  String
-  totalAmount Decimal  @db.Decimal(10, 2)
-  status      String   @default("pending")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// Control Proceso Model
+model ControlProceso {
+  id                   BigInt  @id @default(autoincrement())
+  idFactura            BigInt?
+  idRegistroEncuesta   BigInt?
+  responseId           BigInt?
+  stickerQr            String? @db.VarChar(255)
+  nombre               String? @db.VarChar(255)
+  tipo                 String? @db.VarChar(100)
+  link                 String? @db.VarChar(500)
+  loteId               BigInt?
+  expedienteId         BigInt?
+  estado               String? @db.VarChar(50)
 
-  items OrderItem[]
-
-  @@map("orders")
-  @@index([customerId])
-  @@index([status])
+  @@map("control_proceso")
+  @@index([idFactura])
+  @@index([loteId])
+  @@index([idFactura, loteId])
 }
 
-model OrderItem {
-  id         String  @id @default(uuid())
-  orderId    String
-  productId  String
-  quantity   Int
-  unitPrice  Decimal @db.Decimal(10, 2)
-  totalPrice Decimal @db.Decimal(10, 2)
+// Extraction Batch Model
+model ExtractionBatch {
+  id        Int       @id @default(autoincrement())
+  batchId   String    @unique @map("lote_id") @db.NVarChar(100)
+  date      DateTime  @default(now()) @map("fecha")
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  invoices  ExtractionInvoice[]
 
-  @@map("order_items")
-  @@index([orderId])
-  @@index([productId])
+  @@map("extraccion_lote")
+}
+
+// Extraction Invoice Model
+model ExtractionInvoice {
+  id           Int       @id @default(autoincrement())
+  batchId      Int       @map("lote_id")
+  invoiceId    String    @map("factura_id") @db.NVarChar(100)
+  docketId     String?   @map("expediente_id") @db.NVarChar(100)
+  photoType    String?   @map("tipo_foto") @db.NVarChar(32)
+  errors       String?   @map("errores") @db.NVarChar(Max)
+  extracted    Boolean   @default(false)
+  validated    Boolean   @default(false)
+  date         DateTime  @default(now()) @map("fecha")
+  photoTypeOcr String?   @map("tipo_foto_ocr") @db.NVarChar(32)
+
+  batch  ExtractionBatch  @relation(fields: [batchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fields ExtractionField[]
+
+  @@map("extraccion_factura")
+  @@index([batchId])
+}
+
+// Extraction Field Model
+model ExtractionField {
+  id         Int       @id @default(autoincrement())
+  invoiceId  Int       @map("factura_id")
+  row        Int?      @map("fila") @db.SmallInt
+  name       String    @map("nombre") @db.NVarChar(100)
+  value      String?   @map("valor") @db.NVarChar(Max)
+  confidence Decimal?  @map("confianza") @db.Decimal(5, 2)
+  type       String    @map("tipo") @db.NVarChar(20)
+  extracted  Boolean   @default(false)
+  validated  Boolean   @default(false)
+  date       DateTime  @default(now()) @map("fecha")
+
+  invoice ExtractionInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("extraccion_campo")
+  @@index([invoiceId])
 }

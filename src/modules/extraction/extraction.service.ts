@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { Prisma as PrismaMeiko } from '@prisma/client-meiko';
 import { OcrService } from '../ocr/ocr.service';
+import { TAP_MEIKO_ID } from 'src/constants/business';
 
 /**
  * Extraction Service
@@ -43,7 +44,7 @@ export class ExtractionService {
       this.logger.log(`📅 Date: ${date}`);
 
       // 2. Get parameters (returns path)
-      const parameters = await this.tapService.getParameters();
+      const parameters = await this.tapService.getParameters(TAP_MEIKO_ID, 'RUTA_LISTA_LOTES');
       const basePath = parameters.path || parameters.ruta || parameters;
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
 
@@ -70,7 +71,7 @@ export class ExtractionService {
       await this.invoiceService.createInvoices(
         invoices.map((invoice) => ({
           status: 'PROCESSING',
-          externalId: invoice.id,
+          invoiceId: invoice.id,
         })),
       );
 
@@ -104,7 +105,7 @@ export class ExtractionService {
           if (!isPartial) {
             await this.invoiceService.updateInvoice({
               id: invoice.id,
-              data: JSON.stringify(data),
+              mayaInvoiceJson: JSON.stringify(data),
               status: 'PENDING_TO_SEND',
             });
             continue;
@@ -112,7 +113,7 @@ export class ExtractionService {
           if (isPartial) {
             await this.invoiceService.updateInvoice({
               id: invoice.id,
-              data: JSON.stringify(data),
+              mayaInvoiceJson: JSON.stringify(data),
               status: 'PENDING_VALIDATION',
             });
           }

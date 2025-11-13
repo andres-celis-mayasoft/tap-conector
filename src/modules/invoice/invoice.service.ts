@@ -22,6 +22,42 @@ export class InvoiceService {
     });
   }
 
+
+  getInvoice(id: number) {
+    return this.prisma.invoice.findUnique({
+      where: { id },
+    });
+  }
+
+    async getInvoices(maxId: number) {
+    try {
+      this.logger.log(`Fetching invoices with id_factura > ${maxId}`);
+
+      const invoices = await this.prisma.invoice.findMany({
+        where: {
+          id: {
+            gt: maxId,
+          },
+        },
+        orderBy: {
+          id: 'asc',
+        },
+        take: 30,
+      });
+
+      this.logger.log(`Found ${invoices.length} invoices matching criteria`);
+
+      return invoices;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching invoices from Meiko database: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+
   createInvoice(invoice: Prisma.InvoiceCreateInput) {
     return this.prisma.invoice.create({
       data: invoice,

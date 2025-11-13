@@ -15,14 +15,14 @@ import { DatabaseHealthController } from './database-health.controller';
     // DatabaseHealthController
   ],
   providers: [
-    // PrismaService,
+    PrismaService,
     PrismaMeikoService,
-    // PrismaTapService,
+    PrismaTapService,
   ],
   exports: [
-    // PrismaService,
+    PrismaService,
     PrismaMeikoService,
-    // PrismaTapService,
+    PrismaTapService,
   ],
 })
 export class DatabaseModule {}

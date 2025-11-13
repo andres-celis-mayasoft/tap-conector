@@ -11,17 +11,88 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum InvoiceStatus {
-  PROCESSING
-  PENDING_TO_SEND
-  PENDING_VALIDATION
+model Invoice {
+  id                Int       @id @default(autoincrement())
+  invoiceId         Int       @unique
+  fileId            String?   
+  photoType         String?   
+  photoTypeOcr      String?   
+  errors            String?   
+  extracted         Boolean   @default(false)
+  validated         Boolean   @default(false)
+  date              DateTime  @default(now())
+  status            String    
+  captureStartDate  DateTime?
+  captureEndDate    DateTime?
+  invoiceUrl        String?   
+  mayaInvoiceJson   String?   
+  tapInvoiceJson    String?   
+
+  fields            Field[]
 }
 
-model Invoice {
-  id      Int           @id @default(autoincrement())
-  externalId Int 
-  status  InvoiceStatus
-  data    Json?
+model Field {
+  id         Int       @id @default(autoincrement())
+  invoiceId  Int
+  row        Int?      @db.SmallInt
+  name       String    
+  value      String?   
+  confidence Decimal?  @db.Decimal(5, 2)
+  type       String    
+  extracted  Boolean   @default(false)
+  validated  Boolean   @default(false)
+  date       DateTime  @default(now())
 
-  @@map("invoice")
+  invoice    Invoice   @relation(fields: [invoiceId], references: [invoiceId])
+}
+
+
+// Extraction Batch Model
+model ExtractionBatch {
+  id        Int       @id @default(autoincrement())
+  batchId   String    @unique @map("lote_id") 
+  date      DateTime  @default(now()) @map("fecha")
+
+  invoices  ExtractionInvoice[]
+
+  @@map("extraccion_lote")
+}
+
+// Extraction Invoice Model
+model ExtractionInvoice {
+  id           Int       @id @default(autoincrement())
+  batchId      Int       @map("lote_id")
+  invoiceId    String    @map("factura_id") 
+  docketId     String?   @map("expediente_id") 
+  photoType    String?   @map("tipo_foto") 
+  errors       String?   @map("errores") 
+  extracted    Boolean   @default(false)
+  validated    Boolean   @default(false)
+  date         DateTime  @default(now()) @map("fecha")
+  photoTypeOcr String?   @map("tipo_foto_ocr")
+
+  batch  ExtractionBatch  @relation(fields: [batchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fields ExtractionField[]
+
+  @@map("extraccion_factura")
+  @@index([batchId])
+}
+
+// Extraction Field Model
+model ExtractionField {
+  id         Int       @id @default(autoincrement())
+  invoiceId  Int       @map("factura_id")
+  row        Int?      @map("fila") @db.SmallInt
+  name       String    @map("nombre") 
+  value      String?   @map("valor") 
+  confidence Decimal?  @map("confianza") @db.Decimal(5, 2)
+  type       String    @map("tipo")
+  extracted  Boolean   @default(false)
+  validated  Boolean   @default(false)
+  date       DateTime  @default(now()) @map("fecha")
+
+  invoice ExtractionInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("extraccion_campo")
+  @@index([invoiceId])
 }

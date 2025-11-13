@@ -16,7 +16,7 @@ export class TapController {
    */
   @Get('parameters')
   async getParameters(
-    @Query('projectId', new ParseIntPipe({ optional: true })) projectId?: number,
+    @Query('projectId', new ParseIntPipe({ optional: false })) projectId: number,
   ) {
     return this.tapService.getParameters(projectId);
   }

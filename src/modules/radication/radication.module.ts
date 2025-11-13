@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ExtractionService } from './extraction.service';
-import { ExtractionController } from './extraction.controller';
 import { TapModule } from '../tap/tap.module';
 import { MeikoModule } from '../meiko/meiko.module';
 import { InvoiceModule } from '../invoice/invoice.module';
+import { RadicationController } from './radication.controller';
+import { RadicationService } from './radication.service';
 import { OcrModule } from '../ocr/ocr.module';
+import { ControlProcessModule } from '../process-control/control-process.module';
 
 /**
  * Extraction Module
@@ -18,9 +19,10 @@ import { OcrModule } from '../ocr/ocr.module';
     MeikoModule,
     InvoiceModule,
     OcrModule,
+    ControlProcessModule
   ],
-  controllers: [ExtractionController],
-  providers: [ExtractionService],
-  exports: [ExtractionService],
+  controllers: [RadicationController],
+  providers: [RadicationService],
+  exports: [RadicationService],
 })
-export class ExtractionModule {}
+export class RadicationModule {}
