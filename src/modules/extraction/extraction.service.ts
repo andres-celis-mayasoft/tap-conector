@@ -58,8 +58,8 @@ export class ExtractionService {
 
       // 4. Get max invoice ID
       const maxId =
-        (await this.invoiceService.getMaxId()) ||
-        (await this.tapService.getMaxId());
+        Number((await this.invoiceService.getMaxId()) ||
+        (await this.tapService.getMaxId()));
 
       // 5. Get invoices
       const invoices = await this.meikoService.getInvoices(maxId);
@@ -74,6 +74,8 @@ export class ExtractionService {
         invoices.map((invoice) => ({
           status: 'PROCESSING',
           invoiceId: invoice.id,
+          photoType: invoice.photoType,
+          invoiceUrl: invoice.link,
         })),
       );
 
@@ -88,66 +90,66 @@ export class ExtractionService {
             await this.invoiceService.updateInvoice({
               id: invoice.id,
               path,
-              photoType: invoice.photoType,
               errors: 'NO DESCARGABLE O VISUALIZABLE',
               extracted: false,
               validated: false,
-              invoiceUrl: invoice.link,
               status: 'PENDING_TO_SEND',
             });
             continue;
           }
-          const { success, data, error } = await this.ocrService.processInvoice(
+          const { success, data : response, error } = await this.ocrService.processInvoice(
             {
               filePath: path,
               typeOfInvoice: invoice.photoType || '',
             },
           );
+          
+          const data = response.data
 
           const isValidated =
-            data.encabezado.every((row) => row.confidence === 1) &&
-            data.detalle.every((row) => row.confidence === 1);
+            data.encabezado.every((row) => row.confidence >= 0.95) &&
+            data.detalle.every((row) => row.confidence >= 0.95);
 
           if (isValidated) {
-            await this.invoiceService.updateInvoice({
-              id: invoice.id,
-              extracted: true,
-              validated: true,
-              invoiceUrl: invoice.link,
-              path,
-              photoType: invoice.photoType,
-              mayaInvoiceJson: JSON.stringify(data),
-              status: 'PENDING_TO_SEND',
-            });
-            continue;
-          }
-          if (!isValidated) {
-            //Aplicar inferencias:
-            const isInfered = true;
-            if (isInfered) {
-              await this.invoiceService.updateInvoice({
+            await this.invoiceService.saveInvoiceWithFields(
+              {
                 id: invoice.id,
                 extracted: true,
                 validated: true,
-                invoiceUrl: invoice.link,
                 path,
-                photoType: invoice.photoType,
-                mayaInvoiceJson: JSON.stringify(data),
                 status: 'PENDING_TO_SEND',
-              });
-              continue;
-            } else
-              await this.invoiceService.updateInvoice({
+              },
+              data,
+            );
+            continue;
+          }
+
+          // Apply inferences for non-validated invoices
+          const isInfered = true;
+          if (isInfered) {
+            await this.invoiceService.saveInvoiceWithFields(
+              {
+                id: invoice.id,
+                extracted: true,
+                validated: true,
+                path,
+                status: 'PENDING_TO_SEND',
+              },
+              data,
+            );
+            continue;
+          } else {
+            await this.invoiceService.saveInvoiceWithFields(
+              {
                 id: invoice.id,
                 extracted: true,
                 validated: false,
-                invoiceUrl: invoice.link,
                 path,
                 errors: 'DETERMINADO POR EL VALIDADOR',
-                photoType: invoice.photoType,
-                mayaInvoiceJson: JSON.stringify(data),
                 status: 'PENDING_VALIDATION',
-              });
+              },
+              data,
+            );
           }
         } catch (error) {
           this.logger.error(

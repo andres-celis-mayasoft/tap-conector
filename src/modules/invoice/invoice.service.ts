@@ -18,7 +18,7 @@ export class InvoiceService {
     invoice: Prisma.InvoiceUpdateInput & { id: number },
   ): Promise<Prisma.BatchPayload> {
     return this.prisma.invoice.updateMany({
-      where: { id: invoice.id },
+      where: { invoiceId: invoice.id },
       data: invoice,
     });
   }
@@ -216,5 +216,90 @@ export class InvoiceService {
   async handleDownloadError(id: string, error: any): Promise<void> {
     this.logger.warn(`⚠️ Error with invoice ${id}: ${error.message}`);
     // optional: send email, log to DB, etc.
+  }
+
+  /**
+   * Save invoice with all extracted fields from OCR data
+   * @param invoiceData - Base invoice information (must include id which is the invoiceId)
+   * @param mayaInvoiceJson - OCR extracted data with encabezado and detalles
+   * @returns Updated invoice with created fields
+   */
+  async saveInvoiceWithFields(
+    invoiceData: Prisma.InvoiceUpdateInput & { id: number },
+    mayaInvoiceJson: {
+      encabezado: Array<{
+        type: string;
+        text: string;
+        confidence: number;
+      }>;
+      detalles: Array<{
+        type: string;
+        text: string;
+        confidence: number;
+        row: number;
+      }>;
+      tipoFacturaOcr?: string;
+    },
+  ): Promise<void> {
+    try {
+      this.logger.log(`💾 Saving invoice ${invoiceData.id} with fields`);
+
+      // Update invoice with OCR data
+      await this.updateInvoice({
+        ...invoiceData,
+        mayaInvoiceJson: JSON.stringify(mayaInvoiceJson),
+        photoTypeOcr: mayaInvoiceJson.tipoFacturaOcr,
+      });
+
+      // Get invoice to obtain invoiceId for field relations
+      const invoice = await this.getInvoice(invoiceData.id);
+      if (!invoice) {
+        throw new Error(`Invoice with id ${invoiceData.id} not found`);
+      }
+
+      // Prepare header fields (encabezado)
+      const headerFields: Prisma.FieldCreateManyInput[] =
+        mayaInvoiceJson.encabezado.map((field) => ({
+          invoiceId: invoice.invoiceId,
+          name: field.type,
+          value: field.text,
+          confidence: field.confidence,
+          type: 'ENCABEZADO',
+          extracted: true,
+          validated: field.confidence === 1,
+        }));
+
+      // Prepare detail fields (detalles)
+      const detailFields: Prisma.FieldCreateManyInput[] =
+        mayaInvoiceJson.detalles.map((field) => ({
+          invoiceId: invoice.invoiceId,
+          row: field.row,
+          name: field.type,
+          value: field.text,
+          confidence: field.confidence,
+          type: 'DETALLE',
+          extracted: true,
+          validated: field.confidence === 1,
+        }));
+
+      // Combine all fields
+      const allFields = [...headerFields, ...detailFields];
+
+      // Create all fields in a single transaction
+      await this.prisma.field.createMany({
+        data: allFields,
+        skipDuplicates: true,
+      });
+
+      this.logger.log(
+        `✅ Invoice ${invoiceData.id} saved with ${allFields.length} fields (${headerFields.length} header + ${detailFields.length} details)`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `❌ Error saving invoice ${invoiceData.id} with fields: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 }
