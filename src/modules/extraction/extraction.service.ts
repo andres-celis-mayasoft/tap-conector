@@ -44,7 +44,10 @@ export class ExtractionService {
       this.logger.log(`📅 Date: ${date}`);
 
       // 2. Get parameters (returns path)
-      const parameters = await this.tapService.getParameters(TAP_MEIKO_ID, TAP_PARAMS.RUTA_LISTA_LOTES);
+      const parameters = await this.tapService.getParameters(
+        TAP_MEIKO_ID,
+        TAP_PARAMS.RUTA_LISTA_LOTES,
+      );
       const basePath = parameters.path || parameters.ruta || parameters;
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
 
@@ -54,10 +57,9 @@ export class ExtractionService {
       this.logger.log(`✅ Created extraction folder: ${extractionPath}`);
 
       // 4. Get max invoice ID
-      const maxIdResponse = await this.tapService.getMaxId();
       const maxId =
-        maxIdResponse.maxId || maxIdResponse.max_id || maxIdResponse;
-      this.logger.log(`🔢 Max invoice ID: ${maxId}`);
+        (await this.invoiceService.getMaxId()) ||
+        (await this.tapService.getMaxId());
 
       // 5. Get invoices
       const invoices = await this.meikoService.getInvoices(maxId);
@@ -85,6 +87,12 @@ export class ExtractionService {
           if (!isValid) {
             await this.invoiceService.updateInvoice({
               id: invoice.id,
+              path,
+              photoType: invoice.photoType,
+              errors: 'NO DESCARGABLE O VISUALIZABLE',
+              extracted: false,
+              validated: false,
+              invoiceUrl: invoice.link,
               status: 'PENDING_TO_SEND',
             });
             continue;
@@ -96,26 +104,50 @@ export class ExtractionService {
             },
           );
 
-          // inferir values
-          // ----------
+          const isValidated =
+            data.encabezado.every((row) => row.confidence === 1) &&
+            data.detalle.every((row) => row.confidence === 1);
 
-          // ----------
-          const isPartial = false;
-
-          if (!isPartial) {
+          if (isValidated) {
             await this.invoiceService.updateInvoice({
               id: invoice.id,
+              extracted: true,
+              validated: true,
+              invoiceUrl: invoice.link,
+              path,
+              photoType: invoice.photoType,
               mayaInvoiceJson: JSON.stringify(data),
               status: 'PENDING_TO_SEND',
             });
             continue;
           }
-          if (isPartial) {
-            await this.invoiceService.updateInvoice({
-              id: invoice.id,
-              mayaInvoiceJson: JSON.stringify(data),
-              status: 'PENDING_VALIDATION',
-            });
+          if (!isValidated) {
+            //Aplicar inferencias:
+            const isInfered = true;
+            if (isInfered) {
+              await this.invoiceService.updateInvoice({
+                id: invoice.id,
+                extracted: true,
+                validated: true,
+                invoiceUrl: invoice.link,
+                path,
+                photoType: invoice.photoType,
+                mayaInvoiceJson: JSON.stringify(data),
+                status: 'PENDING_TO_SEND',
+              });
+              continue;
+            } else
+              await this.invoiceService.updateInvoice({
+                id: invoice.id,
+                extracted: true,
+                validated: false,
+                invoiceUrl: invoice.link,
+                path,
+                errors: 'DETERMINADO POR EL VALIDADOR',
+                photoType: invoice.photoType,
+                mayaInvoiceJson: JSON.stringify(data),
+                status: 'PENDING_VALIDATION',
+              });
           }
         } catch (error) {
           this.logger.error(

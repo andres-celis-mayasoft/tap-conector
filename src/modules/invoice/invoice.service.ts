@@ -30,6 +30,27 @@ export class InvoiceService {
     });
   }
 
+  async getMaxId(): Promise<number> {
+    try {
+      const result = await this.prisma.invoice.findFirst({
+        orderBy: {
+          invoiceId: 'desc',
+        },
+        select: {
+          invoiceId: true,
+        },
+      });
+
+      return result?.invoiceId ?? 0;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching max invoiceId: ${error.message}`,
+        error.stack,
+      );
+      return 0;
+    }
+  }
+
     async getInvoices(maxId: number) {
     try {
       this.logger.log(`Fetching invoices with id_factura > ${maxId}`);
