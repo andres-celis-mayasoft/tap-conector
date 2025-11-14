@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import sharp from 'sharp'; // 🧠 Used to validate image integrity
 import { PrismaService } from 'src/database/services/prisma.service';
 import { Prisma } from '@prisma/client-bd';
+import { IMAGE_DPI } from 'src/constants/business';
 
 @Injectable()
 export class InvoiceService {
@@ -112,7 +113,8 @@ export class InvoiceService {
 
       await this.validateImage(tempFile);
 
-      await this.moveToFinalPath(tempFile, finalPath);
+      // Resize image with specified DPI
+      await this.resizeImageWithDPI(tempFile, finalPath);
 
       // this.updateInvoiceMetadata(invoice, finalPath, extension);
 
@@ -163,6 +165,25 @@ export class InvoiceService {
   async moveToFinalPath(tempFile: string, finalPath: string): Promise<void> {
     await fs.mkdir(path.dirname(finalPath), { recursive: true });
     await fs.rename(tempFile, finalPath);
+  }
+
+  async resizeImageWithDPI(inputPath: string, outputPath: string): Promise<void> {
+    try {
+      await fs.mkdir(path.dirname(outputPath), { recursive: true });
+
+      await sharp(inputPath)
+        .jpeg({ quality: 85 })
+        .withMetadata({ density: IMAGE_DPI })
+        .toFile(outputPath);
+
+      // Clean up temp file after processing
+      await this.cleanupTempFile(inputPath);
+
+      this.logger.log(`✅ Image resized with ${IMAGE_DPI} DPI`);
+    } catch (error) {
+      this.logger.error(`❌ Error resizing image: ${error.message}`);
+      throw error;
+    }
   }
 
   async cleanupTempFile(tempFile: string): Promise<void> {

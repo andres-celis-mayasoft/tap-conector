@@ -27,6 +27,7 @@ model Invoice {
   invoiceUrl        String?   
   mayaInvoiceJson   String?   
   tapInvoiceJson    String?   
+  path              String?
 
   fields            Field[]
 }
@@ -70,6 +71,7 @@ model ExtractionInvoice {
   validated    Boolean   @default(false)
   date         DateTime  @default(now()) @map("fecha")
   photoTypeOcr String?   @map("tipo_foto_ocr")
+  path         String  
 
   batch  ExtractionBatch  @relation(fields: [batchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   fields ExtractionField[]

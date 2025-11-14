@@ -8,8 +8,18 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { OcrService } from '../ocr/ocr.service';
 import axios from 'axios';
-import { RUTA_LISTA_LOTES, TAP_MEIKO_ID, TAP_PARAMS, TOKEN_FUNCTIONS_API, URl_FUNCTIONS_API } from 'src/constants/business';
+import {
+  RUTA_LISTA_LOTES,
+  TAP_MEIKO_ID,
+  TAP_PARAMS,
+  TOKEN_FUNCTIONS_API,
+  URl_FUNCTIONS_API,
+} from 'src/constants/business';
 import { ControlProcessService } from '../process-control/control-process.service';
+import { Invoice } from '@prisma/client-bd';
+import { TapApiClient } from '../tap/tap-api.client';
+import { createReadStream } from 'fs';
+import FormData = require('form-data');
 
 /**
  * Extraction Service
@@ -24,6 +34,7 @@ export class RadicationService {
     private readonly invoiceService: InvoiceService,
     private readonly meikoService: MeikoService,
     private readonly controlProcess: ControlProcessService,
+    private readonly tapApiClient: TapApiClient,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM, {
@@ -80,19 +91,18 @@ export class RadicationService {
       // 7. Send emails (Pending to implement)
 
       // 8. Process each invoice
-      const validInvoices : any = []
-      const invalidInvoices : any= []
+      const validInvoices: any = [];
+      const invalidInvoices: any = [];
 
       for (const invoice of invoices) {
-        const { isValid, path } =
-            await this.invoiceService.downloadAndValidate(
-              invoice,
-              extractionPath,
-            );
-            if(isValid) validInvoices.push(invoice)
-            else invalidInvoices.push(invoice)
+        const { isValid, path } = await this.invoiceService.downloadAndValidate(
+          invoice,
+          extractionPath,
+        );
+        if (isValid) validInvoices.push(invoice);
+        else invalidInvoices.push(invoice);
       }
-      
+
       if (validInvoices.length == 0) {
         this.logger.log('ℹ️ No valid invoices to process');
         return;
@@ -116,33 +126,31 @@ export class RadicationService {
       const batchId = Number(batchResponse.split('-')[1]);
       this.logger.log(`✅ Batch radicated with ID: ${batchId}`);
 
-       for (const invoice of validInvoices) {
-        // Encontrar archivo para subirlo, bajarle la calidad
-        // EL nombre es random, tener cuidado con la cantidad de caracteres (el mismo en java)
-
-
+      for (const invoice of validInvoices) {
         const processedInvoice = await this.invoiceService.getInvoice(
           invoice.id,
         );
+        if (processedInvoice)
+          await this.uploadImageInvoice([processedInvoice], batchId);
 
-        if (!processedInvoice || !processedInvoice.extracted) continue;
+        //   if (!processedInvoice || !processedInvoice.extracted) continue;
 
-        const controlProcess = await this.controlProcess.getByInvoiceAndBatch(
-          invoice.id,
-          batchId,
-        );
+        //   const controlProcess = await this.controlProcess.getByInvoiceAndBatch(
+        //     invoice.id,
+        //     batchId,
+        //   );
 
-        if (!controlProcess || !controlProcess.expedienteId) continue;
+        //   if (!controlProcess || !controlProcess.expedienteId) continue;
 
-        const { expedienteId: docketId } = controlProcess;
+        //   const { expedienteId: docketId } = controlProcess;
 
-        await this.controlProcess.saveProcessedInvoice(
-          invoice,
-          processedInvoice.mayaInvoiceJson,
-          batchId,
-          docketId.toString(),
-        );
-       }
+        //   await this.controlProcess.saveProcessedInvoice(
+        //     invoice,
+        //     processedInvoice.mayaInvoiceJson,
+        //     batchId,
+        //     docketId.toString(),
+        //   );
+      }
     } catch (error) {
       this.logger.error(
         `❌ Extraction cron job failed: ${error.message}`,
@@ -186,7 +194,76 @@ export class RadicationService {
     }
   }
 
-   async triggerManualRadication() {
+  async uploadImageInvoice(
+    invoices: Invoice[],
+    batchId: number,
+  ): Promise<boolean> {
+    const URL = await this.tapService.getParameters(
+      TAP_MEIKO_ID,
+      TAP_PARAMS.URL_API_BLOB,
+    );
+    const ambienteBlob = 'tappers/prod/';
+    const apiUrl = `${URL}api/Blob/uploadFile`;
+
+    try {
+      for (const invoice of invoices) {
+        const folderName = 'pr' + TAP_MEIKO_ID + '-l' + batchId;
+        const filePath = invoice.path;
+
+        if (!filePath) {
+          this.logger.warn(
+            `⚠️ Invoice ${invoice.id} has no file path, skipping upload`,
+          );
+          continue;
+        }
+
+        // Check if file exists
+        try {
+          await fs.access(filePath);
+        } catch (error) {
+          this.logger.error(`❌ Archivo no encontrado: ${filePath}`);
+          continue;
+        }
+
+        // Get filename from path
+        const fileName = path.basename(filePath);
+
+        // Prepare multipart form data
+        const formData = new FormData();
+        formData.append('carpeta', ambienteBlob + folderName);
+        formData.append('fileName', fileName);
+        formData.append('archivo', createReadStream(filePath));
+
+        // Upload file using axios (not tapApiClient since we need form-data headers)
+        const response = await axios.post(apiUrl, formData, {
+          headers: {
+            ...formData.getHeaders(),
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        });
+
+        if (response.status >= 200 && response.status < 300) {
+          this.logger.log(`✅ Archivo subido exitosamente: ${fileName}`);
+        } else {
+          this.logger.warn(
+            `⚠️ Fallo en la subida de archivo: ${fileName} - Código ${response.status}`,
+          );
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `❌ Excepción en uploadImageInvoice: ${error.message}`,
+        error.stack,
+      );
+      return false;
+    }
+  }
+
+  async triggerManualRadication() {
     this.logger.log('🔧 Manual radication triggered');
     await this.handleRadicationCron();
   }
