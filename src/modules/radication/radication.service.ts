@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { OcrService } from '../ocr/ocr.service';
 import axios from 'axios';
-import { TAP_MEIKO_ID } from 'src/constants/business';
+import { RUTA_LISTA_LOTES, TAP_MEIKO_ID, TOKEN_FUNCTIONS_API, URl_FUNCTIONS_API } from 'src/constants/business';
 import { ControlProcessService } from '../process-control/control-process.service';
 
 /**
@@ -40,7 +40,7 @@ export class RadicationService {
       // 2. Get parameters (returns path)
       const parameters = await this.tapService.getParameters(
         TAP_MEIKO_ID,
-        'RUTA_LISTA_LOTES',
+        RUTA_LISTA_LOTES,
       );
       const basePath = parameters.path || parameters.ruta || parameters;
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
@@ -150,11 +150,11 @@ export class RadicationService {
     try {
       const URL = await this.tapService.getParameters(
         TAP_MEIKO_ID,
-        'URL_FUNTION_API' + 'PostMeikoRadicarLote',
+        URl_FUNCTIONS_API + 'PostMeikoRadicarLote',
       );
       const TOKEN = await this.tapService.getParameters(
         TAP_MEIKO_ID,
-        'TOKEN_FUNTION_API',
+        TOKEN_FUNCTIONS_API,
       );
 
       const response = await axios.post(
