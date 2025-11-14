@@ -100,7 +100,7 @@ export class InvoiceService {
     const tempFile = this.generateTempFilePath();
     const finalPath = this.generateFinalPath(
       targetDir,
-      `${invoice.id_factura}${extension}`,
+      `${invoice.id}${extension}`,
     );
 
     try {
@@ -140,8 +140,7 @@ export class InvoiceService {
 
   async downloadImage(url: string): Promise<Buffer> {
     const response = await axios.get(url, {
-      responseType: 'arraybuffer',
-      timeout: 10000,
+      responseType: 'arraybuffer'
     });
     if (!response.data || response.data.length === 0) {
       throw new Error('Downloaded file is empty');

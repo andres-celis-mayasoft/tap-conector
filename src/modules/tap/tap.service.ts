@@ -51,7 +51,7 @@ export class TapService {
 
       this.PROJECT_PARAMS_DICTIONARY.set(projectId.toString(), data);
       if(parameter)
-        return data[parameter];
+        return data.find(d => d.key === parameter).value;
       else return data;
     } catch (error) {
       if (error instanceof HttpException) {

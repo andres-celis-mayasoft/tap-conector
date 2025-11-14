@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { Prisma as PrismaMeiko } from '@prisma/client-meiko';
 import { OcrService } from '../ocr/ocr.service';
-import { TAP_MEIKO_ID } from 'src/constants/business';
+import { TAP_MEIKO_ID, TAP_PARAMS } from 'src/constants/business';
 
 /**
  * Extraction Service
@@ -44,7 +44,7 @@ export class ExtractionService {
       this.logger.log(`📅 Date: ${date}`);
 
       // 2. Get parameters (returns path)
-      const parameters = await this.tapService.getParameters(TAP_MEIKO_ID, 'RUTA_LISTA_LOTES');
+      const parameters = await this.tapService.getParameters(TAP_MEIKO_ID, TAP_PARAMS.RUTA_LISTA_LOTES);
       const basePath = parameters.path || parameters.ruta || parameters;
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
 

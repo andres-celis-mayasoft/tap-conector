@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { OcrService } from '../ocr/ocr.service';
 import axios from 'axios';
-import { RUTA_LISTA_LOTES, TAP_MEIKO_ID, TOKEN_FUNCTIONS_API, URl_FUNCTIONS_API } from 'src/constants/business';
+import { RUTA_LISTA_LOTES, TAP_MEIKO_ID, TAP_PARAMS, TOKEN_FUNCTIONS_API, URl_FUNCTIONS_API } from 'src/constants/business';
 import { ControlProcessService } from '../process-control/control-process.service';
 
 /**
@@ -40,7 +40,7 @@ export class RadicationService {
       // 2. Get parameters (returns path)
       const parameters = await this.tapService.getParameters(
         TAP_MEIKO_ID,
-        RUTA_LISTA_LOTES,
+        TAP_PARAMS.RUTA_LISTA_LOTES,
       );
       const basePath = parameters.path || parameters.ruta || parameters;
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
@@ -53,7 +53,7 @@ export class RadicationService {
       // 4. Get max invoice ID
       const maxIdResponse = await this.tapService.getMaxId();
       const maxId =
-        maxIdResponse.maxId || maxIdResponse.max_id || maxIdResponse;
+        maxIdResponse.maxId || maxIdResponse.max_id || Number(maxIdResponse) - 100;
       this.logger.log(`🔢 Max invoice ID: ${maxId}`);
 
       // 5. Get invoices from own database
@@ -100,12 +100,13 @@ export class RadicationService {
 
       // 9. Radicate
 
-      const batchResponse: string = await this.radicateBatch({
-        proyect_id: process.env.TAP_MEIKO_ID,
-        nombre: date,
-        facturas: validInvoices,
-        errores: invalidInvoices,
-      });
+      const batchResponse = 'OK-19999'
+      // const batchResponse: string = await this.radicateBatch({
+      //   proyect_id: process.env.TAP_MEIKO_ID,
+      //   nombre: date,
+      //   facturas: validInvoices,
+      //   errores: invalidInvoices,
+      // });
 
       if (!batchResponse) {
         this.logger.log('ℹ️ Error radicating batch');
@@ -115,7 +116,11 @@ export class RadicationService {
       const batchId = Number(batchResponse.split('-')[1]);
       this.logger.log(`✅ Batch radicated with ID: ${batchId}`);
 
-      for (const invoice of validInvoices) {
+       for (const invoice of validInvoices) {
+        // Encontrar archivo para subirlo, bajarle la calidad
+        // EL nombre es random, tener cuidado con la cantidad de caracteres (el mismo en java)
+
+
         const processedInvoice = await this.invoiceService.getInvoice(
           invoice.id,
         );
@@ -137,7 +142,7 @@ export class RadicationService {
           batchId,
           docketId.toString(),
         );
-      }
+       }
     } catch (error) {
       this.logger.error(
         `❌ Extraction cron job failed: ${error.message}`,
@@ -150,11 +155,11 @@ export class RadicationService {
     try {
       const URL = await this.tapService.getParameters(
         TAP_MEIKO_ID,
-        URl_FUNCTIONS_API + 'PostMeikoRadicarLote',
+        TAP_PARAMS.URL_FUNCTIONS_API + 'PostMeikoRadicarLote',
       );
       const TOKEN = await this.tapService.getParameters(
         TAP_MEIKO_ID,
-        TOKEN_FUNCTIONS_API,
+        TAP_PARAMS.TOKE_FUNCTIONS_API,
       );
 
       const response = await axios.post(
