@@ -11,6 +11,7 @@ import { DateTime } from 'luxon';
 import { DocumentFactory } from './documents/document.factory';
 import { PrismaService } from '../../database/services/prisma.service';
 import { PrismaTapService } from 'src/database/services/prisma-tap.service';
+import { CokeInvoice } from './documents/coke v2/coke.document';
 
 @Injectable()
 export class ValidatorService {
@@ -24,6 +25,8 @@ export class ValidatorService {
     const { data , errors } = DocumentFactory.create(invoice.tipoFacturaOcr, invoice).get();
 
     if (invoice.tipoFacturaOcr == 'Factura Coke')
+            return new CokeInvoice(invoice as any, this.meikoService);
+      
       return this.CokeValidator(invoice);
     if (invoice.tipoFacturaOcr === 'Factura Postobon')
       return this.PostobonValidator(invoice);
