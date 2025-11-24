@@ -69,6 +69,8 @@ export abstract class BaseDocument<
 
     for (const field of this.data.encabezado) {
       if (config.fechaFactura && field.type === config.fechaFactura) {
+        // Intentar reparar la fecha antes de inferir
+        this.repairFechaFactura(field);
         this.inferFechaFactura(field);
       }
       if (config.numeroFactura && field.type === config.numeroFactura) {
@@ -87,6 +89,98 @@ export abstract class BaseDocument<
     if (DateTime.fromFormat(field?.text || '', 'dd/MM/yyyy').isValid) {
       field.confidence = 1;
     }
+  }
+
+  /**
+   * Intenta reparar el año de una fecha con errores de OCR
+   * Ej: '2825-18-24' -> '24/11/2025' (asume año actual o cercano)
+   */
+  protected repairFechaFactura(field: BaseField<THeader>): void {
+    if (!field?.text) return;
+
+    // Si ya es válida, no hacer nada
+    if (DateTime.fromFormat(field.text, 'dd/MM/yyyy').isValid) {
+      return;
+    }
+
+    const currentYear = DateTime.now().year;
+    const text = field.text;
+
+    // Intentar parsear con diferentes formatos
+    // Formato: dd/MM/yyyy o dd-MM-yyyy
+    const match = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (match) {
+      const [, day, month, year] = match;
+      const repairedYear = this.repairYear(year, currentYear);
+      const repairedDate = `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${repairedYear}`;
+
+      if (DateTime.fromFormat(repairedDate, 'dd/MM/yyyy').isValid) {
+        field.text = repairedDate;
+        return;
+      }
+    }
+
+    // Formato invertido: yyyy-MM-dd o yyyy/MM/dd
+    const matchInverted = text.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (matchInverted) {
+      const [, year, month, day] = matchInverted;
+      const repairedYear = this.repairYear(year, currentYear);
+      const repairedDate = `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${repairedYear}`;
+
+      if (DateTime.fromFormat(repairedDate, 'dd/MM/yyyy').isValid) {
+        field.text = repairedDate;
+        return;
+      }
+    }
+  }
+
+  /**
+   * Repara un año con posibles errores de OCR
+   * Ej: 2825 -> 2025, 2924 -> 2024
+   */
+  private repairYear(yearStr: string, currentYear: number): string {
+    const year = parseInt(yearStr, 10);
+
+    // Si el año es válido (entre currentYear-5 y currentYear+1), no reparar
+    if (year >= currentYear - 5 && year <= currentYear + 1) {
+      return yearStr;
+    }
+
+    // Intentar reparar dígitos confundidos por OCR
+    // 2825 -> 2025 (8 confundido con 0)
+    // 2924 -> 2024 (9 confundido con 0)
+    const yearDigits = yearStr.split('');
+
+    // Mapeo de dígitos que suelen confundirse
+    const ocrConfusions: Record<string, string[]> = {
+      '8': ['0', '6', '9'],
+      '9': ['0', '4'],
+      '6': ['0', '8'],
+      '5': ['6', '8'],
+      '1': ['7', '4'],
+      '7': ['1', '4'],
+      '4': ['1', '9'],
+      '3': ['8', '5'],
+    };
+
+    // Intentar corregir cada dígito
+    for (let i = 0; i < yearDigits.length; i++) {
+      const digit = yearDigits[i];
+      const alternatives = ocrConfusions[digit] || [];
+
+      for (const alt of alternatives) {
+        const testYear = [...yearDigits];
+        testYear[i] = alt;
+        const testYearNum = parseInt(testYear.join(''), 10);
+
+        if (testYearNum >= currentYear - 5 && testYearNum <= currentYear + 1) {
+          return testYear.join('');
+        }
+      }
+    }
+
+    // Si no se pudo reparar, devolver el año actual
+    return currentYear.toString();
   }
 
   /**
