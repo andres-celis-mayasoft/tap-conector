@@ -32,9 +32,9 @@ export class ExtractionService {
    * Current schedule: Every day at 2:00 AM
    * Modify the cron expression as needed
    */
-  @Cron(CronExpression.EVERY_DAY_AT_2AM, {
-    name: 'extraction',
-  })
+  // @Cron(CronExpression.EVERY_DAY_AT_2AM, {
+  //   name: 'extraction',
+  // })
   async handleExtractionCron() {
     this.logger.log('🚀 Starting extraction cron job');
 

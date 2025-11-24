@@ -10,7 +10,7 @@ export class ValidateInvoiceDto implements ValidateInvoice {
 
   @IsOptional()
   @IsString()
-  tipoFacturaOcr?: string;
+  tipoFacturaOcr: string;
 
   @IsOptional()
   @IsString()

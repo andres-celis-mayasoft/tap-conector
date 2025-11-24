@@ -37,9 +37,9 @@ export class RadicationService {
     private readonly tapApiClient: TapApiClient,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_2AM, {
-    name: 'radication',
-  })
+  // @Cron(CronExpression.EVERY_DAY_AT_2AM, {
+  //   name: 'radication',
+  // })
   async handleRadicationCron() {
     this.logger.log('🚀 Starting extraction cron job');
 

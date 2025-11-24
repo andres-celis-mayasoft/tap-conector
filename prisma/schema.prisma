@@ -30,6 +30,7 @@ model Invoice {
   path              String?
 
   fields            Field[]
+  @@map("invoice")
 }
 
 model Field {
@@ -45,6 +46,8 @@ model Field {
   date       DateTime  @default(now())
 
   invoice    Invoice   @relation(fields: [invoiceId], references: [invoiceId])
+  @@map("field")
+
 }
 
 
