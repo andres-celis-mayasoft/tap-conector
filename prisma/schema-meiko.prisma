@@ -12,13 +12,56 @@ datasource db {
 }
 
 model Invoice {
-  id                 Int     @id @default(autoincrement()) @map("id_factura")
-  surveyRecordId     Int?    @map("idRegistroEncuesta")
-  responseId         Int?
-  stickerQR          String?
-  variableName       String? @map("nombre_variable")
-  photoType          String? @map("tipo_foto")
-  link               String?
+  id                   Int        @id @default(autoincrement()) @map("id_factura")
+  surveyRecordId       BigInt     @map("idRegistroEncuesta")
+  responseId           BigInt?
+  stickerQR            String?    @db.VarChar(50)
+  responseReceived     String?    @db.VarChar(100)
+  variableName         String?    @map("nombre_variable") @db.VarChar(255)
+  photoType            String?    @map("tipo_foto") @db.VarChar(255)
+  link                 String?    @db.Text
+  flagDigitalization   Int?       @map("flag_digitalizacion") @db.SmallInt
+  digitalizationDate   DateTime?  @map("fecha_digitalizacion")
+  extractionDate       DateTime?  @map("fechaExtraccion")
 
+  // Relations
+  results              Result[]
+
+  @@unique([surveyRecordId, variableName], map: "factura_idRegistroEncuesta_IDX")
+  @@index([stickerQR], map: "ix_consulta_sticker")
+  @@index([photoType], map: "idx_tipoF")
+  @@index([variableName], map: "factura_nombre_variable_IDX")
+  @@index([responseId], map: "idx_responseId")
   @@map("factura")
+}
+
+model Result {
+  id                     Int       @id @default(autoincrement()) @map("id_detalle_factura")
+  invoiceId              Int       @map("id_factura")
+  surveyRecordId         Int       @map("idRegistroEncuesta")
+  invoiceNumber          String?   @map("numero_factura") @db.VarChar(11)
+  invoiceDate            DateTime? @map("fecha_factura")
+  businessName           String?   @map("razon_social") @db.Text
+  productCode            String?   @map("codigoProducto") @db.VarChar(111)
+  description            String?   @map("descripcion") @db.VarChar(500)
+  packagingType          String?   @map("tipo_embalage") @db.VarChar(255)
+  packagingUnit          Decimal?  @map("unidad_embalage") @db.Decimal(11, 2)
+  packsSold              Decimal?  @map("pack_vendidos") @db.Decimal(11, 2)
+  saleValue              Decimal?  @map("valor_venta") @db.Decimal(10, 0)
+  unitsSold              Decimal?  @map("unidades_vendidas") @db.Decimal(11, 2)
+  totalInvoice           Decimal?  @map("total_factura") @db.Decimal(11, 2)
+  totalInvoiceWithoutVAT Decimal?  @map("total_factura_sin_iva") @db.Decimal(11, 2)
+  rowNumber              Int       @map("numeroFila")
+  valueIbuaAndOthers     Int?      @map("VALOR_IBUA_Y_OTROS")
+
+  // Relations
+  invoice                Invoice   @relation(fields: [invoiceId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "res_dig_FK")
+
+  @@unique([invoiceId, rowNumber], map: "idx_resDig_UN")
+  @@index([surveyRecordId], map: "Id_regis_encuesta")
+  @@index([invoiceNumber], map: "id_numero_factura")
+  @@index([description], map: "descripcion")
+  @@index([invoiceId], map: "Id_Factura")
+  @@index([invoiceDate], map: "resultado_digitalizacion_fecha_factura_IDX")
+  @@map("resultado_digitalizacion")
 }

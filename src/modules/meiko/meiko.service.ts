@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaMeikoService } from '../../database/services/prisma-meiko.service';
+import { Prisma } from '@prisma/client-meiko';
 
 /**
  * Meiko Service
@@ -28,9 +29,9 @@ export class MeikoService {
           id: {
             gt: maxId,
           },
-          surveyRecordId: {
-            not: null,
-          },
+          // surveyRecordId: {
+          //   not: null,
+          // },
           responseId: {
             not: null,
           },
@@ -57,6 +58,43 @@ export class MeikoService {
   }
 
   /**
+   * Find digitization results by product description
+   * Uses fuzzy matching to find products that match the given description
+   *
+   * @param tipoFoto Photo type to filter by
+   * @param description Product description to search for
+   * @returns Digitization result or null if not found
+   */
+  async findByDescription(razonSocial: string, description: string) {
+    try {
+      this.logger.log(
+        `Searching digitization result by description: "${description}" for razon social: "${razonSocial}"`,
+      );
+
+      return this.prismaMeiko.result.findFirst({
+        where: {
+          description,
+          businessName: razonSocial
+        },
+        orderBy: {
+          id: 'desc'
+        }
+      })
+
+    } catch (error) {
+      this.logger.error(
+        `Error finding digitization result by description: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  async find(args: Prisma.ResultFindFirstArgs) {
+    return this.prismaMeiko.result.findFirst(args)
+  }
+
+  /**
    * Get total count of invoices with id_factura greater than maxId
    * and with non-null idRegistroEncuesta, responseId, and stickerQR
    *
@@ -72,9 +110,9 @@ export class MeikoService {
           id: {
             gt: maxId,
           },
-          surveyRecordId: {
-            not: null,
-          },
+          // surveyRecordId: {
+          //   not: null,
+          // },
           responseId: {
             not: null,
           },

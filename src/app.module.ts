@@ -10,6 +10,7 @@ import { ExtractionModule } from './modules/extraction/extraction.module';
 import { OcrModule } from './modules/ocr/ocr.module';
 import { RadicationModule } from './modules/radication/radication.module';
 import { ControlProcessModule } from './modules/process-control/control-process.module';
+import { ValidatorModule } from './modules/validator/validator.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ControlProcessModule } from './modules/process-control/control-process.
     RadicationModule,
     ControlProcessModule,
     OcrModule,
+    ValidatorModule
   ],
   controllers: [AppController],
   providers: [AppService],

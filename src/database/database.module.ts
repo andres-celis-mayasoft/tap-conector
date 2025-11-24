@@ -1,7 +1,7 @@
 import { Module, Global } from '@nestjs/common';
 import { PrismaService } from './services/prisma.service';
 import { PrismaMeikoService } from './services/prisma-meiko.service';
-import { PrismaTapService } from './services/prisma-tap.service';
+// import { PrismaTapService } from './services/prisma-tap.service';
 import { DatabaseHealthController } from './database-health.controller';
 
 /**
@@ -17,12 +17,12 @@ import { DatabaseHealthController } from './database-health.controller';
   providers: [
     PrismaService,
     PrismaMeikoService,
-    PrismaTapService,
+    // PrismaTapService,
   ],
   exports: [
     PrismaService,
     PrismaMeikoService,
-    PrismaTapService,
+    // PrismaTapService,
   ],
 })
 export class DatabaseModule {}
