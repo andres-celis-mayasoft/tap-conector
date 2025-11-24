@@ -80,3 +80,30 @@ model ExtractionField {
   @@map("extraccion_campo")
   @@index([invoiceId])
 }
+
+
+model ExtractionInvoiceMaya {
+  id              Int       @id @default(autoincrement())
+  invoiceId       Int       @unique @map("factura_id")
+  docketId        String?   @map("expediente_id") @db.NVarChar(100)
+  photoType       String?   @map("tipo_foto") @db.NVarChar(50)
+  photoTypeOcr    String?   @map("tipo_foto_ocr") @db.NVarChar(50)
+  errors          String?   @map("errores") @db.NVarChar(4000)
+  extracted       Boolean   @default(false)
+  validated       Boolean   @default(false)
+  date            DateTime  @default(now()) @map("fecha")
+  status          String?   @map("estado") @db.NVarChar(50)
+  captureStartDate DateTime? @map("fecha_en_captura")
+  captureEndDate  DateTime? @map("fecha_capturado")
+  invoiceUrl      String?   @map("url_factura") @db.NVarChar(4000)
+  mayaInvoiceJson String?   @map("json_invoice_maya") @db.NVarChar(4000)
+  tapInvoiceJson  String?   @map("json_invoice_tap") @db.NVarChar(4000)
+  userId          String?   @map("user_id") @db.NVarChar(100)
+
+  @@map("extraccion_factura_maya")
+  @@index([status], map: "IX_factura_maya_estado")
+  @@index([extracted, validated], map: "IX_factura_maya_extracted_validated")
+  @@index([date], map: "IX_factura_maya_fecha")
+  @@index([photoType], map: "IX_factura_maya_tipo_foto")
+  @@index([photoTypeOcr], map: "IX_factura_maya_tipo_foto_ocr")
+}

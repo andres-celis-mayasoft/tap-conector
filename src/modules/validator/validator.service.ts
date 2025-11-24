@@ -10,11 +10,13 @@ import { MeikoService } from '../meiko/meiko.service';
 import { DateTime } from 'luxon';
 import { DocumentFactory } from './documents/document.factory';
 import { PrismaService } from '../../database/services/prisma.service';
+import { PrismaTapService } from 'src/database/services/prisma-tap.service';
 
 @Injectable()
 export class ValidatorService {
   constructor(
     private meikoService: MeikoService,
+    private tapService: PrismaTapService,
     private prisma: PrismaService,
   ) {}
 
@@ -720,7 +722,7 @@ export class ValidatorService {
    * Test endpoint: consulta una factura por ID, valida con el OCR y compara con el resultado esperado
    */
   async testInvoice(facturaId: number) {
-    const invoice = await this.prisma.invoice.findUnique({
+    const invoice = await this.tapService.extractionInvoiceMaya.findUnique({
       where: { invoiceId: facturaId },
     });
 
