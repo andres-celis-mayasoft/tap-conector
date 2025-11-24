@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional, NotFoundException } from '@nestjs/common';
 import { ValidateInvoice, InvoiceEntry } from './interfaces/invoice.interface';
 import { Fields, RAZON_SOCIAL } from './enums/fields';
 import {
@@ -9,13 +9,13 @@ import {
 import { MeikoService } from '../meiko/meiko.service';
 import { DateTime } from 'luxon';
 import { DocumentFactory } from './documents/document.factory';
+import { PrismaService } from '../../database/services/prisma.service';
 
 @Injectable()
 export class ValidatorService {
-  // inyecta el servicio de BD si existe; si no, inferencia quedará desactivada
   constructor(
     private meikoService: MeikoService,
-    // @Optional() @Inject('IControlProcesoService') private readonly controlProcesoService?: IControlProcesoService,
+    private prisma: PrismaService,
   ) {}
 
   async validateInvoice(invoice: ValidateInvoice) {
@@ -714,5 +714,121 @@ export class ValidatorService {
         );
       }
     }
+  }
+
+  /**
+   * Test endpoint: consulta una factura por ID, valida con el OCR y compara con el resultado esperado
+   */
+  async testInvoice(facturaId: number) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { invoiceId: facturaId },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException(`Factura con ID ${facturaId} no encontrada`);
+    }
+
+    if (!invoice.mayaInvoiceJson) {
+      throw new NotFoundException(
+        `Factura ${facturaId} no tiene respuesta OCR (mayaInvoiceJson)`,
+      );
+    }
+
+    // Parsear la respuesta OCR
+    const ocrData = JSON.parse(invoice.mayaInvoiceJson);
+
+    // Validar usando el DocumentFactory
+    const { data, errors, isValid } = DocumentFactory.create(
+      invoice.photoTypeOcr || '',
+      ocrData,
+    ).get();
+
+    // Parsear el resultado esperado si existe
+    let expected = null;
+    if (invoice.tapInvoiceJson) {
+      expected = JSON.parse(invoice.tapInvoiceJson);
+    }
+
+    // Comparar resultados
+    const comparison = this.compareResults(data, expected);
+
+    return {
+      facturaId,
+      photoType: invoice.photoTypeOcr,
+      isValid,
+      errors,
+      result: data,
+      expected,
+      comparison,
+    };
+  }
+
+  /**
+   * Compara el resultado obtenido con el esperado
+   */
+  private compareResults(result: any, expected: any) {
+    if (!expected) {
+      return { hasExpected: false, matches: null, differences: null };
+    }
+
+    const differences: any[] = [];
+
+    // Comparar encabezado
+    if (result.encabezado && expected.encabezado) {
+      for (const field of result.encabezado) {
+        const expectedField = expected.encabezado.find(
+          (e: any) => e.type === field.type,
+        );
+        if (expectedField) {
+          if (
+            field.text !== expectedField.text ||
+            field.confidence !== expectedField.confidence
+          ) {
+            differences.push({
+              section: 'encabezado',
+              type: field.type,
+              result: { text: field.text, confidence: field.confidence },
+              expected: {
+                text: expectedField.text,
+                confidence: expectedField.confidence,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    // Comparar detalles
+    if (result.detalles && expected.detalles) {
+      for (const field of result.detalles) {
+        const expectedField = expected.detalles.find(
+          (e: any) => e.type === field.type && e.row === field.row,
+        );
+        if (expectedField) {
+          if (
+            field.text !== expectedField.text ||
+            field.confidence !== expectedField.confidence
+          ) {
+            differences.push({
+              section: 'detalles',
+              type: field.type,
+              row: field.row,
+              result: { text: field.text, confidence: field.confidence },
+              expected: {
+                text: expectedField.text,
+                confidence: expectedField.confidence,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    return {
+      hasExpected: true,
+      matches: differences.length === 0,
+      totalDifferences: differences.length,
+      differences,
+    };
   }
 }
