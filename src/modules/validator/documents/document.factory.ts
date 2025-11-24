@@ -1,6 +1,7 @@
 import { CokeInvoice } from './coke/coke.document';
 import { PostobonInvoice } from './postobon/postobon.document';
 import { InfocargueInvoice } from './infocargue/infocargue.document';
+import { PostobonTiqueteInvoice } from './postobon-tiquete/postobon-tiquete.document';
 
 export class DocumentFactory {
   static create(type: string, ocrResponse: any) {
@@ -13,6 +14,9 @@ export class DocumentFactory {
 
       case 'Factura Infocargue':
         return new InfocargueInvoice(ocrResponse);
+
+      case 'Factura Tiquete Pos Postobon':
+        return new PostobonTiqueteInvoice(ocrResponse);
 
       default:
         throw new Error(`Documento no soportado: ${type}`);
