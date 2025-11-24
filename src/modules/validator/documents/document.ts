@@ -4,9 +4,6 @@ export abstract class Document<TSchema> {
   protected isValid: boolean;
 
   constructor(protected data: TSchema) {
-    this.normalize();
-    this.validate();
-    this.infer();
   }
 
   abstract normalize(): this;

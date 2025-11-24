@@ -785,6 +785,8 @@ export class ValidatorService {
 
   /**
    * Compara el resultado obtenido con el esperado
+   * Ambos tienen formato { campos: CampoDto[] } donde CampoDto es:
+   * { nombre, pagina, registro, fila, confianza, x, y, ancho, altura, imagen, valor_atomizacion, es_blanco, valor_cierre }
    */
   private compareResults(result: any, expected: any) {
     if (!expected) {
@@ -792,55 +794,78 @@ export class ValidatorService {
     }
 
     const differences: any[] = [];
+    const resultCampos = result?.campos || [];
+    const expectedCampos = expected?.campos || [];
 
-    // Comparar encabezado
-    if (result.encabezado && expected.encabezado) {
-      for (const field of result.encabezado) {
-        const expectedField = expected.encabezado.find(
-          (e: any) => e.type === field.type,
-        );
-        if (expectedField) {
-          if (
-            field.text !== expectedField.text ||
-            field.confidence !== expectedField.confidence
-          ) {
-            differences.push({
-              section: 'encabezado',
-              type: field.type,
-              result: { text: field.text, confidence: field.confidence },
-              expected: {
-                text: expectedField.text,
-                confidence: expectedField.confidence,
-              },
-            });
-          }
+    // Comparar cada campo del resultado con el esperado
+    for (const field of resultCampos) {
+      // Buscar el campo esperado por nombre, registro y fila
+      const expectedField = expectedCampos.find(
+        (e: any) =>
+          e.nombre === field.nombre &&
+          e.registro === field.registro &&
+          e.fila === field.fila,
+      );
+
+      if (expectedField) {
+        // Comparar valor_cierre y confianza
+        const valorResultado = field.valor_cierre;
+        const valorEsperado = expectedField.valor_cierre;
+        const confianzaResultado = field.confianza;
+        const confianzaEsperada = expectedField.confianza;
+
+        if (valorResultado !== valorEsperado || confianzaResultado !== confianzaEsperada) {
+          differences.push({
+            nombre: field.nombre,
+            registro: field.registro,
+            fila: field.fila,
+            result: {
+              valor_cierre: valorResultado,
+              confianza: confianzaResultado,
+            },
+            expected: {
+              valor_cierre: valorEsperado,
+              confianza: confianzaEsperada,
+            },
+          });
         }
+      } else {
+        // Campo en resultado que no existe en esperado
+        differences.push({
+          nombre: field.nombre,
+          registro: field.registro,
+          fila: field.fila,
+          result: {
+            valor_cierre: field.valor_cierre,
+            confianza: field.confianza,
+          },
+          expected: null,
+          issue: 'missing_in_expected',
+        });
       }
     }
 
-    // Comparar detalles
-    if (result.detalles && expected.detalles) {
-      for (const field of result.detalles) {
-        const expectedField = expected.detalles.find(
-          (e: any) => e.type === field.type && e.row === field.row,
-        );
-        if (expectedField) {
-          if (
-            field.text !== expectedField.text ||
-            field.confidence !== expectedField.confidence
-          ) {
-            differences.push({
-              section: 'detalles',
-              type: field.type,
-              row: field.row,
-              result: { text: field.text, confidence: field.confidence },
-              expected: {
-                text: expectedField.text,
-                confidence: expectedField.confidence,
-              },
-            });
-          }
-        }
+    // Buscar campos que están en expected pero no en result
+    for (const expectedField of expectedCampos) {
+      const existsInResult = resultCampos.some(
+        (r: any) =>
+          r.nombre === expectedField.nombre &&
+          r.registro === expectedField.registro &&
+          r.fila === expectedField.fila,
+      );
+
+      if (!existsInResult) {
+        differences.push({
+          nombre: expectedField.nombre,
+          registro: expectedField.registro,
+          fila: expectedField.fila,
+          result: null,
+          expected: {
+            valor_cierre: expectedField.valor_cierre,
+            confianza: expectedField.confianza,
+          },
+          issue: 'missing_in_result',
+        });
       }
     }
 

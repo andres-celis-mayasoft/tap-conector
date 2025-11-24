@@ -42,7 +42,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
     const { fecha_factura } = Utils.getFields<CokeHeaderFields>(
       this.data.encabezado,
     );
-    const isValidDate = Utils.isValidDate(fecha_factura);
+    const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {
       this.errors.fecha_factura = 'Fecha inválida (formato)';
@@ -50,7 +50,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
       return;
     }
 
-    const isValid = Utils.hasMonthsPassed(fecha_factura, 3);
+    const isValid = Utils.hasMonthsPassed(fecha_factura.text, 3);
     this.isValid = isValid;
     if (!isValid) this.errors.fecha_factura = 'Fecha obsoleta';
   }
@@ -89,13 +89,9 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
     for (const product of products) {
       const {
         item_descripcion_producto: descripcion,
-        valor_venta_item,
         codigo_producto,
         tipo_embalaje,
-        valor_unitario_item,
-        valor_ibua_y_otros,
-        unidades_embalaje,
-        unidades_vendidas,
+        valor_total_unitario_item,
       } = Utils.getFields<CokeBodyFields>(product);
 
       if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
@@ -125,13 +121,10 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
         tipo_embalaje.confidence = 1;
       }
 
-      if (productDB?.saleValue === valor_unitario_item.text) {
-        valor_unitario_item.confidence = 1;
+      if (productDB?.saleValue === valor_total_unitario_item.text) {
+        valor_total_unitario_item.confidence = 1;
       }
 
-      if (productDB?.valueIbuaAndOthers === valor_ibua_y_otros.text) {
-        valor_ibua_y_otros.confidence = 1;
-      }
 
       // Custom calculation
       this.inferProductByCalculation(product);
@@ -141,7 +134,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
   private inferProductByCalculation(product: any): void {
     const {
       valor_venta_item,
-      valor_unitario_item,
+      valor_total_unitario_item,
       valor_ibua_y_otros,
       unidades_embalaje,
       unidades_vendidas,
@@ -149,13 +142,13 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
 
     const unidadesItem =
       this.toNumber(unidades_embalaje) / this.toNumber(unidades_vendidas);
-    const valorItem = this.toNumber(valor_unitario_item) / unidadesItem;
+    const valorItem = this.toNumber(valor_total_unitario_item) / unidadesItem;
     const valorVentaCalculado = valorItem - this.toNumber(valor_ibua_y_otros);
 
     if (valorVentaCalculado === this.toNumber(valor_venta_item)) {
       unidades_embalaje.confidence = 1;
       unidades_vendidas.confidence = 1;
-      valor_unitario_item.confidence = 1;
+      valor_total_unitario_item.confidence = 1;
       valor_ibua_y_otros.confidence = 1;
       valor_venta_item.confidence = 1;
     }
