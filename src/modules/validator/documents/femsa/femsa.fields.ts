@@ -1,11 +1,11 @@
-export enum CokeHeaderFields {
+export enum FemsaHeaderFields {
   FECHA_FACTURA = 'fecha_factura',
   NUMERO_FACTURA = 'numero_factura',
   VALOR_TOTAL_FACTURA = 'valor_total_factura',
   RAZON_SOCIAL = 'razon_social',
 }
 
-export enum CokeBodyFields {
+export enum FemsaBodyFields {
   CODIGO_PRODUCTO = 'codigo_producto',
   ITEM_DESCRIPCION_PRODUCTO = 'item_descripcion_producto',
   TIPO_EMBALAJE = 'tipo_embalaje',

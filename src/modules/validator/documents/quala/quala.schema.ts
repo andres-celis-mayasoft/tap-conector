@@ -1,16 +1,13 @@
-import { DateTime, DateTimeMaybeValid } from 'luxon';
-import { CokeBodyFields, CokeHeaderFields } from './coke.fields';
+import { QualaBodyFields, QualaHeaderFields } from './quala.fields';
 
-
-
-export type CokeInvoiceSchema = {
+export type QualaInvoiceSchema = {
   encabezado: {
-    type: CokeHeaderFields;
+    type: QualaHeaderFields;
     text?: string;
     confidence: number;
   }[];
   detalles: {
-    type: CokeBodyFields;
+    type: QualaBodyFields;
     text?: string;
     confidence: number;
     row?: number;

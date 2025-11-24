@@ -1,5 +1,5 @@
-import { InfocargueBodyFields, InfocargueHeaderFields } from './infocargue.fields';
-import { InfocargueInvoiceSchema } from './infocargue.schema';
+import { AjeBodyFields, AjeHeaderFields } from './aje.fields';
+import { AjeInvoiceSchema } from './aje.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
 import { EMBALAJES } from '../../utils/validator.utils';
@@ -7,37 +7,23 @@ import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 
-type HeaderField = InfocargueInvoiceSchema['encabezado'][number];
-type BodyField = InfocargueInvoiceSchema['detalles'][number];
+type HeaderField = AjeInvoiceSchema['encabezado'][number];
+type BodyField = AjeInvoiceSchema['detalles'][number];
 
-export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
+export class AjeInvoice extends Document<AjeInvoiceSchema> {
   constructor(
-    data: InfocargueInvoiceSchema,
+    data: AjeInvoiceSchema,
     protected meikoService: MeikoService,
   ) {
     super(data);
   }
 
   normalize(): this {
-    const products = Utils.groupFields(this.data.detalles);
-    for (const product of products) {
-      const descriptionField = product.find(
-        (field) => field.type == InfocargueBodyFields.ITEM_DESCRIPCION_PRODUCTO,
-      );
-      if (descriptionField?.text?.toUpperCase() === 'REDUCCION') {
-        const valorField = product.find(
-          (field) => field.type === InfocargueBodyFields.VALOR_VENTA_ITEM,
-        );
-        if (valorField)
-          valorField.text = String(this.toNumber(valorField) * -1);
-        continue;
-      }
-    }
     return this;
   }
 
   validate(): void {
-    const { fecha_factura } = Utils.getFields<InfocargueHeaderFields>(
+    const { fecha_factura } = Utils.getFields<AjeHeaderFields>(
       this.data.encabezado,
     );
     const isValidDate = Utils.isValidDate(fecha_factura.text);
@@ -62,7 +48,7 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
 
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
-      Utils.getFields<InfocargueHeaderFields>(this.data.encabezado);
+      Utils.getFields<AjeHeaderFields>(this.data.encabezado);
 
     if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
       fecha_factura.confidence = 1;
@@ -78,7 +64,7 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
   }
 
   private async inferDetalles(): Promise<void> {
-    const { razon_social } = Utils.getFields<InfocargueHeaderFields>(
+    const { razon_social } = Utils.getFields<AjeHeaderFields>(
       this.data.encabezado,
     );
     const products = Utils.groupFields(this.data.detalles);
@@ -88,10 +74,7 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
         item_descripcion_producto: descripcion,
         codigo_producto,
         tipo_embalaje,
-        valor_unitario_item,
-        valor_ibua_y_otros,
-        unidades_embalaje,
-      } = Utils.getFields<InfocargueBodyFields>(product);
+      } = Utils.getFields<AjeBodyFields>(product);
 
       if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
         product.forEach((field) => (field.confidence = 1));
@@ -116,57 +99,47 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
         descripcion.confidence = 1;
       }
 
-      const embalaje = (tipo_embalaje.text || '').trim().toUpperCase();
+      const embalaje = (tipo_embalaje?.text || '').trim().toUpperCase();
       if (EMBALAJES.includes(embalaje)) {
         tipo_embalaje.confidence = 1;
       }
 
-      if (productDB?.saleValue === valor_unitario_item.text) {
-        valor_unitario_item.confidence = 1;
-      }
-
-      if (productDB?.valueIbuaAndOthers === valor_ibua_y_otros.text) {
-        valor_ibua_y_otros.confidence = 1;
-      }
-
-      this.inferUnidadesEmbalaje(product, descripcion?.text || '');
+      // Validación específica de AJE por cálculo
+      this.inferProductByCalculation(product);
     }
   }
 
   /**
-   * Infiere UNIDADES_EMBALAJE desde la descripción del producto
-   * Busca patrones como "x12", "X24", etc.
+   * Validación específica de Factura AJE:
+   * valorIvaCalculado = (precioAntesIva - valorDescuento) * (valorIva / 100)
+   * valorVentaCalculado = (precioAntesIva - valorDescuento) + valorIvaCalculado
+   *
+   * Si la diferencia con valorVentaItem es <= 1.0, se validan todos los campos
    */
-  private inferUnidadesEmbalaje(product: any[], descripcion: string): void {
-    const { unidades_embalaje } = Utils.getFields<InfocargueBodyFields>(product);
+  private inferProductByCalculation(product: any[]): void {
+    const {
+      precio_antes_iva,
+      valor_descuento_item,
+      valor_iva,
+      valor_venta_item,
+    } = Utils.getFields<AjeBodyFields>(product);
 
-    if (!unidades_embalaje) return;
+    const precioAntesIvaDbl = this.toNumber(precio_antes_iva) || 0;
+    const valorDescuentoItemDbl = this.toNumber(valor_descuento_item) || 0;
+    const valorIvaDbl = this.toNumber(valor_iva) || 0;
+    const valorVentaItemDbl = this.toNumber(valor_venta_item) || 0;
 
-    const valor = unidades_embalaje.text || '';
-    const confianza = unidades_embalaje.confidence || 0;
+    // Cálculo AJE
+    const valorIvaCalculado = (precioAntesIvaDbl - valorDescuentoItemDbl) * (valorIvaDbl / 100);
+    const valorVentaCalculado = (precioAntesIvaDbl - valorDescuentoItemDbl) + valorIvaCalculado;
 
-    const pattern = /[xX]\s*(\d+)/;
-    const match = descripcion.match(pattern);
+    const diferencia = Math.abs(valorVentaItemDbl - valorVentaCalculado);
 
-    if ((!valor || valor.trim() === '') && confianza === 0) {
-      if (match) {
-        const numero = match[1];
-        unidades_embalaje.text = numero;
-        unidades_embalaje.confidence = 1;
-      } else {
-        unidades_embalaje.confidence = 1;
-      }
-    } else if (match) {
-      try {
-        const valorExistente = parseInt(valor.trim(), 10);
-        const numeroDescripcion = parseInt(match[1], 10);
-
-        if (valorExistente === numeroDescripcion) {
-          unidades_embalaje.confidence = 1;
-        }
-      } catch (e) {
-        // Valor no numérico, se ignora
-      }
+    if (diferencia <= 1.0) {
+      if (precio_antes_iva) precio_antes_iva.confidence = 1;
+      if (valor_descuento_item) valor_descuento_item.confidence = 1;
+      if (valor_iva) valor_iva.confidence = 1;
+      if (valor_venta_item) valor_venta_item.confidence = 1;
     }
   }
 

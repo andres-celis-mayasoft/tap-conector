@@ -13,10 +13,10 @@ import {
 } from './utils/validator.utils';
 import { MeikoService } from '../meiko/meiko.service';
 import { DateTime } from 'luxon';
-import { DocumentFactory } from './documents/document.factory';
+import { DocumentFactory } from './documents/base/document.factory';
 import { PrismaService } from '../../database/services/prisma.service';
 import { PrismaTapService } from 'src/database/services/prisma-tap.service';
-import { CokeInvoice } from './documents/coke v2/coke.document';
+import { CokeInvoice } from './documents/coke/coke.document';
 
 @Injectable()
 export class ValidatorService {

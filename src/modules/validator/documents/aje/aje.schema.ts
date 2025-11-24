@@ -1,13 +1,13 @@
-import { PostobonBodyFields, PostobonHeaderFields } from './postobon.fields';
+import { AjeBodyFields, AjeHeaderFields } from './aje.fields';
 
-export type PostobonInvoiceSchema = {
+export type AjeInvoiceSchema = {
   encabezado: {
-    type: PostobonHeaderFields;
+    type: AjeHeaderFields;
     text?: string;
     confidence: number;
   }[];
   detalles: {
-    type: PostobonBodyFields;
+    type: AjeBodyFields;
     text?: string;
     confidence: number;
     row?: number;

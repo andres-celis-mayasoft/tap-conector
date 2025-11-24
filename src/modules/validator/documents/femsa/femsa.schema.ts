@@ -1,13 +1,16 @@
-import { PostobonBodyFields, PostobonHeaderFields } from './postobon.fields';
+import { DateTime, DateTimeMaybeValid } from 'luxon';
+import { FemsaBodyFields, FemsaHeaderFields } from './femsa.fields';
 
-export type PostobonInvoiceSchema = {
+
+
+export type FemsaInvoiceSchema = {
   encabezado: {
-    type: PostobonHeaderFields;
+    type: FemsaHeaderFields;
     text?: string;
     confidence: number;
   }[];
   detalles: {
-    type: PostobonBodyFields;
+    type: FemsaBodyFields;
     text?: string;
     confidence: number;
     row?: number;

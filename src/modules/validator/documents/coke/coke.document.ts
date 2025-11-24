@@ -1,163 +1,172 @@
 import { CokeBodyFields, CokeHeaderFields } from './coke.fields';
 import { CokeInvoiceSchema } from './coke.schema';
-import {
-  BaseDocument,
-  BaseField,
-  HeaderFieldConfig,
-  BodyFieldConfig,
-} from '../base';
+import { Utils } from '../utils';
+import { DateTime } from 'luxon';
+import { EMBALAJES } from '../../utils/validator.utils';
+import { RAZON_SOCIAL } from '../../enums/fields';
+import { Document } from '../base/document';
+import { MeikoService } from 'src/modules/meiko/meiko.service';
 
-type BodyField = BaseField<CokeBodyFields>;
+type HeaderField = CokeInvoiceSchema['encabezado'][number];
+type BodyField = CokeInvoiceSchema['detalles'][number];
 
-export class CokeInvoice extends BaseDocument<
-  CokeInvoiceSchema,
-  CokeHeaderFields,
-  CokeBodyFields
-> {
-  // ============ CONFIGURACIÓN DE CAMPOS ============
-
-  protected getHeaderFieldConfig(): HeaderFieldConfig<CokeHeaderFields> {
-    return {
-      fechaFactura: CokeHeaderFields.FECHA_FACTURA,
-      numeroFactura: CokeHeaderFields.NUMERO_FACTURA,
-      razonSocial: CokeHeaderFields.RAZON_SOCIAL,
-      valorTotalFactura: CokeHeaderFields.VALOR_TOTAL_FACTURA,
-    };
+export class CokeInvoice extends Document<CokeInvoiceSchema> {
+  constructor(
+    data: CokeInvoiceSchema,
+    protected meikoService: MeikoService,
+  ) {
+    super(data);
   }
-
-  protected getBodyFieldConfig(): BodyFieldConfig<CokeBodyFields> {
-    return {
-      codigoProducto: CokeBodyFields.CODIGO_PRODUCTO,
-      descripcionProducto: CokeBodyFields.ITEM_DESCRIPCION_PRODUCTO,
-      tipoEmbalaje: CokeBodyFields.TIPO_EMBALAJE,
-      unidadesVendidas: CokeBodyFields.UNIDADES_VENDIDAS,
-      valorUnitario: CokeBodyFields.VALOR_UNITARIO_ITEM,
-      valorVenta: CokeBodyFields.VALOR_VENTA_ITEM,
-      valorIbua: CokeBodyFields.VALOR_IBUA_Y_OTROS,
-      unidadesEmbalaje: CokeBodyFields.UNIDADES_EMBALAJE,
-    };
-  }
-
-  // ============ MÉTODOS PRINCIPALES ============
 
   normalize(): this {
-    // Normalizar encabezados (reparar fechas con errores de OCR)
-    this.normalizeHeaders();
-
-    const products = this.groupFields();
+    // Convert to negative VALOR_VENTA_ITEM where descriptio is 'REDUCCION'
+    const products = Utils.groupFields(this.data.detalles);
     for (const product of products) {
-      const fields = this.getFieldsMap(product);
-      const descriptionField = fields[CokeBodyFields.ITEM_DESCRIPCION_PRODUCTO];
-
+      const descriptionField = product.find(
+        (field) => field.type == CokeBodyFields.ITEM_DESCRIPCION_PRODUCTO,
+      );
       if (descriptionField?.text?.toUpperCase() === 'REDUCCION') {
-        const valorField = fields[CokeBodyFields.VALOR_VENTA_ITEM];
-        if (valorField) {
+        const valorField = product.find(
+          (field) => field.type === CokeBodyFields.VALOR_VENTA_ITEM,
+        );
+        if (valorField)
           valorField.text = String(this.toNumber(valorField) * -1);
-        }
+        continue;
       }
     }
     return this;
   }
 
   validate(): void {
-    this.validateFechaObsoleta(3);
+    // Validate FECHA_FACTURA passed months
+    const { fecha_factura } = Utils.getFields<CokeHeaderFields>(
+      this.data.encabezado,
+    );
+    const isValidDate = Utils.isValidDate(fecha_factura.text);
+
+    if (!isValidDate) {
+      this.errors.fecha_factura = 'Fecha inválida (formato)';
+      this.isValid = false;
+      return;
+    }
+
+    const isValid = Utils.hasMonthsPassed(fecha_factura.text, 3);
+    this.isValid = isValid;
+    if (!isValid) this.errors.fecha_factura = 'Fecha obsoleta';
   }
 
-  infer(): this {
-    this.inferHeaders();
-    this.inferProducts();
+  async infer(): Promise<this> {
+    this.inferEncabezado();
+    await this.inferDetalles();
     this.inferTotalFactura();
     this.guessConfidence();
     return this;
   }
 
-  // ============ INFERENCIAS ESPECÍFICAS DE COKE ============
+  private inferEncabezado(): void {
+    const { fecha_factura, numero_factura, razon_social } =
+      Utils.getFields<CokeHeaderFields>(this.data.encabezado);
 
-  private inferProducts(): void {
-    const products = this.groupFields();
+    if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
+      fecha_factura.confidence = 1;
+    }
+    if (this.isNumeric(numero_factura?.text?.slice(-5))) {
+      numero_factura.confidence = 1;
+      numero_factura.text = numero_factura?.text?.slice(-5);
+    }
+    if (RAZON_SOCIAL[razon_social.text as any]) {
+      razon_social.text = RAZON_SOCIAL[razon_social.text as any];
+      razon_social.confidence = 1;
+    }
+  }
+
+  private async inferDetalles(): Promise<void> {
+    const { razon_social } = Utils.getFields<CokeHeaderFields>(
+      this.data.encabezado,
+    );
+    const products = Utils.groupFields(this.data.detalles);
 
     for (const product of products) {
-      const fields = this.getFieldsMap(product);
-      const descripcion = fields[CokeBodyFields.ITEM_DESCRIPCION_PRODUCTO];
+      const {
+        item_descripcion_producto: descripcion,
+        codigo_producto,
+        tipo_embalaje,
+        valor_total_unitario_item,
+      } = Utils.getFields<CokeBodyFields>(product);
 
-      // Caso especial: REDUCCION
       if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
-        this.inferReduccion(product);
+        product.forEach((field) => (field.confidence = 1));
         continue;
       }
+      const productDB = await this.meikoService.findByDescription(
+        razon_social?.text || '',
+        descripcion?.text || '',
+      );
 
-      // Inferir tipo de embalaje
-      const embalaje = fields[CokeBodyFields.TIPO_EMBALAJE];
-      if (embalaje) {
-        this.inferTipoEmbalaje(embalaje);
+      const result = await this.meikoService.find({
+        where: { productCode: codigo_producto.text },
+        select: { productCode: true },
+      });
+
+      if (result?.productCode === codigo_producto.text) {
+        codigo_producto.confidence = 1;
       }
 
-      // Inferencia por cálculo cruzado
-      this.inferValoresPorCalculo(fields);
+      if (productDB?.description === descripcion.text?.toUpperCase()) {
+        descripcion.confidence = 1;
+      }
+
+      const embalaje = (tipo_embalaje.text || '').trim().toUpperCase();
+      if (EMBALAJES.includes(embalaje)) {
+        tipo_embalaje.confidence = 1;
+      }
+
+      if (productDB?.saleValue === valor_total_unitario_item.text) {
+        valor_total_unitario_item.confidence = 1;
+      }
+
+
+      // Custom calculation
+      this.inferProductByCalculation(product);
+      
+    }
+  }
+  private inferProductByCalculation(product: any): void {
+    const {
+      valor_venta_item,
+      valor_total_unitario_item,
+      valor_ibua_y_otros,
+      unidades_embalaje,
+      unidades_vendidas,
+    } = Utils.getFields<CokeBodyFields>(product);
+
+    const unidadesItem =
+      this.toNumber(unidades_embalaje) / this.toNumber(unidades_vendidas);
+    const valorItem = this.toNumber(valor_total_unitario_item) / unidadesItem;
+    const valorVentaCalculado = valorItem - this.toNumber(valor_ibua_y_otros);
+
+    if (valorVentaCalculado === this.toNumber(valor_venta_item)) {
+      unidades_embalaje.confidence = 1;
+      unidades_vendidas.confidence = 1;
+      valor_total_unitario_item.confidence = 1;
+      valor_ibua_y_otros.confidence = 1;
+      valor_venta_item.confidence = 1;
     }
   }
 
   /**
-   * Productos tipo REDUCCION: todos los campos con confianza 1
-   */
-  private inferReduccion(product: BodyField[]): void {
-    product.forEach((field) => (field.confidence = 1));
-  }
-
-  /**
-   * Inferencia por cálculo cruzado de valores
-   */
-  private inferValoresPorCalculo(
-    fields: Record<CokeBodyFields, BodyField>,
-  ): void {
-    const unidadesEmbalaje = fields[CokeBodyFields.UNIDADES_EMBALAJE];
-    const unidadesVendidas = fields[CokeBodyFields.UNIDADES_VENDIDAS];
-    const valorUnitario = fields[CokeBodyFields.VALOR_UNITARIO_ITEM];
-    const valorIbuaOtros = fields[CokeBodyFields.VALOR_IBUA_Y_OTROS];
-    const valorVentaItem = fields[CokeBodyFields.VALOR_VENTA_ITEM];
-
-    if (
-      !unidadesEmbalaje ||
-      !unidadesVendidas ||
-      !valorUnitario ||
-      !valorIbuaOtros ||
-      !valorVentaItem
-    ) {
-      return;
-    }
-
-    const unidadesEmbalajeNum = this.toNumber(unidadesEmbalaje);
-    const unidadesVendidasNum = this.toNumber(unidadesVendidas);
-    const valorUnitarioNum = this.toNumber(valorUnitario);
-    const valorIbuaOtrosNum = this.toNumber(valorIbuaOtros);
-    const valorVentaItemNum = this.toNumber(valorVentaItem);
-
-    if (unidadesVendidasNum === 0) return;
-
-    const unidadesItem = unidadesEmbalajeNum / unidadesVendidasNum;
-    const valorItem = valorUnitarioNum / unidadesItem;
-    const valorVentaCalculado = valorItem - valorIbuaOtrosNum;
-
-    if (valorVentaCalculado === valorVentaItemNum) {
-      unidadesEmbalaje.confidence = 1;
-      unidadesVendidas.confidence = 1;
-      valorUnitario.confidence = 1;
-      valorIbuaOtros.confidence = 1;
-      valorVentaItem.confidence = 1;
-    }
-  }
-
-  /**
-   * Infiere el total de factura sumando valores de venta + IBUA
+   * Infiere el total de factura sumando todos los valores de venta + IBUA
    */
   private inferTotalFactura(): void {
-    const products = this.groupFields();
-    const headers = this.getHeaderFields();
+    const products = Utils.groupFields(this.data.detalles);
+    const headers = Utils.getFields<CokeHeaderFields>(this.data.encabezado);
 
     const calculatedTotal = products.reduce((acc, product) => {
-      const fields = this.getFieldsMap(product);
+      const fields = Utils.getFields<CokeBodyFields>(product);
       const valorVenta = this.toNumber(fields[CokeBodyFields.VALOR_VENTA_ITEM]);
-      const valorIbua = this.toNumber(fields[CokeBodyFields.VALOR_IBUA_Y_OTROS]);
+      const valorIbua = this.toNumber(
+        fields[CokeBodyFields.VALOR_IBUA_Y_OTROS],
+      );
       return acc + valorVenta + valorIbua;
     }, 0);
 
@@ -168,5 +177,29 @@ export class CokeInvoice extends BaseDocument<
     ) {
       valorTotalFactura.confidence = 1;
     }
+  }
+
+  private guessConfidence(): void {
+    for (const field of this.data.encabezado) {
+      if (field.confidence >= 0.95) {
+        field.confidence = 1;
+      }
+    }
+
+    for (const field of this.data.detalles) {
+      if (field.confidence >= 0.95) {
+        field.confidence = 1;
+      }
+    }
+  }
+
+
+  private isNumeric(value: string | undefined): boolean {
+    if (!value) return false;
+    return /^-?\d+$/.test(value);
+  }
+
+  private toNumber(field: BodyField | HeaderField | undefined): number {
+    return Number(field?.text || 0);
   }
 }

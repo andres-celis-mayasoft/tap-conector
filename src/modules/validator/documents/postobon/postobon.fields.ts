@@ -1,9 +1,9 @@
 export enum PostobonHeaderFields {
   FECHA_FACTURA = 'fecha_factura',
   NUMERO_FACTURA = 'numero_factura',
-  RAZON_SOCIAL = 'razon_social',
-  TOTAL_FACTURA_SIN_IVA = 'total_factura_sin_iva',
   VALOR_TOTAL_FACTURA = 'valor_total_factura',
+  TOTAL_FACTURA_SIN_IVA = 'total_factura_sin_iva',
+  RAZON_SOCIAL = 'razon_social',
 }
 
 export enum PostobonBodyFields {
