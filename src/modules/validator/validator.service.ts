@@ -749,16 +749,15 @@ export class ValidatorService {
     // Validar usando el DocumentFactory
 
     
-    // const { data, errors, isValid } = DocumentFactory.create(
-    //   invoice.photoTypeOcr || '',
-    //   ocrData,
-    //   this
-    // ).get();
+    const document = DocumentFactory.create(
+      invoice.photoTypeOcr || '',
+      ocrData,
+      this
+    )
 
-    const aaa = new CokeInvoice(ocrData, this.meikoService);
-    await aaa.process();
+    await document.process();
 
-    const { data, errors, isValid } = aaa.get();
+    const { data, errors, isValid } = document.get();
 
     // Convertir resultado al formato CampoDto para comparación
     const resultCampos = Validator.convertToCampoDto(data);
