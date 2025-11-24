@@ -745,21 +745,27 @@ export class ValidatorService {
       ocrData,
     ).get();
 
+    // Convertir resultado al formato CampoDto para comparación
+    const resultCampos = Validator.convertToCampoDto(data);
+
     // Parsear el resultado esperado si existe
     let expected = null;
     if (invoice.tapInvoiceJson) {
       expected = JSON.parse(invoice.tapInvoiceJson);
     }
 
-    // Comparar resultados
-    const comparison = this.compareResults(data, expected);
+    // Comparar resultados (ambos en formato { campos: CampoDto[] })
+    const comparison = this.compareResults(
+      { campos: resultCampos },
+      expected,
+    );
 
     return {
       facturaId,
       photoType: invoice.photoTypeOcr,
       isValid,
       errors,
-      result: data,
+      result: { campos: resultCampos },
       expected,
       comparison,
     };

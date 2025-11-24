@@ -69,8 +69,6 @@ export abstract class BaseDocument<
 
     for (const field of this.data.encabezado) {
       if (config.fechaFactura && field.type === config.fechaFactura) {
-        // Intentar reparar la fecha antes de inferir
-        this.repairFechaFactura(field);
         this.inferFechaFactura(field);
       }
       if (config.numeroFactura && field.type === config.numeroFactura) {
@@ -78,6 +76,21 @@ export abstract class BaseDocument<
       }
       if (config.razonSocial && field.type === config.razonSocial) {
         this.inferRazonSocial(field);
+      }
+    }
+  }
+
+  // ============ MÉTODOS DE NORMALIZACIÓN COMUNES ============
+
+  /**
+   * Normaliza los campos del encabezado (reparación de fechas, etc.)
+   */
+  protected normalizeHeaders(): void {
+    const config = this.getHeaderFieldConfig();
+
+    for (const field of this.data.encabezado) {
+      if (config.fechaFactura && field.type === config.fechaFactura) {
+        this.repairFechaFactura(field);
       }
     }
   }

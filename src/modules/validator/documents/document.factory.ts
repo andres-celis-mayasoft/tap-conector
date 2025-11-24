@@ -15,7 +15,7 @@ export class DocumentFactory {
       case 'Factura Infocargue':
         return new InfocargueInvoice(ocrResponse);
 
-      case 'Factura Tiquete Pos Postobon':
+      case 'Factura Tiquete POS Postobon':
         return new PostobonTiqueteInvoice(ocrResponse);
 
       default:

@@ -41,6 +41,9 @@ export class CokeInvoice extends BaseDocument<
   // ============ MÉTODOS PRINCIPALES ============
 
   normalize(): this {
+    // Normalizar encabezados (reparar fechas con errores de OCR)
+    this.normalizeHeaders();
+
     const products = this.groupFields();
     for (const product of products) {
       const fields = this.getFieldsMap(product);

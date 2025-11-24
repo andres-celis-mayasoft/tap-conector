@@ -1,6 +1,16 @@
 import { Fields } from '../enums/fields';
 import { InvoiceEntry, ValidateInvoice } from '../interfaces/invoice.interface';
 
+/**
+ * Interfaz base para entries de cualquier schema de documento
+ */
+interface BaseEntry {
+  type: string;
+  text?: string;
+  confidence: number;
+  row?: number;
+}
+
 export const EMBALAJES = [
   'UN',
   'CJ',
@@ -63,17 +73,21 @@ export class ValidatorUtils {
    * Convierte un ValidateInvoice a un array de CampoDto
    * compatible con la estructura de Java CampoDto
    */
-  static convertToCampoDto(validateInvoice: ValidateInvoice): CampoDto[] {
+  static convertToCampoDto(
+    validateInvoice:
+      | ValidateInvoice
+      | { encabezado: BaseEntry[]; detalles: BaseEntry[] },
+  ): CampoDto[] {
     const campos: CampoDto[] = [];
 
     // Procesar encabezado
     validateInvoice.encabezado.forEach((entry) => {
-      campos.push(this.mapInvoiceEntryToCampoDto(entry));
+      campos.push(this.mapInvoiceEntryToCampoDto(entry as InvoiceEntry));
     });
 
     // Procesar detalles
     validateInvoice.detalles.forEach((entry) => {
-      campos.push(this.mapInvoiceEntryToCampoDto(entry));
+      campos.push(this.mapInvoiceEntryToCampoDto(entry as InvoiceEntry));
     });
 
     return campos;
