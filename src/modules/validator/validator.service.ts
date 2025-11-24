@@ -1,4 +1,9 @@
-import { Inject, Injectable, Optional, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Optional,
+  NotFoundException,
+} from '@nestjs/common';
 import { ValidateInvoice, InvoiceEntry } from './interfaces/invoice.interface';
 import { Fields, RAZON_SOCIAL } from './enums/fields';
 import {
@@ -22,7 +27,7 @@ export class ValidatorService {
   ) {}
 
   async validateInvoice(invoice: ValidateInvoice) {
-    const { data , errors } = DocumentFactory.create(invoice.tipoFacturaOcr, invoice).get();
+    // const { data , errors } = DocumentFactory.create(invoice.tipoFacturaOcr, invoice).get();
 
     if (invoice.tipoFacturaOcr == 'Factura Coke')
             return new CokeInvoice(invoice as any, this.meikoService);
@@ -651,7 +656,6 @@ export class ValidatorService {
 
       // Validación personalizada de UNIDADES_EMBALAJE
       this.validarUnidadesEmbalajeInfocargue(product, rowNumber, errors);
-
     }
 
     const filteredInvoice = this.removeFields(invoice, [
@@ -743,10 +747,18 @@ export class ValidatorService {
     const ocrData = JSON.parse(invoice.mayaInvoiceJson);
 
     // Validar usando el DocumentFactory
-    const { data, errors, isValid } = DocumentFactory.create(
-      invoice.photoTypeOcr || '',
-      ocrData,
-    ).get();
+
+    
+    // const { data, errors, isValid } = DocumentFactory.create(
+    //   invoice.photoTypeOcr || '',
+    //   ocrData,
+    //   this
+    // ).get();
+
+    const aaa = new CokeInvoice(ocrData, this.meikoService);
+    await aaa.process();
+
+    const { data, errors, isValid } = aaa.get();
 
     // Convertir resultado al formato CampoDto para comparación
     const resultCampos = Validator.convertToCampoDto(data);
@@ -758,10 +770,7 @@ export class ValidatorService {
     }
 
     // Comparar resultados (ambos en formato { campos: CampoDto[] })
-    const comparison = this.compareResults(
-      { campos: resultCampos },
-      expected,
-    );
+    const comparison = this.compareResults({ campos: resultCampos }, expected);
 
     return {
       facturaId,

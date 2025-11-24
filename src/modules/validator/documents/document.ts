@@ -1,6 +1,4 @@
-export abstract class Document<
-  TSchema ,
-> {
+export abstract class Document<TSchema> {
   protected normalized = {} as TSchema;
   protected errors = {} as any;
   protected isValid: boolean;
@@ -13,9 +11,16 @@ export abstract class Document<
 
   abstract normalize(): this;
   abstract validate(): void;
-  abstract  infer(): Promise<this>;
+  abstract infer(): Promise<this>;
 
-  get () {
-    return { data: this.data , errors: this.errors};
+  async process(): Promise<this> {
+    this.normalize();
+    this.validate();
+    await this.infer();
+    return this;
+  }
+
+  get() {
+    return { data: this.data, errors: this.errors, isValid: this.isValid };
   }
 }
