@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 // import { PrismaTapService } from "../../database/services/prisma-tap.service";
 import { PrismaService } from "../../database/services/prisma.service";
-import { Invoice } from "@prisma/client-bd";
+import {  Document } from "@prisma/client-bd";
 import { ExtractionField } from "@prisma/client-tap";
 import { DateTime } from "luxon";
 

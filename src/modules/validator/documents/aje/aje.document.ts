@@ -11,6 +11,12 @@ import { InvoiceService } from 'src/modules/invoice/invoice.service';
 type HeaderField = AjeInvoiceSchema['encabezado'][number];
 type BodyField = AjeInvoiceSchema['detalles'][number];
 
+const AJE_PRODUCTS_TO_EXCLUDE_KEYWORDS = [
+  "ANDINA",
+  "ATUN ACEITE",
+  "TRULU",
+]
+
 export class AjeInvoice extends Document<AjeInvoiceSchema> {
   constructor(
     data: AjeInvoiceSchema,
@@ -49,18 +55,33 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
   }
 
   async exclude(): Promise<this> {
-    this.data.detalles = await Utils.asyncFilter(
-      this.data.detalles,
-      async (field) => {
-        const { item_descripcion_producto } = Utils.getFields<AjeBodyFields>([
-          field,
-        ]);
-        const productDB = await this.invoiceService.isExcluded(
-          item_descripcion_producto.text
-        );
-        return !productDB ? false : productDB?.description === item_descripcion_producto.text;
-      },
+    const rows: number[] = [];
+    const products = Utils.groupFields(this.data.detalles);
+
+    for (const product of products) {
+      const { item_descripcion_producto: descripcion } =
+        Utils.getFields<AjeBodyFields>(product);
+
+      if (
+        AJE_PRODUCTS_TO_EXCLUDE_KEYWORDS.some((item) =>
+          descripcion.text.includes(item),
+        )
+      ) {
+        rows.push(descripcion.row);
+      }
+
+      const productDB = await this.invoiceService.isExcluded(descripcion?.text);
+
+      if (!productDB) continue;
+
+      if (productDB?.description === descripcion?.text)
+        rows.push(descripcion.row);
+    }
+
+    this.data.detalles = this.data.detalles.filter(
+      (field) => !rows.includes(field.row || -1),
     );
+
     return this;
   }
 

@@ -117,6 +117,10 @@ private static  normalizeAtomization(value: string) {
     const FIELDS_TO_FORMAT  = [ Fields.TOTAL_FACTURA_SIN_IVA, Fields.VALOR_TOTAL_FACTURA, Fields.VALOR_VENTA_ITEM]
     if(FIELDS_TO_FORMAT.some((item) => item === entry.type) && entry.text) 
       entry.text = this.normalizeAtomization(entry.text)
+    if(entry.type === undefined){
+      console.log("hit undefined type")
+    }
+
     return {
       nombre: entry.type.toUpperCase(),
       pagina: 0,

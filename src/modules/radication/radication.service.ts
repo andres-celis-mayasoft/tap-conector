@@ -16,7 +16,7 @@ import {
   URl_FUNCTIONS_API,
 } from 'src/constants/business';
 import { ControlProcessService } from '../process-control/control-process.service';
-import { Invoice } from '@prisma/client-bd';
+import { Document } from '@prisma/client-bd';
 import { TapApiClient } from '../tap/tap-api.client';
 import { createReadStream } from 'fs';
 import FormData = require('form-data');
@@ -127,7 +127,7 @@ export class RadicationService {
       this.logger.log(`✅ Batch radicated with ID: ${batchId}`);
 
       for (const invoice of validInvoices) {
-        const processedInvoice = await this.invoiceService.getInvoice(
+        const processedInvoice = await this.invoiceService.getDocument(
           invoice.id,
         );
         if (processedInvoice)
@@ -195,7 +195,7 @@ export class RadicationService {
   }
 
   async uploadImageInvoice(
-    invoices: Invoice[],
+    invoices: Document[],
     batchId: number,
   ): Promise<boolean> {
     const URL = await this.tapService.getParameters(

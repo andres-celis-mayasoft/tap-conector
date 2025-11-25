@@ -11,6 +11,20 @@ import { InvoiceService } from 'src/modules/invoice/invoice.service';
 type HeaderField = QualaInvoiceSchema['encabezado'][number];
 type BodyField = QualaInvoiceSchema['detalles'][number];
 
+const QUALA_PRODUCTS_TO_EXCLUDE_KEYWORDS = [
+  'CUATES',
+  'QUIPITOS',
+  'LIKE',
+  'SUNTEA',
+  'DN POLLO',
+  'INSTACREM',
+  'RC DESME',
+  'POP MPX6 CAR 10X6X44 PRV',
+  'SOPERA CRE',
+  'FAM 6 UN NAL',
+  'NUTR REPINT15',
+];
+
 export class QualaInvoice extends Document<QualaInvoiceSchema> {
   constructor(
     data: QualaInvoiceSchema,
@@ -49,21 +63,35 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
   }
 
   async exclude(): Promise<this> {
-    this.data.detalles = await Utils.asyncFilter(
-      this.data.detalles,
-      async (field) => {
-        const { item_descripcion_producto } = Utils.getFields<QualaBodyFields>([
-          field,
-        ]);
-        const productDB = await this.invoiceService.isExcluded(
-          item_descripcion_producto.text
-        );
-        return !productDB ? false : productDB?.description === item_descripcion_producto.text;
-      },
+    const rows: number[] = [];
+    const products = Utils.groupFields(this.data.detalles);
+
+    for (const product of products) {
+      const { item_descripcion_producto: descripcion } =
+        Utils.getFields<QualaBodyFields>(product);
+
+      if (
+        QUALA_PRODUCTS_TO_EXCLUDE_KEYWORDS.some((item) =>
+          descripcion.text.includes(item),
+        )
+      ) {
+        rows.push(descripcion.row);
+      }
+
+      const productDB = await this.invoiceService.isExcluded(descripcion?.text);
+
+      if (!productDB) continue;
+
+      if (productDB?.description === descripcion?.text)
+        rows.push(descripcion.row);
+    }
+
+    this.data.detalles = this.data.detalles.filter(
+      (field) => !rows.includes(field.row || -1),
     );
+
     return this;
   }
-
 
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
@@ -139,15 +167,14 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
    * Una fila está en blanco si PORCENTAJE_ICUI, TOTAL_IBUA y VALOR_VENTA_ITEM están vacíos
    */
   private isQualaFilaBlanco(product: any[]): boolean {
-    const {
-      porcentaje_icui,
-      total_ibua,
-      valor_venta_item,
-    } = Utils.getFields<QualaBodyFields>(product);
+    const { porcentaje_icui, total_ibua, valor_venta_item } =
+      Utils.getFields<QualaBodyFields>(product);
 
-    const porcentajeVacio = !porcentaje_icui?.text || porcentaje_icui.text.trim() === '';
+    const porcentajeVacio =
+      !porcentaje_icui?.text || porcentaje_icui.text.trim() === '';
     const ibuaVacio = !total_ibua?.text || total_ibua.text.trim() === '';
-    const valorVentaVacio = !valor_venta_item?.text || valor_venta_item.text.trim() === '';
+    const valorVentaVacio =
+      !valor_venta_item?.text || valor_venta_item.text.trim() === '';
 
     return porcentajeVacio && ibuaVacio && valorVentaVacio;
   }
@@ -156,11 +183,8 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
    * Cuando una fila está en blanco, se asigna confianza 100 a campos específicos
    */
   private setFilaBlancoConfidence(product: any[]): void {
-    const {
-      porcentaje_icui,
-      total_ibua,
-      valor_venta_item,
-    } = Utils.getFields<QualaBodyFields>(product);
+    const { porcentaje_icui, total_ibua, valor_venta_item } =
+      Utils.getFields<QualaBodyFields>(product);
 
     if (porcentaje_icui) porcentaje_icui.confidence = 1;
     if (total_ibua) total_ibua.confidence = 1;
@@ -196,7 +220,15 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     const valorVentaItemDbl = this.toNumber(valor_venta_item) || 0;
 
     // Ignorar si todos los valores son cero
-    if (this.isAllZero(valorUnitarioItemDbl, unidadesVendidasDbl, valorIvaDbl, totalIcoDbl, valorVentaItemDbl)) {
+    if (
+      this.isAllZero(
+        valorUnitarioItemDbl,
+        unidadesVendidasDbl,
+        valorIvaDbl,
+        totalIcoDbl,
+        valorVentaItemDbl,
+      )
+    ) {
       return;
     }
 
@@ -204,7 +236,12 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     const valorSegunCantidad = valorUnitarioItemDbl * unidadesVendidasDbl;
     const valorIvaCalculado = valorSegunCantidad * (valorIvaDbl / 100);
     const valorPorcentajeIcui = valorSegunCantidad * (porcentajeIcuiDbl / 100);
-    const valorVentaCalculado = valorSegunCantidad + valorIvaCalculado + totalIcoDbl + valorPorcentajeIcui + totalIbuaDbl;
+    const valorVentaCalculado =
+      valorSegunCantidad +
+      valorIvaCalculado +
+      totalIcoDbl +
+      valorPorcentajeIcui +
+      totalIbuaDbl;
 
     const diferencia = Math.abs(valorVentaItemDbl - valorVentaCalculado);
 

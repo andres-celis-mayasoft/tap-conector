@@ -66,18 +66,25 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
   }
 
   async exclude(): Promise<this> {
-    this.data.detalles = await Utils.asyncFilter(
-      this.data.detalles,
-      async (field) => {
-        const { item_descripcion_producto } = Utils.getFields<CokeBodyFields>([
-          field,
-        ]);
-        const productDB = await this.invoiceService.isExcluded(
-          item_descripcion_producto.text
-        );
-        return !productDB ? false : productDB?.description === item_descripcion_producto.text;
-      },
+    const rows: number[] = [];
+    const products = Utils.groupFields(this.data.detalles);
+
+    for (const product of products) {
+      const { item_descripcion_producto: descripcion } =
+        Utils.getFields<CokeBodyFields>(product);
+
+      const productDB = await this.invoiceService.isExcluded(descripcion?.text);
+
+      if (!productDB) continue;
+
+      if (productDB?.description === descripcion?.text)
+        rows.push(descripcion.row);
+    }
+
+    this.data.detalles = this.data.detalles.filter(
+      (field) => !rows.includes(field.row || -1),
     );
+
     return this;
   }
 

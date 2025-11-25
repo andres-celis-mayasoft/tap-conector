@@ -63,25 +63,25 @@ export class ExtractionService {
       this.logger.log(`📊 Max invoice ID in our DB: ${maxId}`);
 
       // 5. Get new invoices from Meiko
-      const invoices = await this.meikoService.getInvoices(maxId);
-      this.logger.log(`📄 Found ${invoices.length} new invoices to process`);
+      const documents = await this.meikoService.getInvoices(maxId);
+      this.logger.log(`📄 Found ${documents.length} new invoices to process`);
 
-      if (invoices.length === 0) {
+      if (documents.length === 0) {
         this.logger.log('ℹ️ No new invoices to process');
         return;
       }
 
       // 6. Create invoice records in our DB with initial PROCESSING status
       await this.invoiceService.createInvoices(
-        invoices.map((invoice) => ({
+        documents.map((invoice) => ({
           status: 'PROCESSING',
-          invoiceId: invoice.id,
+          documentId: invoice.id,
           photoType: invoice.photoType,
           invoiceUrl: invoice.link,
         })),
       );
       this.logger.log(
-        `✅ Created ${invoices.length} invoice records with PROCESSING status`,
+        `✅ Created ${documents.length} invoice records with PROCESSING status`,
       );
 
       // 7. Process each invoice
@@ -90,7 +90,7 @@ export class ExtractionService {
       let validationRequiredCount = 0;
       let errorCount = 0;
 
-      for (const invoice of invoices) {
+      for (const invoice of documents) {
         try {
           this.logger.log(`\n🔄 Processing invoice ${invoice.id}...`);
 
@@ -105,7 +105,7 @@ export class ExtractionService {
             this.logger.warn(
               `⚠️ Invoice ${invoice.id} - Image not downloadable or viewable`,
             );
-            await this.invoiceService.updateInvoice({
+            await this.invoiceService.updateDocument({
               id: invoice.id,
               path: imagePath,
               errors: 'NO DESCARGABLE O VISUALIZABLE',
@@ -128,7 +128,7 @@ export class ExtractionService {
             this.logger.error(
               `❌ Invoice ${invoice.id} - OCR processing failed: ${ocrResult.error}`,
             );
-            await this.invoiceService.updateInvoice({
+            await this.invoiceService.updateDocument({
               id: invoice.id,
               path: imagePath,
               errors: `OCR_ERROR: ${ocrResult.error}`,
@@ -159,7 +159,7 @@ export class ExtractionService {
             this.logger.error(
               `❌ Invoice ${invoice.id} - Unsupported document type: ${photoTypeOcr}`,
             );
-            await this.invoiceService.updateInvoice({
+            await this.invoiceService.updateDocument({
               id: invoice.id,
               path: imagePath,
               errors: `TIPO_DOCUMENTO_NO_SOPORTADO: ${photoTypeOcr}`,
@@ -193,7 +193,7 @@ export class ExtractionService {
               extracted: true,
               validated: isValidated,
               path: imagePath,
-              photoTypeOcr,
+              photoTypeOCR: photoTypeOcr,
               status: 'PROCESSING', // Will update later based on confidence
             },
             processedData,
@@ -215,7 +215,7 @@ export class ExtractionService {
                 invoice,
                 processedData,
               );
-              await this.invoiceService.updateInvoice({
+              await this.invoiceService.updateDocument({
                 id: invoice.id,
                 status: 'DELIVERED',
                 validated: true,
@@ -228,7 +228,7 @@ export class ExtractionService {
               this.logger.error(
                 `❌ Invoice ${invoice.id} - Delivery to Meiko tables failed: ${deliveryError.message}`,
               );
-              await this.invoiceService.updateInvoice({
+              await this.invoiceService.updateDocument({
                 id: invoice.id,
                 status: 'PENDING_TO_SEND',
                 errors: `DELIVERY_ERROR: ${deliveryError.message}`,
@@ -254,7 +254,7 @@ export class ExtractionService {
               errorMessages.push('VALIDATION_FAILED');
             }
 
-            await this.invoiceService.updateInvoice({
+            await this.invoiceService.updateDocument({
               id: invoice.id,
               status: 'PENDING_VALIDATION',
               validated: false,
@@ -272,7 +272,7 @@ export class ExtractionService {
             `❌ Error processing invoice ${invoice.id}: ${error.message}`,
             error.stack,
           );
-          await this.invoiceService.updateInvoice({
+          await this.invoiceService.updateDocument({
             id: invoice.id,
             status: 'ERROR',
             errors: `PROCESSING_ERROR: ${error.message}`,
@@ -283,7 +283,7 @@ export class ExtractionService {
 
       // 8. Summary log
       this.logger.log('\n📊 Extraction cron job completed');
-      this.logger.log(`   ├─ Total invoices: ${invoices.length}`);
+      this.logger.log(`   ├─ Total invoices: ${documents.length}`);
       this.logger.log(`   ├─ Successfully processed: ${processedCount}`);
       this.logger.log(`   ├─ Delivered to Meiko: ${deliveredCount}`);
       this.logger.log(

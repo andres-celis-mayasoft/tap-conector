@@ -11,113 +11,113 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Invoice {
+model Document {
   id                Int       @id @default(autoincrement())
-  invoiceId         Int       @unique
-  fileId            String?
-  photoType         String?
-  photoTypeOcr      String?
-  errors            String?
-  extracted         Boolean   @default(false)
-  validated         Boolean   @default(false)
-  date              DateTime  @default(now())
-  status            String
-  captureStartDate  DateTime?
-  captureEndDate    DateTime?
-  invoiceUrl        String?
-  mayaInvoiceJson   String?
-  tapInvoiceJson    String?
-  path              String?
+  documentId       Int       @unique @map("document_id")
+  fileId           String?   @map("file_id")
+  photoType        String?   @map("photo_type")
+  photoTypeOCR    String?   @map("photo_type_ocr")
+  errors            String?   @map("errors")
+  extracted         Boolean   @default(false) @map("extracted")
+  validated         Boolean   @default(false) @map("validated")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  status            String    @map("status")
+  captureStartDate DateTime? @map("capture_start_date")
+  captureEndDate  DateTime? @map("capture_end_date")
+  documentUrl      String?   @map("document_url")
+  mayaDocumentJSON String?  @map("maya_document_json")
+  tapDocumentJSON String?   @map("tap_document_json")
+  path              String?   @map("path")
 
   // Manual validation assignment tracking
-  assignedUserId    Int?
-  assignedAt        DateTime?
-  completedAt       DateTime?
+  assignedUserId  Int?      @map("assigned_user_id")
+  assignedAt       DateTime? @map("assigned_at")
+  completedAt      DateTime? @map("completed_at")
 
   fields            Field[]
   assignedUser      User?     @relation(fields: [assignedUserId], references: [id])
 
   @@index([assignedUserId])
-  @@map("invoice")
+  @@map("document")
 }
 
 model Field {
-  id         Int       @id @default(autoincrement())
-  invoiceId  Int
-  row        Int?      @db.SmallInt
-  name       String
-  value      String?
-  confidence Decimal?  @db.Decimal(5, 2)
-  type       String
-  extracted  Boolean   @default(false)
-  validated  Boolean   @default(false)
-  date       DateTime  @default(now())
+  id          Int       @id @default(autoincrement())
+  documentId Int       @map("document_id")
+  row         Int?      @db.SmallInt @map("row")
+  name        String    @map("name")
+  value       String?   @map("value")
+  confidence  Decimal?  @db.Decimal(5, 2) @map("confidence")
+  type        String    @map("type")
+  extracted   Boolean   @default(false) @map("extracted")
+  validated   Boolean   @default(false) @map("validated")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
-  invoice    Invoice   @relation(fields: [invoiceId], references: [invoiceId])
+  document    Document  @relation(fields: [documentId], references: [documentId], onDelete: Cascade)
   @@map("field")
 
 }
 
 // Meiko Delivery Tables (Mirror of Meiko DB in our database)
-model MeikoInvoice {
-  id                   Int        @id @default(autoincrement())
-  surveyRecordId       BigInt
-  responseId           BigInt?
-  stickerQR            String?    @db.VarChar(50)
-  responseReceived     String?    @db.VarChar(100)
-  variableName         String?    @db.VarChar(255)
-  photoType            String?    @db.VarChar(255)
-  link                 String?    @db.Text
-  flagDigitalization   Int?       @db.SmallInt
-  digitalizationDate   DateTime?
-  extractionDate       DateTime?
+model MeikoDocument {
+  id                     Int           @id @default(autoincrement())
+  surveyRecordId       BigInt        @map("survey_record_id")
+  responseId            BigInt?       @map("response_id")
+  stickerQr             String?       @db.VarChar(50) @map("sticker_qr")
+  responseReceived      String?       @db.VarChar(100) @map("response_received")
+  variableName          String?       @db.VarChar(255) @map("variable_name")
+  photoType             String?       @db.VarChar(255) @map("photo_type")
+  link                   String?       @db.Text @map("link")
+  flagDigitalization    Int?          @db.SmallInt @map("flag_digitalization")
+  digitalizationDate    DateTime?     @map("digitalization_date")
+  extractionDate        DateTime?     @map("extraction_date")
 
   // Additional tracking fields
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
-  deliveryStatus       String     @default("PENDING") // PENDING, DELIVERED, ERROR
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  deliveryStatus        String        @default("PENDING") @map("delivery_status") // PENDING, DELIVERED, ERROR
 
   // Relations
-  results              MeikoResult[]
+  results                MeikoResult[]
 
   @@unique([surveyRecordId, variableName])
-  @@index([stickerQR])
+  @@index([stickerQr])
   @@index([photoType])
   @@index([responseId])
-  @@map("meiko_invoice")
+  @@map("meiko_document")
 }
 
 model MeikoResult {
-  id                     Int       @id @default(autoincrement())
-  meikoInvoiceId         Int
-  surveyRecordId         Int
-  invoiceNumber          String?   @db.VarChar(11)
-  invoiceDate            DateTime?
-  businessName           String?   @db.Text
-  productCode            String?   @db.VarChar(111)
-  description            String?   @db.VarChar(500)
-  packagingType          String?   @db.VarChar(255)
-  packagingUnit          Decimal?  @db.Decimal(11, 2)
-  packsSold              Decimal?  @db.Decimal(11, 2)
-  saleValue              Decimal?  @db.Decimal(10, 0)
-  unitsSold              Decimal?  @db.Decimal(11, 2)
-  totalInvoice           Decimal?  @db.Decimal(11, 2)
-  totalInvoiceWithoutVAT Decimal?  @db.Decimal(11, 2)
-  rowNumber              Int
-  valueIbuaAndOthers     Int?
+  id                      Int          @id @default(autoincrement())
+  meikoDocumentId       Int          @map("meiko_document_id")
+  surveyRecordId        Int          @map("survey_record_id")
+  documentNumber         String?      @db.VarChar(11) @map("document_number")
+  documentDate           DateTime?    @map("document_date")
+  businessName           String?      @db.Text @map("business_name")
+  productCode            String?      @db.VarChar(111) @map("product_code")
+  description             String?      @db.VarChar(500) @map("description")
+  packagingType          String?      @db.VarChar(255) @map("packaging_type")
+  packagingUnit          Decimal?     @db.Decimal(11, 2) @map("packaging_unit")
+  packsSold              Decimal?     @db.Decimal(11, 2) @map("packs_sold")
+  saleValue              Decimal?     @db.Decimal(10, 0) @map("sale_value")
+  unitsSold              Decimal?     @db.Decimal(11, 2) @map("units_sold")
+  totalDocument          Decimal?     @db.Decimal(11, 2) @map("total_document")
+  totalDocumentWithoutVat Decimal?  @db.Decimal(11, 2) @map("total_document_without_vat")
+  rowNumber              Int          @map("row_number")
+  valueIbuaAndOthers   Int?         @map("value_ibua_and_others")
 
   // Additional tracking fields
-  createdAt              DateTime  @default(now())
-  confidence             Decimal?  @db.Decimal(5, 2)
+  createdAt              DateTime     @default(now()) @map("created_at")
+  confidence              Decimal?     @db.Decimal(5, 2) @map("confidence")
 
   // Relations
-  meikoInvoice           MeikoInvoice @relation(fields: [meikoInvoiceId], references: [id], onDelete: Cascade)
+  meikoDocument           MeikoDocument @relation(fields: [meikoDocumentId], references: [id], onDelete: Cascade)
 
-  @@unique([meikoInvoiceId, rowNumber])
+  @@unique([meikoDocumentId, rowNumber])
   @@index([surveyRecordId])
-  @@index([invoiceNumber])
+  @@index([documentNumber])
   @@index([description])
-  @@index([invoiceDate])
+  @@index([documentDate])
   @@map("meiko_result")
 }
 
@@ -125,23 +125,23 @@ model MeikoResult {
 // User Model for Authentication
 model User {
   id               Int       @id @default(autoincrement())
-  email            String    @unique
-  password         String
-  name             String?
-  role             String    @default("user")
-  active           Boolean   @default(true)
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  email            String    @unique @map("email")
+  password         String    @map("password")
+  name             String?   @map("name")
+  role             String    @default("user") @map("role")
+  active           Boolean   @default(true) @map("active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  assignedInvoices Invoice[]
+  assignedDocuments Document[]
 
   @@map("user")
 }
 
 
 model ExcludedProducts {
-  id               Int       @id @default(autoincrement())
-  description            String?   @db.VarChar(500)
+  id                Int     @id @default(autoincrement())
+  description       String? @db.VarChar(500) @map("description")
 
   @@map("excluded_products")
 }

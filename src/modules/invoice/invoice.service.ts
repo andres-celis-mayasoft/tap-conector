@@ -22,33 +22,33 @@ export class InvoiceService {
     });
   }
 
-  updateInvoice(
-    invoice: Prisma.InvoiceUpdateInput & { id: number },
+  updateDocument(
+    document: Prisma.DocumentUpdateInput & { id: number },
   ): Promise<Prisma.BatchPayload> {
-    return this.prisma.invoice.updateMany({
-      where: { invoiceId: invoice.id },
-      data: invoice,
+    return this.prisma.document.updateMany({
+      where: { documentId: document.id },
+      data: document,
     });
   }
 
-  getInvoice(id: number) {
-    return this.prisma.invoice.findUnique({
+  getDocument(id: number) {
+    return this.prisma.document.findUnique({
       where: { id },
     });
   }
 
   async getMaxId(): Promise<number> {
     try {
-      const result = await this.prisma.invoice.findFirst({
+      const result = await this.prisma.document.findFirst({
         orderBy: {
-          invoiceId: 'desc',
+          documentId: 'desc',
         },
         select: {
-          invoiceId: true,
+          documentId: true,
         },
       });
 
-      return result?.invoiceId ?? 0;
+      return result?.documentId ?? 0;
     } catch (error) {
       this.logger.error(
         `Error fetching max invoiceId: ${error.message}`,
@@ -62,7 +62,7 @@ export class InvoiceService {
     try {
       this.logger.log(`Fetching invoices with id_factura > ${maxId}`);
 
-      const invoices = await this.prisma.invoice.findMany({
+      const invoices = await this.prisma.document.findMany({
         where: {
           id: {
             gt: maxId,
@@ -86,15 +86,15 @@ export class InvoiceService {
     }
   }
 
-  createInvoice(invoice: Prisma.InvoiceCreateInput) {
-    return this.prisma.invoice.create({
-      data: invoice,
+  createDocument(document: Prisma.DocumentCreateInput) {
+    return this.prisma.document.create({
+      data: document,
     });
   }
 
-  createInvoices(invoices: Prisma.InvoiceCreateInput[]) {
-    return this.prisma.invoice.createMany({
-      data: invoices,
+  createInvoices(documents: Prisma.DocumentCreateInput[]) {
+    return this.prisma.document.createMany({
+      data: documents,
       skipDuplicates: true,
     });
   }
@@ -234,7 +234,7 @@ export class InvoiceService {
    * @returns Updated invoice with created fields
    */
   async saveInvoiceWithFields(
-    invoiceData: Prisma.InvoiceUpdateInput & { id: number },
+    invoiceData: Prisma.DocumentUpdateInput & { id: number },
     mayaInvoiceJson: {
       encabezado: Array<{
         type: string;
@@ -254,22 +254,22 @@ export class InvoiceService {
       this.logger.log(`💾 Saving invoice ${invoiceData.id} with fields`);
 
       // Update invoice with OCR data
-      await this.updateInvoice({
+      await this.updateDocument({
         ...invoiceData,
-        mayaInvoiceJson: JSON.stringify(mayaInvoiceJson),
-        photoTypeOcr: mayaInvoiceJson.tipoFacturaOcr,
+        mayaDocumentJSON: JSON.stringify(mayaInvoiceJson),
+        photoTypeOCR: mayaInvoiceJson.tipoFacturaOcr,
       });
 
       // Get invoice to obtain invoiceId for field relations
-      const invoice = await this.getInvoice(invoiceData.id);
-      if (!invoice) {
+      const document = await this.getDocument(invoiceData.id);
+      if (!document) {
         throw new Error(`Invoice with id ${invoiceData.id} not found`);
       }
 
       // Prepare header fields (encabezado)
       const headerFields: Prisma.FieldCreateManyInput[] =
         mayaInvoiceJson.encabezado.map((field) => ({
-          invoiceId: invoice.invoiceId,
+          documentId: document.documentId,
           name: field.type,
           value: field.text,
           confidence: field.confidence,
@@ -281,7 +281,7 @@ export class InvoiceService {
       // Prepare detail fields (detalles)
       const detailFields: Prisma.FieldCreateManyInput[] =
         mayaInvoiceJson.detalles.map((field) => ({
-          invoiceId: invoice.invoiceId,
+          documentId: document.documentId,
           row: field.row,
           name: field.type,
           value: field.text,
@@ -369,13 +369,13 @@ export class InvoiceService {
       );
 
       // Create MeikoInvoice record
-      const meikoInvoice = await this.prisma.meikoInvoice.create({
+      const meikoInvoice = await this.prisma.meikoDocument.create({
         data: {
           surveyRecordId: BigInt(meikoInvoiceData.surveyRecordId || 0),
           responseId: meikoInvoiceData.responseId
             ? BigInt(meikoInvoiceData.responseId)
             : null,
-          stickerQR: meikoInvoiceData.stickerQR || null,
+          stickerQr: meikoInvoiceData.stickerQR || null,
           responseReceived: meikoInvoiceData.responseReceived || null,
           variableName: meikoInvoiceData.variableName || null,
           photoType: meikoInvoiceData.photoType || null,
@@ -479,7 +479,7 @@ export class InvoiceService {
       this.logger.log(`🔍 Looking for invoice to assign to user ${userId}`);
 
       // Check if user already has an assigned invoice
-      const existingAssignment = await this.prisma.invoice.findFirst({
+      const existingAssignment = await this.prisma.document.findFirst({
         where: {
           assignedUserId: userId,
           status: { in: ['PENDING_VALIDATION', 'IN_CAPTURE'] },
@@ -492,19 +492,19 @@ export class InvoiceService {
 
       if (existingAssignment) {
         this.logger.log(
-          `♻️ User ${userId} already has assigned invoice ${existingAssignment.invoiceId}`,
+          `♻️ User ${userId} already has assigned invoice ${existingAssignment.documentId}`,
         );
         return existingAssignment;
       }
 
       // Find next available invoice for validation
-      const availableInvoice = await this.prisma.invoice.findFirst({
+      const availableInvoice = await this.prisma.document.findFirst({
         where: {
           status: 'PENDING_VALIDATION',
           assignedUserId: null,
         },
         orderBy: {
-          date: 'asc', // Oldest first
+          id: 'asc', // Oldest first
         },
       });
 
@@ -514,7 +514,7 @@ export class InvoiceService {
       }
 
       // Assign invoice to user and change status to IN_CAPTURE
-      const assignedInvoice = await this.prisma.invoice.update({
+      const assignedInvoice = await this.prisma.document.update({
         where: { id: availableInvoice.id },
         data: {
           assignedUserId: userId,
@@ -525,7 +525,7 @@ export class InvoiceService {
       });
 
       this.logger.log(
-        `✅ Assigned invoice ${assignedInvoice.invoiceId} to user ${userId}`,
+        `✅ Assigned invoice ${assignedInvoice.documentId} to user ${userId}`,
       );
 
       return assignedInvoice;
@@ -554,14 +554,14 @@ export class InvoiceService {
       );
 
       // Verify the invoice is assigned to this user
-      const invoice = await this.prisma.invoice.findFirst({
+      const document = await this.prisma.document.findFirst({
         where: {
-          invoiceId,
+          documentId: invoiceId,
           assignedUserId: userId,
         },
       });
 
-      if (!invoice) {
+      if (!document) {
         throw new Error(
           `Invoice ${invoiceId} is not assigned to user ${userId}`,
         );
@@ -570,7 +570,7 @@ export class InvoiceService {
       // Update fields with corrected values
       // We'll add new records with the corrected values instead of overwriting
       const correctedHeaderFields = encabezado.map((field: any) => ({
-        invoiceId: invoice.invoiceId,
+        invoiceId: document.documentId,
         name: field.type,
         value: field.text,
         confidence: field.confidence,
@@ -580,7 +580,7 @@ export class InvoiceService {
       }));
 
       const correctedDetailFields = detalles.map((field: any) => ({
-        invoiceId: invoice.invoiceId,
+        invoiceId: document.documentId,
         row: field.row,
         name: field.type,
         value: field.text,
@@ -594,7 +594,7 @@ export class InvoiceService {
       await this.prisma.$transaction(async (tx) => {
         // Delete existing fields
         await tx.field.deleteMany({
-          where: { invoiceId: invoice.invoiceId },
+          where: { documentId: document.documentId },
         });
 
         // Insert corrected fields
@@ -644,8 +644,8 @@ export class InvoiceService {
       if (isFullConfidence) {
         try {
           // Get original Meiko invoice data
-          const meikoInvoice = await this.prisma.invoice.findUnique({
-            where: { id: invoice.id },
+          const meikoInvoice = await this.prisma.document.findUnique({
+            where: { id: document.id },
           });
 
           if (meikoInvoice) {
@@ -669,10 +669,10 @@ export class InvoiceService {
       }
 
       // Update invoice status
-      await this.prisma.invoice.update({
-        where: { id: invoice.id },
+      await this.prisma.document.update({
+        where: { id: document.id },
         data: {
-          mayaInvoiceJson: JSON.stringify(correctedData),
+          mayaDocumentJSON: JSON.stringify(correctedData),
           validated: true,
           status: newStatus,
           completedAt: new Date(),
