@@ -9,11 +9,13 @@ export abstract class Document<TSchema> {
   abstract normalize(): this;
   abstract validate(): void;
   abstract infer(): Promise<this>;
+  abstract exclude(): Promise<this>;
 
   async process(): Promise<this> {
     this.normalize();
     this.validate();
     await this.infer();
+    await this.exclude();
     return this;
   }
 

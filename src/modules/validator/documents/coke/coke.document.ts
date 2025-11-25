@@ -6,6 +6,7 @@ import { EMBALAJES } from '../../utils/validator.utils';
 import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
+import { InvoiceService } from 'src/modules/invoice/invoice.service';
 
 type HeaderField = CokeInvoiceSchema['encabezado'][number];
 type BodyField = CokeInvoiceSchema['detalles'][number];
@@ -14,6 +15,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
   constructor(
     data: CokeInvoiceSchema,
     protected meikoService: MeikoService,
+    protected invoiceService: InvoiceService,
   ) {
     super(data);
   }
@@ -63,6 +65,22 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
     return this;
   }
 
+  async exclude(): Promise<this> {
+    this.data.detalles = await Utils.asyncFilter(
+      this.data.detalles,
+      async (field) => {
+        const { item_descripcion_producto } = Utils.getFields<CokeBodyFields>([
+          field,
+        ]);
+        const productDB = await this.invoiceService.isExcluded(
+          item_descripcion_producto.text
+        );
+        return !productDB ? false : productDB?.description === item_descripcion_producto.text;
+      },
+    );
+    return this;
+  }
+
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<CokeHeaderFields>(this.data.encabezado);
@@ -92,6 +110,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
         codigo_producto,
         tipo_embalaje,
         valor_total_unitario_item,
+        valor_ibua_y_otros
       } = Utils.getFields<CokeBodyFields>(product);
 
       if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
@@ -104,25 +123,29 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
       );
 
       const result = await this.meikoService.find({
-        where: { productCode: codigo_producto.text },
+        where: { productCode: codigo_producto?.text },
         select: { productCode: true },
       });
 
-      if (result?.productCode === codigo_producto.text) {
+      if (result && result?.productCode === codigo_producto?.text) {
         codigo_producto.confidence = 1;
       }
 
-      if (productDB?.description === descripcion.text?.toUpperCase()) {
+      if (productDB && productDB?.description === descripcion?.text?.toUpperCase()) {
         descripcion.confidence = 1;
       }
 
-      const embalaje = (tipo_embalaje.text || '').trim().toUpperCase();
+      const embalaje = (tipo_embalaje?.text || '').trim().toUpperCase();
       if (EMBALAJES.includes(embalaje)) {
         tipo_embalaje.confidence = 1;
       }
 
-      if (productDB?.saleValue === valor_total_unitario_item.text) {
+      if (productDB && productDB?.saleValue === valor_total_unitario_item?.text) {
         valor_total_unitario_item.confidence = 1;
+      }
+
+      if (productDB && productDB?.valueIbuaAndOthers === valor_ibua_y_otros?.text) {
+        valor_ibua_y_otros.confidence = 1;
       }
 
 
@@ -139,6 +162,11 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
       unidades_embalaje,
       unidades_vendidas,
     } = Utils.getFields<CokeBodyFields>(product);
+
+    if(!valor_venta_item || !valor_total_unitario_item||
+      !valor_ibua_y_otros || 
+      !unidades_embalaje||
+      !unidades_vendidas ) return ;
 
     const unidadesItem =
       this.toNumber(unidades_embalaje) / this.toNumber(unidades_vendidas);

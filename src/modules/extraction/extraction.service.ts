@@ -6,9 +6,9 @@ import { InvoiceService } from '../invoice/invoice.service';
 import { DateUtils } from '../../utils/date';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { Prisma as PrismaMeiko } from '@prisma/client-meiko';
 import { OcrService } from '../ocr/ocr.service';
 import { TAP_MEIKO_ID, TAP_PARAMS } from 'src/constants/business';
+import { DocumentFactory } from '../validator/documents/base/document.factory';
 
 /**
  * Extraction Service
@@ -48,7 +48,8 @@ export class ExtractionService {
         TAP_MEIKO_ID,
         TAP_PARAMS.RUTA_LISTA_LOTES,
       );
-      const basePath = parameters.path || parameters.ruta || parameters;
+      // const basePath = parameters.path || parameters.ruta || parameters;
+      const basePath = parameters.path || parameters.ruta || parameters.replace('E','C');
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
 
       // 3. Create folder with path + date
@@ -56,20 +57,21 @@ export class ExtractionService {
       await fs.mkdir(extractionPath, { recursive: true });
       this.logger.log(`✅ Created extraction folder: ${extractionPath}`);
 
-      // 4. Get max invoice ID
-      const maxId =
-        Number((await this.invoiceService.getMaxId()) ||
-        (await this.tapService.getMaxId()));
+      // 4. Get max invoice ID (only process new invoices not yet in our DB)
+      // const maxId = await this.invoiceService.getMaxId();
+      const maxId = 4276793
+      this.logger.log(`📊 Max invoice ID in our DB: ${maxId}`);
 
-      // 5. Get invoices
+      // 5. Get new invoices from Meiko
       const invoices = await this.meikoService.getInvoices(maxId);
-      this.logger.log(`📄 Found ${invoices.length} invoices to process`);
+      this.logger.log(`📄 Found ${invoices.length} new invoices to process`);
 
       if (invoices.length === 0) {
-        this.logger.log('ℹ️ No invoices to process');
+        this.logger.log('ℹ️ No new invoices to process');
         return;
       }
 
+      // 6. Create invoice records in our DB with initial PROCESSING status
       await this.invoiceService.createInvoices(
         invoices.map((invoice) => ({
           status: 'PROCESSING',
@@ -78,92 +80,271 @@ export class ExtractionService {
           invoiceUrl: invoice.link,
         })),
       );
+      this.logger.log(
+        `✅ Created ${invoices.length} invoice records with PROCESSING status`,
+      );
+
+      // 7. Process each invoice
+      let processedCount = 0;
+      let deliveredCount = 0;
+      let validationRequiredCount = 0;
+      let errorCount = 0;
 
       for (const invoice of invoices) {
         try {
-          const { isValid, path } =
+          this.logger.log(`\n🔄 Processing invoice ${invoice.id}...`);
+
+          // 7.1. Download and validate image
+          const { isValid: isDownloadable, path: imagePath } =
             await this.invoiceService.downloadAndValidate(
               invoice,
               extractionPath,
             );
-          if (!isValid) {
+
+          if (!isDownloadable) {
+            this.logger.warn(
+              `⚠️ Invoice ${invoice.id} - Image not downloadable or viewable`,
+            );
             await this.invoiceService.updateInvoice({
               id: invoice.id,
-              path,
+              path: imagePath,
               errors: 'NO DESCARGABLE O VISUALIZABLE',
               extracted: false,
               validated: false,
-              status: 'PENDING_TO_SEND',
+              status: 'ERROR',
             });
+            errorCount++;
             continue;
           }
-          const { success, data : response, error } = await this.ocrService.processInvoice(
-            {
-              filePath: path,
-              typeOfInvoice: invoice.photoType || '',
-            },
+
+          // 7.2. Process with OCR
+          this.logger.log(`🔍 Invoice ${invoice.id} - Processing with OCR...`);
+          const ocrResult = await this.ocrService.processInvoice({
+            filePath: imagePath,
+            typeOfInvoice: invoice.photoType || '',
+          });
+
+          if (!ocrResult.success || !ocrResult.data) {
+            this.logger.error(
+              `❌ Invoice ${invoice.id} - OCR processing failed: ${ocrResult.error}`,
+            );
+            await this.invoiceService.updateInvoice({
+              id: invoice.id,
+              path: imagePath,
+              errors: `OCR_ERROR: ${ocrResult.error}`,
+              extracted: false,
+              validated: false,
+              status: 'ERROR',
+            });
+            errorCount++;
+            continue;
+          }
+
+          // 7.3. Create document and process (normalize, validate, infer)
+          const photoTypeOcr =
+            ocrResult.data.data?.photoTypeOcr || invoice.photoType;
+          this.logger.log(
+            `📋 Invoice ${invoice.id} - Document type: ${photoTypeOcr}`,
           );
-          
-          const data = response.data
 
-          const isValidated =
-            data.encabezado.every((row) => row.confidence >= 0.95) &&
-            data.detalle.every((row) => row.confidence >= 0.95);
-
-          if (isValidated) {
-            await this.invoiceService.saveInvoiceWithFields(
-              {
-                id: invoice.id,
-                extracted: true,
-                validated: true,
-                path,
-                status: 'PENDING_TO_SEND',
-              },
-              data,
+          let document: any;
+          try {
+            document = DocumentFactory.create(
+              photoTypeOcr,
+              ocrResult.data.response,
+              this.meikoService,
+              this.invoiceService
             );
+          } catch (error: any) {
+            this.logger.error(
+              `❌ Invoice ${invoice.id} - Unsupported document type: ${photoTypeOcr}`,
+            );
+            await this.invoiceService.updateInvoice({
+              id: invoice.id,
+              path: imagePath,
+              errors: `TIPO_DOCUMENTO_NO_SOPORTADO: ${photoTypeOcr}`,
+              extracted: false,
+              validated: false,
+              status: 'ERROR',
+            });
+            errorCount++;
             continue;
           }
 
-          // Apply inferences for non-validated invoices
-          const isInfered = true;
-          if (isInfered) {
-            await this.invoiceService.saveInvoiceWithFields(
-              {
-                id: invoice.id,
-                extracted: true,
-                validated: true,
-                path,
-                status: 'PENDING_TO_SEND',
-              },
-              data,
+          await document.process();
+          const { data: processedData, errors, isValid: isValidated } = document.get();
+
+          // 7.4. Calculate overall confidence
+          const confidence = this.calculateConfidence(processedData);
+          this.logger.log(
+            `📊 Invoice ${invoice.id} - Overall confidence: ${confidence.overall.toFixed(2)}%`,
+          );
+          this.logger.log(
+            `   ├─ Header confidence: ${confidence.headerConfidence.toFixed(2)}%`,
+          );
+          this.logger.log(
+            `   └─ Details confidence: ${confidence.detailsConfidence.toFixed(2)}%`,
+          );
+
+          // 7.5. Save invoice with extracted fields
+          await this.invoiceService.saveInvoiceWithFields(
+            {
+              id: invoice.id,
+              extracted: true,
+              validated: isValidated,
+              path: imagePath,
+              photoTypeOcr,
+              status: 'PROCESSING', // Will update later based on confidence
+            },
+            processedData,
+          );
+
+          // 7.6. Decision logic based on confidence and validation
+          const hasErrors = errors && Object.keys(errors).length > 0;
+          const isFullConfidence = confidence.overall === 100;
+
+          if (isValidated && isFullConfidence && !hasErrors) {
+            // Scenario 1: 100% confidence → Deliver to our Meiko tables automatically
+            this.logger.log(
+              `✅ Invoice ${invoice.id} - 100% confidence → Delivering to Meiko tables`,
             );
-            continue;
+
+            try {
+              await this.invoiceService.deliverToMeikoTables(
+                invoice.id,
+                invoice,
+                processedData,
+              );
+              await this.invoiceService.updateInvoice({
+                id: invoice.id,
+                status: 'DELIVERED',
+                validated: true,
+              });
+              deliveredCount++;
+              this.logger.log(
+                `🚀 Invoice ${invoice.id} - Successfully delivered to Meiko tables`,
+              );
+            } catch (deliveryError: any) {
+              this.logger.error(
+                `❌ Invoice ${invoice.id} - Delivery to Meiko tables failed: ${deliveryError.message}`,
+              );
+              await this.invoiceService.updateInvoice({
+                id: invoice.id,
+                status: 'PENDING_TO_SEND',
+                errors: `DELIVERY_ERROR: ${deliveryError.message}`,
+              });
+              errorCount++;
+            }
           } else {
-            await this.invoiceService.saveInvoiceWithFields(
-              {
-                id: invoice.id,
-                extracted: true,
-                validated: false,
-                path,
-                errors: 'DETERMINADO POR EL VALIDADOR',
-                status: 'PENDING_VALIDATION',
-              },
-              data,
+            // Scenario 2: < 100% confidence → Requires manual validation
+            this.logger.log(
+              `⚠️ Invoice ${invoice.id} - Confidence < 100% or has errors → Requires manual validation`,
+            );
+
+            const errorMessages: string[] = [];
+            if (!isFullConfidence) {
+              errorMessages.push(
+                `CONFIDENCE_LOW: ${confidence.overall.toFixed(2)}%`,
+              );
+            }
+            if (hasErrors) {
+              errorMessages.push(`VALIDATION_ERRORS: ${JSON.stringify(errors)}`);
+            }
+            if (!isValidated) {
+              errorMessages.push('VALIDATION_FAILED');
+            }
+
+            await this.invoiceService.updateInvoice({
+              id: invoice.id,
+              status: 'PENDING_VALIDATION',
+              validated: false,
+              errors: errorMessages.join(' | '),
+            });
+            validationRequiredCount++;
+            this.logger.log(
+              `📋 Invoice ${invoice.id} - Moved to manual validation queue`,
             );
           }
+
+          processedCount++;
         } catch (error) {
           this.logger.error(
             `❌ Error processing invoice ${invoice.id}: ${error.message}`,
             error.stack,
           );
+          await this.invoiceService.updateInvoice({
+            id: invoice.id,
+            status: 'ERROR',
+            errors: `PROCESSING_ERROR: ${error.message}`,
+          });
+          errorCount++;
         }
       }
+
+      // 8. Summary log
+      this.logger.log('\n📊 Extraction cron job completed');
+      this.logger.log(`   ├─ Total invoices: ${invoices.length}`);
+      this.logger.log(`   ├─ Successfully processed: ${processedCount}`);
+      this.logger.log(`   ├─ Delivered to Meiko: ${deliveredCount}`);
+      this.logger.log(
+        `   ├─ Pending manual validation: ${validationRequiredCount}`,
+      );
+      this.logger.log(`   └─ Errors: ${errorCount}`);
     } catch (error) {
       this.logger.error(
         `❌ Extraction cron job failed: ${error.message}`,
         error.stack,
       );
+      throw error;
     }
+  }
+
+  /**
+   * Calculate overall confidence score from invoice data
+   * @param data Processed invoice data with encabezado and detalles
+   * @returns Confidence metrics
+   */
+  private calculateConfidence(data: any): {
+    overall: number;
+    headerConfidence: number;
+    detailsConfidence: number;
+  } {
+    const encabezado = data.encabezado || [];
+    const detalles = data.detalles || [];
+
+    // Calculate header confidence (average of all header fields)
+    const headerConfidence =
+      encabezado.length > 0
+        ? (encabezado.reduce(
+            (sum: number, field: any) => sum + (field.confidence || 0),
+            0,
+          ) /
+            encabezado.length) *
+          100
+        : 0;
+
+    // Calculate details confidence (average of all detail fields)
+    const detailsConfidence =
+      detalles.length > 0
+        ? (detalles.reduce(
+            (sum: number, field: any) => sum + (field.confidence || 0),
+            0,
+          ) /
+            detalles.length) *
+          100
+        : 0;
+
+    // Overall confidence (weighted average: 40% header, 60% details)
+    const overall =
+      encabezado.length > 0 || detalles.length > 0
+        ? headerConfidence * 0.4 + detailsConfidence * 0.6
+        : 0;
+
+    return {
+      overall: Math.round(overall * 100) / 100,
+      headerConfidence: Math.round(headerConfidence * 100) / 100,
+      detailsConfidence: Math.round(detailsConfidence * 100) / 100,
+    };
   }
 
   /**

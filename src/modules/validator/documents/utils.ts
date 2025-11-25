@@ -42,6 +42,11 @@ export class Utils {
     return true;
   }
 
+  static async asyncFilter<T>( arr, predicate) {
+    const results = await Promise.all(arr.map(predicate));
+    return arr.filter((_v, index) => results[index]);
+  }
+
   static hasMonthsPassed(date: string, months: number): boolean {
     const parsedDate = DateTime.fromFormat(date, 'dd/MM/yyyy');
 

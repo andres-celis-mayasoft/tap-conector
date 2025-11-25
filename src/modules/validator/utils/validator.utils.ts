@@ -130,7 +130,7 @@ private static  normalizeAtomization(value: string) {
       imagen: '',
       valor_atomizacion: entry.text || null,
       es_blanco: entry.text ? 0 : 1,
-      valor_cierre: entry.text || null,
+      valor_cierre: entry.text || '',
     };
   }
 }

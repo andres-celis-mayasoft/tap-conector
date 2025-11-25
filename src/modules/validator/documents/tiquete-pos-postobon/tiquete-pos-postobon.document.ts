@@ -6,6 +6,7 @@ import { EMBALAJES } from '../../utils/validator.utils';
 import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
+import { InvoiceService } from 'src/modules/invoice/invoice.service';
 
 type HeaderField = TiquetePosPostobonInvoiceSchema['encabezado'][number];
 type BodyField = TiquetePosPostobonInvoiceSchema['detalles'][number];
@@ -16,6 +17,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
   constructor(
     data: TiquetePosPostobonInvoiceSchema,
     protected meikoService: MeikoService,
+    protected invoiceService: InvoiceService,
   ) {
     super(data);
   }
@@ -49,6 +51,23 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     return this;
   }
 
+  async exclude(): Promise<this> {
+    this.data.detalles = await Utils.asyncFilter(
+      this.data.detalles,
+      async (field) => {
+        const { item_descripcion_producto } = Utils.getFields<TiquetePosPostobonBodyFields>([
+          field,
+        ]);
+        const productDB = await this.invoiceService.isExcluded(
+          item_descripcion_producto.text
+        );
+        return !productDB ? false : productDB?.description === item_descripcion_producto.text;
+      },
+    );
+    return this;
+  }
+
+
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<TiquetePosPostobonHeaderFields>(this.data.encabezado);
@@ -75,7 +94,6 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     for (const product of products) {
       const {
         item_descripcion_producto: descripcion,
-        codigo_producto,
         tipo_embalaje,
       } = Utils.getFields<TiquetePosPostobonBodyFields>(product);
 
@@ -89,14 +107,6 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
         descripcion?.text || '',
       );
 
-      const result = await this.meikoService.find({
-        where: { productCode: codigo_producto.text },
-        select: { productCode: true },
-      });
-
-      if (result?.productCode === codigo_producto.text) {
-        codigo_producto.confidence = 1;
-      }
 
       if (productDB?.description === descripcion.text?.toUpperCase()) {
         descripcion.confidence = 1;

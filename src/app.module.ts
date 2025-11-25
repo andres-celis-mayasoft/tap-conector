@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -11,6 +12,9 @@ import { OcrModule } from './modules/ocr/ocr.module';
 import { RadicationModule } from './modules/radication/radication.module';
 import { ControlProcessModule } from './modules/process-control/control-process.module';
 import { ValidatorModule } from './modules/validator/validator.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -19,6 +23,8 @@ import { ValidatorModule } from './modules/validator/validator.module';
       envFilePath: '.env',
     }),
     DatabaseModule,
+    AuthModule,
+    UsersModule,
     MeikoModule,
     TapModule,
     InvoiceModule,
@@ -29,6 +35,12 @@ import { ValidatorModule } from './modules/validator/validator.module';
     ValidatorModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

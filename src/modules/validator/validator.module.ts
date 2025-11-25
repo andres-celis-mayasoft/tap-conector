@@ -4,9 +4,10 @@ import { ValidatorController } from './validator.controller';
 import { MeikoModule } from '../meiko/meiko.module';
 import { TapModule } from '../tap/tap.module';
 import { PrismaTapService } from 'src/database/services/prisma-tap.service';
+import { InvoiceModule } from '../invoice/invoice.module';
 
 @Module({
-  imports: [MeikoModule,TapModule],
+  imports: [MeikoModule,TapModule, InvoiceModule],
   controllers: [ValidatorController],
   providers: [ValidatorService, PrismaTapService],
   exports: [ValidatorService],

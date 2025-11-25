@@ -7,7 +7,6 @@ export enum TiquetePosPostobonHeaderFields {
 }
 
 export enum TiquetePosPostobonBodyFields {
-  CODIGO_PRODUCTO = 'codigo_producto',
   ITEM_DESCRIPCION_PRODUCTO = 'item_descripcion_producto',
   TIPO_EMBALAJE = 'tipo_embalaje',
   UNIDADES_VENDIDAS = 'unidades_vendidas',

@@ -6,6 +6,7 @@ import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { FemsaInvoiceSchema } from './femsa.schema';
 import { FemsaBodyFields, FemsaHeaderFields } from './femsa.fields';
+import { InvoiceService } from 'src/modules/invoice/invoice.service';
 
 type HeaderField = FemsaInvoiceSchema['encabezado'][number];
 type BodyField = FemsaInvoiceSchema['detalles'][number];
@@ -14,6 +15,7 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
   constructor(
     data: FemsaInvoiceSchema,
     protected meikoService: MeikoService,
+    protected invoiceService: InvoiceService,
   ) {
     super(data);
   }
@@ -46,6 +48,23 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
     this.guessConfidence();
     return this;
   }
+
+  async exclude(): Promise<this> {
+    this.data.detalles = await Utils.asyncFilter(
+      this.data.detalles,
+      async (field) => {
+        const { item_descripcion_producto } = Utils.getFields<FemsaBodyFields>([
+          field,
+        ]);
+        const productDB = await this.invoiceService.isExcluded(
+          item_descripcion_producto.text
+        );
+        return !productDB ? false : productDB?.description === item_descripcion_producto.text;
+      },
+    );
+    return this;
+  }
+
 
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =

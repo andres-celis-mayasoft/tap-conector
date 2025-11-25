@@ -17,12 +17,14 @@ import { DocumentFactory } from './documents/base/document.factory';
 import { PrismaService } from '../../database/services/prisma.service';
 import { PrismaTapService } from 'src/database/services/prisma-tap.service';
 import { CokeInvoice } from './documents/coke/coke.document';
+import { InvoiceService } from '../invoice/invoice.service';
 
 @Injectable()
 export class ValidatorService {
   constructor(
     private meikoService: MeikoService,
     private tapService: PrismaTapService,
+    private invoiceService: InvoiceService,
     private prisma: PrismaService,
   ) {}
 
@@ -30,7 +32,7 @@ export class ValidatorService {
     // const { data , errors } = DocumentFactory.create(invoice.tipoFacturaOcr, invoice).get();
 
     if (invoice.tipoFacturaOcr == 'Factura Coke')
-            return new CokeInvoice(invoice as any, this.meikoService);
+            return new CokeInvoice(invoice as any, this.meikoService, this.invoiceService);
       
       return this.CokeValidator(invoice);
     if (invoice.tipoFacturaOcr === 'Factura Postobon')
@@ -752,7 +754,8 @@ export class ValidatorService {
     const document = DocumentFactory.create(
       invoice.photoTypeOcr || '',
       ocrData,
-      this
+      this.meikoService,
+      this.invoiceService,
     )
 
     await document.process();
