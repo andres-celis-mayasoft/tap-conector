@@ -47,7 +47,7 @@ export class Utils {
     return arr.filter((_v, index) => results[index]);
   }
 
-  static hasMonthsPassed(date: string, months: number): boolean {
+  static hasMonthsPassed(date: string): boolean {
     const parsedDate = DateTime.fromFormat(date, 'dd/MM/yyyy');
 
     if (!parsedDate.isValid) {
@@ -57,8 +57,10 @@ export class Utils {
     }
 
     const now = DateTime.now();
-    const targetDate = parsedDate.plus({ months });
+    const currentMonth = now.startOf('month');
+    const previousMonth = currentMonth.minus({ months: 1 });
+    const dateStartOfMonth = parsedDate.startOf('month');
 
-    return now >= targetDate;
+    return dateStartOfMonth >= previousMonth && dateStartOfMonth <= currentMonth;
   }
 }

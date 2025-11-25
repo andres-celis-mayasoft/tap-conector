@@ -38,7 +38,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
       return;
     }
 
-    const isValid = Utils.hasMonthsPassed(fecha_factura.text, 3);
+    const isValid = Utils.hasMonthsPassed(fecha_factura.text);
     this.isValid = isValid;
     if (!isValid) this.errors.fecha_factura = 'Fecha obsoleta';
   }
