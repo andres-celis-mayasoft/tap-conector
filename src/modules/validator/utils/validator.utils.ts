@@ -109,7 +109,7 @@ private static isInt(n){
 private static  normalizeAtomization(value: string) {
   if(Number.isInteger(value)) return Number(value).toString();
 
-  return parseFloat(value).toString().replace('.',',')
+  return parseFloat(value).toString()
   
 }
   private static mapInvoiceEntryToCampoDto(entry: InvoiceEntry): CampoDto {

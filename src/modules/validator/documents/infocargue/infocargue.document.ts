@@ -85,6 +85,9 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
     return this;
   }
 
+  prune() {
+  }
+
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<InfocargueHeaderFields>(this.data.encabezado);

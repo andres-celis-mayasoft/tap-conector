@@ -72,7 +72,9 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
     return this;
   }
 
-
+  prune() {
+  }
+  
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<FemsaHeaderFields>(this.data.encabezado);

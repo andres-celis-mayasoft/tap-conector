@@ -7,7 +7,7 @@ export class Utils {
     const output: Record<T, any> = {} as Record<T, any>;
 
     for (const field of fields) {
-      output[field.type] = { ...field };
+      output[field.type] = field ;
     }
 
     return output;
@@ -31,7 +31,15 @@ export class Utils {
       }
     }
 
-    return output;
+    return output.filter( r => r);
+  }
+
+  static removeFields(rows: any[], types: string[]): any[] {
+    return rows.filter((field) => !types.includes(field.type));
+  }
+
+  static fixNumberString(value: string): string {
+    return value.replace(',', '.');
   }
 
   static isValidDate(date: string) {

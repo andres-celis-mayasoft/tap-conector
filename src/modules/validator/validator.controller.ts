@@ -6,10 +6,10 @@ import { ValidateInvoiceDto } from './dto/validate-invoice.dto';
 export class ValidatorController {
   constructor(private readonly validatorService: ValidatorService) {}
 
-  // @Post('invoice')
-  // async validateInvoice(@Body() body: ValidateInvoiceDto) {
-  //   return this.validatorService.validateInvoice(body);
-  // }
+   @Post('invoice')
+   async validateInvoice(@Body() body: ValidateInvoiceDto) {
+     return this.validatorService.validateInvoice(body);
+   }
 
   @Get('test-invoice/:facturaId')
   async testInvoice(@Param('facturaId', ParseIntPipe) facturaId: number) {

@@ -18,6 +18,7 @@ import { PrismaService } from '../../database/services/prisma.service';
 import { PrismaTapService } from 'src/database/services/prisma-tap.service';
 import { CokeInvoice } from './documents/coke/coke.document';
 import { InvoiceService } from '../invoice/invoice.service';
+import { Utils } from './documents/utils';
 
 @Injectable()
 export class ValidatorService {
@@ -29,16 +30,29 @@ export class ValidatorService {
   ) {}
 
   async validateInvoice(invoice: ValidateInvoice) {
+
+    const document = DocumentFactory.create(
+      invoice.tipoFacturaOcr || '',
+      invoice,
+      this.meikoService,
+      this.invoiceService,
+    )
+
+    await document.process();
+
+    const { data, errors, isValid } = document.get();
+
+    return { data, errors, isValid };
     // const { data , errors } = DocumentFactory.create(invoice.tipoFacturaOcr, invoice).get();
 
-    if (invoice.tipoFacturaOcr == 'Factura Coke')
-            return new CokeInvoice(invoice as any, this.meikoService, this.invoiceService);
+    // if (invoice.tipoFacturaOcr == 'Factura Coke')
+    //         return new CokeInvoice(invoice as any, this.meikoService, this.invoiceService);
       
-      return this.CokeValidator(invoice);
-    if (invoice.tipoFacturaOcr === 'Factura Postobon')
-      return this.PostobonValidator(invoice);
-    if (invoice.tipoFacturaOcr === 'Factura Infocargue')
-      return this.InfocargueValidator(invoice);
+    //   return this.CokeValidator(invoice);
+    // if (invoice.tipoFacturaOcr === 'Factura Postobon')
+    //   return this.PostobonValidator(invoice);
+    // if (invoice.tipoFacturaOcr === 'Factura Infocargue')
+    //   return this.InfocargueValidator(invoice);
   }
 
   async CokeValidator(invoice: ValidateInvoice) {
@@ -748,8 +762,12 @@ export class ValidatorService {
     // Parsear la respuesta OCR
     const ocrData = JSON.parse(invoice.mayaInvoiceJson);
 
-    // Validar usando el DocumentFactory
+    ocrData.encabezado = ocrData.encabezado.map((field)=>{ 
+      return  {...field, text: Utils.fixNumberString(field.text) } });
+    ocrData.detalles = ocrData.detalles.map((field)=>{ 
+      return  {...field,row: field.row + 1, text: Utils.fixNumberString(field.text) } });
 
+    
     
     const document = DocumentFactory.create(
       invoice.photoTypeOcr || '',
@@ -766,14 +784,19 @@ export class ValidatorService {
     const resultCampos = Validator.convertToCampoDto(data);
 
     // Parsear el resultado esperado si existe
-    let expected = null;
+    let expected : any = {};
     if (invoice.tapInvoiceJson) {
       expected = JSON.parse(invoice.tapInvoiceJson);
+      if (expected) expected.campos = expected.campos.map((field)=>{
+        return  {...field, valor_cierre: Utils.fixNumberString(field.valor_cierre) } })
     }
 
     // Comparar resultados (ambos en formato { campos: CampoDto[] })
     const comparison = this.compareResults({ campos: resultCampos }, expected);
 
+    if(expected.campos.length != resultCampos.length) {
+      throw Error('Se están enviando campos de más o menos')
+    }
     return {
       facturaId,
       photoType: invoice.photoTypeOcr,
@@ -805,7 +828,6 @@ export class ValidatorService {
       const expectedField = expectedCampos.find(
         (e: any) =>
           e.nombre === field.nombre &&
-          e.registro === field.registro &&
           e.fila === field.fila,
       );
 
@@ -852,7 +874,6 @@ export class ValidatorService {
       const existsInResult = resultCampos.some(
         (r: any) =>
           r.nombre === expectedField.nombre &&
-          r.registro === expectedField.registro &&
           r.fila === expectedField.fila,
       );
 

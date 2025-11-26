@@ -73,7 +73,7 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
       if (
         QUALA_PRODUCTS_TO_EXCLUDE_KEYWORDS.some((item) =>
           descripcion.text.includes(item),
-        )
+        ) && descripcion?.text != ''
       ) {
         rows.push(descripcion.row);
       }
@@ -91,6 +91,11 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     );
 
     return this;
+  }
+
+  prune() {
+    this.data.encabezado = Utils.removeFields(this.data.encabezado, ["total_productos_filtrados"]);
+    this.data.detalles = Utils.removeFields(this.data.detalles, ["valor_iva", 'total_ico', 'valor_unitario_item']);
   }
 
   private inferEncabezado(): void {

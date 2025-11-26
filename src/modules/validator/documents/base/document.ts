@@ -10,12 +10,14 @@ export abstract class Document<TSchema> {
   abstract validate(): void;
   abstract infer(): Promise<this>;
   abstract exclude(): Promise<this>;
+  abstract prune(): void;
 
   async process(): Promise<this> {
     this.normalize();
     this.validate();
     await this.infer();
     await this.exclude();
+    this.prune();
     return this;
   }
 

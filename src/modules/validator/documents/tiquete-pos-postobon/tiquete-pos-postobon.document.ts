@@ -74,6 +74,9 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     return this;
   }
 
+  prune() {
+  }
+
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<TiquetePosPostobonHeaderFields>(this.data.encabezado);

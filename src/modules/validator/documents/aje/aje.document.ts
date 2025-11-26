@@ -65,7 +65,7 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
       if (
         AJE_PRODUCTS_TO_EXCLUDE_KEYWORDS.some((item) =>
           descripcion.text.includes(item),
-        )
+        ) && descripcion?.text != ''
       ) {
         rows.push(descripcion.row);
       }
@@ -83,6 +83,9 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
     );
 
     return this;
+  }
+
+  prune() {
   }
 
   private inferEncabezado(): void {

@@ -88,6 +88,9 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
     return this;
   }
 
+  prune() {
+  }
+
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<CokeHeaderFields>(this.data.encabezado);

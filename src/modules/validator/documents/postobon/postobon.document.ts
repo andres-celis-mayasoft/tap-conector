@@ -73,6 +73,9 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     return this;
   }
 
+  prune() {
+  }
+
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<PostobonHeaderFields>(this.data.encabezado);
