@@ -7,6 +7,7 @@ import sharp from 'sharp'; // 🧠 Used to validate image integrity
 import { PrismaService } from 'src/database/services/prisma.service';
 import { Prisma } from '@prisma/client-bd';
 import { IMAGE_DPI } from 'src/constants/business';
+import { InvoiceStatus } from '../meiko/enums/status.enum';
 
 @Injectable()
 export class InvoiceService {
@@ -531,6 +532,112 @@ export class InvoiceService {
     } catch (error) {
       this.logger.error(
         `❌ Error assigning invoice to user ${userId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Mark invoice as outdated and update its status
+   * Inserts record in EstadoDigitalizacionFactura and updates Document status to DELIVERED
+   *
+   * @param invoiceId - Invoice ID to mark as outdated
+   * @returns Success response
+   */
+  async markAsOutdated(invoiceId: number): Promise<any> {
+    try {
+      this.logger.log(`🔄 Marking invoice ${invoiceId} as outdated`);
+
+      // Find the document by documentId
+      const document = await this.prisma.document.findUnique({
+        where: { documentId: invoiceId },
+      });
+
+      if (!document) {
+        throw new Error(`Invoice ${invoiceId} not found`);
+      }
+
+      // Insert into EstadoDigitalizacionFactura (status 1 = outdated)
+      await this.prisma.estadoDigitalizacionFactura.create({
+        data: {
+          invoiceId,
+          digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA, // Status for outdated
+        },
+      });
+
+      // Update Document status to DELIVERED
+      await this.prisma.document.update({
+        where: { id: document.id },
+        data: {
+          status: 'DELIVERED',
+          completedAt: new Date(),
+        },
+      });
+
+      this.logger.log(`✅ Invoice ${invoiceId} marked as outdated`);
+
+      return {
+        success: true,
+        message: 'Invoice marked as outdated successfully',
+        invoiceId,
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Error marking invoice ${invoiceId} as outdated: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Mark invoice as illegible and update its status
+   * Inserts record in EstadoDigitalizacionFactura and updates Document status to DELIVERED
+   *
+   * @param invoiceId - Invoice ID to mark as illegible
+   * @returns Success response
+   */
+  async markAsIllegible(invoiceId: number): Promise<any> {
+    try {
+      this.logger.log(`🔄 Marking invoice ${invoiceId} as illegible`);
+
+      // Find the document by documentId
+      const document = await this.prisma.document.findUnique({
+        where: { documentId: invoiceId },
+      });
+
+      if (!document) {
+        throw new Error(`Invoice ${invoiceId} not found`);
+      }
+
+      // Insert into EstadoDigitalizacionFactura (status 2 = illegible)
+      await this.prisma.estadoDigitalizacionFactura.create({
+        data: {
+          invoiceId,
+          digitalizationStatusId: InvoiceStatus.NO_PROCESABLE, // Status for illegible
+        },
+      });
+
+      // Update Document status to DELIVERED
+      await this.prisma.document.update({
+        where: { id: document.id },
+        data: {
+          status: 'DELIVERED',
+          completedAt: new Date(),
+        },
+      });
+
+      this.logger.log(`✅ Invoice ${invoiceId} marked as illegible`);
+
+      return {
+        success: true,
+        message: 'Invoice marked as illegible successfully',
+        invoiceId,
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Error marking invoice ${invoiceId} as illegible: ${error.message}`,
         error.stack,
       );
       throw error;

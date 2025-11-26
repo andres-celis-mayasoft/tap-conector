@@ -48,3 +48,14 @@ export class SaveInvoiceResponseDto {
   invoiceId: number;
   delivered: boolean; // If confidence reached 100%, it was auto-delivered
 }
+
+export class MarkInvoiceStatusDto {
+  @IsInt()
+  invoiceId: number;
+}
+
+export class MarkInvoiceStatusResponseDto {
+  success: boolean;
+  message: string;
+  invoiceId: number;
+}

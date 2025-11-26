@@ -12,6 +12,7 @@ import { TAP_MEIKO_ID, TAP_PARAMS } from 'src/constants/business';
 import { DocumentFactory } from '../validator/documents/base/document.factory';
 import { InvoiceStatus } from '../meiko/enums/status.enum';
 import { DateTime } from 'luxon';
+import { Utils } from '../validator/documents/utils';
 
 /**
  * Extraction Service
@@ -24,8 +25,8 @@ const PROCESABLES = [
   'Factura Tiquete POS Postobon',
   'Femsa',
   'Factura Aje',
-  'Factura Quala'
-]
+  'Factura Quala',
+];
 @Injectable()
 export class ExtractionService {
   private readonly logger = new Logger(ExtractionService.name);
@@ -63,7 +64,8 @@ export class ExtractionService {
         TAP_PARAMS.RUTA_LISTA_LOTES,
       );
       // const basePath = parameters.path || parameters.ruta || parameters;
-      const basePath = parameters.path || parameters.ruta || parameters.replace('E','C');
+      const basePath =
+        parameters.path || parameters.ruta || parameters.replace('E', 'C');
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
 
       // 3. Create folder with path + date
@@ -73,17 +75,17 @@ export class ExtractionService {
 
       // 4. Get max invoice ID (only process new invoices not yet in our DB)
       // const maxId = await this.invoiceService.getMaxId();
-      const maxId = 4276793
+      const maxId = 4276793;
       this.logger.log(`📊 Max invoice ID in our DB: ${maxId}`);
 
       // 5. Get new invoices from Meiko
-      // const documents = await this.meikoService.getInvoices(maxId);
-      const document = await this.meikoService.getInvoiceById(4276816);
-      if(!document) {
-        this.logger.log('ℹ️ No new invoices to process');
-        return;
-      }
-      const documents = [document]
+      const documents = await this.meikoService.getInvoices(maxId);
+      // const document = await this.meikoService.getInvoiceById(4276816);
+      // if (!document) {
+      //   this.logger.log('ℹ️ No new invoices to process');
+      //   return;
+      // }
+      // const documents = [document];
       this.logger.log(`📄 Found ${documents.length} new invoices to process`);
 
       if (documents.length === 0) {
@@ -113,7 +115,7 @@ export class ExtractionService {
       for (const invoice of documents) {
         try {
           this.logger.log(`\n🔄 Processing invoice ${invoice.id}...`);
-          if(!PROCESABLES.some(item=> item === invoice.photoType)) {
+          if (!PROCESABLES.some((item) => item === invoice.photoType)) {
             await this.invoiceService.updateDocument({
               id: invoice.id,
               status: 'IGNORED',
@@ -137,7 +139,7 @@ export class ExtractionService {
             await this.meikoService.createStatus({
               digitalizationStatusId: InvoiceStatus.ERROR_DE_DESCARGA,
               invoiceId: invoice.id,
-            })
+            });
             await this.invoiceService.updateDocument({
               id: invoice.id,
               path: imagePath,
@@ -149,7 +151,6 @@ export class ExtractionService {
             errorCount++;
             continue;
           }
-
 
           // 7.2. Process with OCR
           this.logger.log(`🔍 Invoice ${invoice.id} - Processing with OCR...`);
@@ -187,7 +188,7 @@ export class ExtractionService {
               photoTypeOcr,
               ocrResult.data.response,
               this.meikoService,
-              this.invoiceService
+              this.invoiceService,
             );
           } catch (error: any) {
             this.logger.error(
@@ -208,11 +209,11 @@ export class ExtractionService {
           await document.process();
           const { data: processedData, errors, isValid } = document.get();
 
-          if(!isValid) {
+          if (!isValid) {
             await this.meikoService.createStatus({
               digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA,
               invoiceId: invoice.id,
-            })
+            });
             await this.invoiceService.updateDocument({
               id: invoice.id,
               path: imagePath,
@@ -253,38 +254,62 @@ export class ExtractionService {
           // 7.6. Decision logic based on confidence and validation
           const hasErrors = errors && Object.keys(errors).length > 0;
 
-          if ( isFullConfidence && !hasErrors) {
+          if (isFullConfidence && !hasErrors) {
             // Scenario 1: 100% confidence → Deliver to our Meiko tables automatically
             this.logger.log(
               `✅ Invoice ${invoice.id} - 100% confidence → Delivering to Meiko tables`,
             );
 
             try {
-              // Extract header and details from processed data
-              const headerFields = processedData.encabezado || [];
-              const detailFields = processedData.detalles || [];
+              const headers = processedData.encabezado;
 
-              // Create MeikoResult entry for each detail row
-              for (let i = 0; i < detailFields.length; i++) {
-                const detailsGroup = detailFields.filter((f: any) => f.row === detailFields[i].row);
+              const numeroFactura = headers.find(
+                (f: any) => f.type === 'numero_factura',
+              )?.text;
+              const fechaFactura = DateTime.fromFormat(
+                headers.find((f: any) => f.type === 'fecha_factura')?.text,
+                'dd/MM/yyyy',
+              ).toString();
+              const razonSocial = headers.find(
+                (f: any) => f.type === 'razon_social',
+              )?.text;
+              const totalFactura = headers.find(
+                (f: any) => f.type === 'valor_total_factura',
+              )?.text;
+              const totalFacturaSinIva = headers.find(
+                (f: any) => f.type === 'total_factura_sin_iva',
+              )?.text;
 
-                const numeroFactura = headerFields.find((f: any) => f.type === 'numero_factura')?.text;
-                const fechaFactura = DateTime.fromFormat(headerFields.find((f: any) => f.type === 'fecha_factura')?.text, 'dd/MM/yyyy').toString();
-                const razonSocial = headerFields.find((f: any) => f.type === 'razon_social')?.text;
+              const products = Utils.groupFields(processedData.detalles);
 
-                const codigoProducto = detailsGroup.find((f: any) => f.type === 'codigo_producto')?.text;
-                const descripcion = detailsGroup.find((f: any) => f.type === 'item_descripcion_producto')?.text;
-                const tipoEmbalaje = detailsGroup.find((f: any) => f.type === 'tipo_embalaje')?.text;
-                const unidadEmbalaje = detailsGroup.find((f: any) => f.type === 'cantidad_embalaje')?.text;
-                const packVendidos = detailsGroup.find((f: any) => f.type === 'pack_vendidos')?.text;
-                const valorVenta = detailsGroup.find((f: any) => f.type === 'valor_venta_item')?.text;
-                const unidadesVendidas = detailsGroup.find((f: any) => f.type === 'unidades_vendidas')?.text;
-                const totalFactura = detailsGroup.find((f: any) => f.type === 'total_factura')?.text;
-                const valorIbua = detailsGroup.find((f: any) => f.type === 'valor_ibua_y_otros')?.text;
-
-                const confidence = (
-                  (detailsGroup.reduce((sum: number, f: any) => sum + (f.confidence || 0), 0) / detailsGroup.length) * 100
-                ).toFixed(2);
+              for (const product of products) {
+                const codigoProducto = product.find(
+                  (f: any) => f.type === 'codigo_producto',
+                )?.text;
+                const descripcion = product.find(
+                  (f: any) => f.type === 'item_descripcion_producto',
+                )?.text;
+                const tipoEmbalaje = product.find(
+                  (f: any) => f.type === 'tipo_embalaje',
+                )?.text;
+                const unidadEmbalaje = product.find(
+                  (f: any) => f.type === 'unidades_embalaje',
+                )?.text;
+                const packVendidos = product.find(
+                  (f: any) => f.type === 'packs_vendidos',
+                )?.text;
+                const valorVenta = product.find(
+                  (f: any) => f.type === 'valor_venta_item',
+                )?.text;
+                const unidadesVendidas = product.find(
+                  (f: any) => f.type === 'unidades_vendidas',
+                )?.text;
+                const valorIbua = product.find(
+                  (f: any) => f.type === 'valor_ibua_y_otros',
+                )?.text;
+                const row = product.find(
+                  (f: any) => f.type === 'item_descripcion_producto',
+                )?.row;
 
                 await this.meikoService.createFields({
                   meikoDocument: { connect: { id: invoice.id } },
@@ -295,21 +320,25 @@ export class ExtractionService {
                   productCode: codigoProducto,
                   description: descripcion,
                   packagingType: tipoEmbalaje,
-                  packagingUnit: unidadEmbalaje ? parseFloat(unidadEmbalaje) : null,
+                  packagingUnit: unidadEmbalaje
+                    ? parseFloat(unidadEmbalaje)
+                    : null,
                   packsSold: packVendidos ? parseFloat(packVendidos) : null,
                   saleValue: valorVenta ? parseInt(valorVenta) : null,
-                  unitsSold: unidadesVendidas ? parseFloat(unidadesVendidas) : null,
+                  unitsSold: unidadesVendidas
+                    ? parseFloat(unidadesVendidas)
+                    : null,
                   totalDocument: totalFactura ? parseFloat(totalFactura) : null,
-                  rowNumber: detailFields[i].row || 0,
+                  rowNumber: row,
+                  totalDocumentWithoutIVA: totalFacturaSinIva,
                   valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
-                  confidence: new Prisma.Decimal(confidence),
                 });
               }
 
               await this.meikoService.createStatus({
                 digitalizationStatusId: InvoiceStatus.PROCESADO,
                 invoiceId: invoice.id,
-              })
+              });
               // await this.invoiceService.deliverToMeikoTables(
               //   invoice.id,
               //   invoice,
@@ -348,9 +377,10 @@ export class ExtractionService {
               );
             }
             if (hasErrors) {
-              errorMessages.push(`VALIDATION_ERRORS: ${JSON.stringify(errors)}`);
+              errorMessages.push(
+                `VALIDATION_ERRORS: ${JSON.stringify(errors)}`,
+              );
             }
-
 
             await this.invoiceService.updateDocument({
               id: invoice.id,

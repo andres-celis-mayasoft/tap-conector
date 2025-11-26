@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Logger } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import { GetInvoiceToFillDto, InvoiceToFillResponseDto } from './dto/invoice-to-fill.dto';
-import { SaveInvoiceDto, SaveInvoiceResponseDto } from './dto/save-invoice.dto';
+import { SaveInvoiceDto, SaveInvoiceResponseDto, MarkInvoiceStatusDto, MarkInvoiceStatusResponseDto } from './dto/save-invoice.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('invoice')
@@ -33,15 +33,15 @@ export class InvoiceController {
       }
 
       // Parse the OCR data
-      const ocrData = invoice.mayaInvoiceJson
-        ? JSON.parse(invoice.mayaInvoiceJson)
+      const ocrData = invoice.mayaDocumentJSON
+        ? JSON.parse(invoice.mayaDocumentJSON)
         : { encabezado: [], detalles: [] };
 
       const response: InvoiceToFillResponseDto = {
-        invoiceId: invoice.invoiceId,
-        invoiceUrl: invoice.invoiceUrl || '',
+        invoiceId: invoice.documentId,
+        invoiceUrl: invoice.documentUrl || '',
         photoType: invoice.photoType || '',
-        photoTypeOcr: invoice.photoTypeOcr || '',
+        photoTypeOcr: invoice.photoTypeOCR || '',
         path: invoice.path || '',
         status: invoice.status,
         errors: invoice.errors || undefined,
@@ -63,6 +63,7 @@ export class InvoiceController {
       throw error;
     }
   }
+
 
   /**
    * Save corrected invoice data from manual validation
@@ -94,6 +95,76 @@ export class InvoiceController {
     } catch (error) {
       this.logger.error(
         `❌ Error saving invoice ${saveInvoiceDto.invoiceId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Mark invoice as outdated
+   * Inserts status record and updates document to DELIVERED
+   *
+   * @param markStatusDto - Contains invoice ID
+   * @returns Success response
+   */
+  @Post('outdated')
+  async markAsOutdated(
+    @CurrentUser('id') userId: number,
+    @Body() markStatusDto: MarkInvoiceStatusDto,
+  ): Promise<MarkInvoiceStatusResponseDto> {
+    this.logger.log(
+      `🔄 User ${userId} marking invoice ${markStatusDto.invoiceId} as outdated`,
+    );
+
+    try {
+      const result = await this.invoiceService.markAsOutdated(
+        markStatusDto.invoiceId,
+      );
+
+      this.logger.log(
+        `✅ Invoice ${markStatusDto.invoiceId} marked as outdated successfully`,
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error marking invoice ${markStatusDto.invoiceId} as outdated: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Mark invoice as illegible
+   * Inserts status record and updates document to DELIVERED
+   *
+   * @param markStatusDto - Contains invoice ID
+   * @returns Success response
+   */
+  @Post('illegible')
+  async markAsIllegible(
+    @CurrentUser('id') userId: number,
+    @Body() markStatusDto: MarkInvoiceStatusDto,
+  ): Promise<MarkInvoiceStatusResponseDto> {
+    this.logger.log(
+      `🔄 User ${userId} marking invoice ${markStatusDto.invoiceId} as illegible`,
+    );
+
+    try {
+      const result = await this.invoiceService.markAsIllegible(
+        markStatusDto.invoiceId,
+      );
+
+      this.logger.log(
+        `✅ Invoice ${markStatusDto.invoiceId} marked as illegible successfully`,
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error marking invoice ${markStatusDto.invoiceId} as illegible: ${error.message}`,
         error.stack,
       );
       throw error;

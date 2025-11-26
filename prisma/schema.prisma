@@ -37,6 +37,10 @@ model Document {
   fields            Field[]
   assignedUser      User?     @relation(fields: [assignedUserId], references: [id])
 
+
+  // OJO ESTO ES SOLO PARA TESTING
+  results                MeikoResult[]
+
   @@index([assignedUserId])
   @@map("document")
 }
@@ -105,7 +109,8 @@ model MeikoDocument {
   //deliveryStatus        String        @default("PENDING") @map("delivery_status") // PENDING, DELIVERED, ERROR
 
   // Relations
-  results                MeikoResult[]
+  // OJO ESTO ES SOLO PARA TESTING
+  // results                MeikoResult[]
 
   @@unique([surveyRecordId, variableName])
   @@index([stickerQr])
@@ -133,12 +138,10 @@ model MeikoResult {
   rowNumber              Int          @map("numeroFila")
   valueIbuaAndOthers   Int?         @map("VALOR_IBUA_Y_OTROS")
 
-  // Additional tracking fields
-  createdAt              DateTime     @default(now()) @map("created_at")
-  confidence              Decimal?     @db.Decimal(5, 2) @map("confidence")
 
   // Relations
-  meikoDocument           MeikoDocument @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  // OJO ESTO ES SOLO PARA TESTING
+  meikoDocument           Document @relation(fields: [invoiceId], references: [documentId], onDelete: Cascade)
 
   @@unique([invoiceId, rowNumber])
   @@index([surveyRecordId])
