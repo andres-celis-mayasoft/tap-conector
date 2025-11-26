@@ -8,8 +8,6 @@ import { MeikoModule } from './modules/meiko/meiko.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
 import { ExtractionModule } from './modules/extraction/extraction.module';
 import { OcrModule } from './modules/ocr/ocr.module';
-import { RadicationModule } from './modules/radication/radication.module';
-import { ControlProcessModule } from './modules/process-control/control-process.module';
 import { ValidatorModule } from './modules/validator/validator.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
