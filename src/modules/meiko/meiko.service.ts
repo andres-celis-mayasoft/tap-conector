@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaMeikoService } from '../../database/services/prisma-meiko.service';
-import { Prisma } from '@prisma/client-meiko';
+import { PrismaService } from '../../database/services/prisma.service';
+import { Prisma as PrismaMeikoTypes } from '@prisma/client-meiko';
+import { Prisma } from '@prisma/client-bd';
 
 /**
  * Meiko Service
@@ -10,7 +12,10 @@ import { Prisma } from '@prisma/client-meiko';
 export class MeikoService {
   private readonly logger = new Logger(MeikoService.name);
 
-  constructor(private readonly prismaMeiko: PrismaMeikoService) {}
+  constructor(
+    private readonly prismaMeiko: PrismaMeikoService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   /**
    * Get invoices with id_factura greater than maxId
@@ -90,8 +95,58 @@ export class MeikoService {
     }
   }
 
-  async find(args: Prisma.ResultFindFirstArgs) {
+  async find(args: PrismaMeikoTypes.ResultFindFirstArgs) {
     return this.prismaMeiko.result.findFirst(args)
+  }
+
+  /**
+   * Create a MeikoResult entry in the main database
+   *
+   * @param data MeikoResult data to create
+   * @returns Created MeikoResult record
+   */
+  async createFields(data: Prisma.MeikoResultCreateInput) {
+    try {
+      this.logger.log(`Creating MeikoResult entry`);
+
+      const result = await this.prisma.meikoResult.create({
+        data,
+      });
+
+      this.logger.log(`MeikoResult created successfully with id: ${result.id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Error creating MeikoResult: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Create an EstadoDigitalizacionFactura entry in the main database
+   *
+   * @param data EstadoDigitalizacionFactura data to create
+   * @returns Created EstadoDigitalizacionFactura record
+   */
+  async createStatus(data: Prisma.EstadoDigitalizacionFacturaCreateInput) {
+    try {
+      this.logger.log(`Creating EstadoDigitalizacionFactura entry`);
+
+      const estado = await this.prisma.estadoDigitalizacionFactura.create({
+        data,
+      });
+
+      this.logger.log(`EstadoDigitalizacionFactura created successfully with id: ${estado.id}`);
+      return estado;
+    } catch (error) {
+      this.logger.error(
+        `Error creating EstadoDigitalizacionFactura: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 
   /**

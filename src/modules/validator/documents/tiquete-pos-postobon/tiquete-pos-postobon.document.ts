@@ -34,7 +34,6 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
 
     if (!isValidDate) {
       this.errors.fecha_factura = 'Fecha inválida (formato)';
-      this.isValid = false;
       return;
     }
 

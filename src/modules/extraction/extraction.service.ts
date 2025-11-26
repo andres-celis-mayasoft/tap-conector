@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { Prisma } from '@prisma/client-bd';
 import { TapService } from '../tap/tap.service';
 import { MeikoService } from '../meiko/meiko.service';
 import { InvoiceService } from '../invoice/invoice.service';
@@ -9,11 +10,22 @@ import * as fs from 'fs/promises';
 import { OcrService } from '../ocr/ocr.service';
 import { TAP_MEIKO_ID, TAP_PARAMS } from 'src/constants/business';
 import { DocumentFactory } from '../validator/documents/base/document.factory';
+import { InvoiceStatus } from '../meiko/enums/status.enum';
+import { DateTime } from 'luxon';
 
 /**
  * Extraction Service
  * Handles automated invoice extraction via cron job
  */
+const PROCESABLES = [
+  'Factura Coke',
+  'Factura Postobon',
+  'Factura Infocargue',
+  'Factura Tiquete POS Postobon',
+  'Femsa',
+  'Factura Aje',
+  'Factura Quala'
+]
 @Injectable()
 export class ExtractionService {
   private readonly logger = new Logger(ExtractionService.name);
@@ -35,6 +47,8 @@ export class ExtractionService {
   // @Cron(CronExpression.EVERY_DAY_AT_2AM, {
   //   name: 'extraction',
   // })
+
+  // idea, que sea una función recursiva, si no encuentra datos, hace un await de 1 minuto
   async handleExtractionCron() {
     this.logger.log('🚀 Starting extraction cron job');
 
@@ -63,7 +77,13 @@ export class ExtractionService {
       this.logger.log(`📊 Max invoice ID in our DB: ${maxId}`);
 
       // 5. Get new invoices from Meiko
-      const documents = await this.meikoService.getInvoices(maxId);
+      // const documents = await this.meikoService.getInvoices(maxId);
+      const document = await this.meikoService.getInvoiceById(4276816);
+      if(!document) {
+        this.logger.log('ℹ️ No new invoices to process');
+        return;
+      }
+      const documents = [document]
       this.logger.log(`📄 Found ${documents.length} new invoices to process`);
 
       if (documents.length === 0) {
@@ -77,7 +97,7 @@ export class ExtractionService {
           status: 'PROCESSING',
           documentId: invoice.id,
           photoType: invoice.photoType,
-          invoiceUrl: invoice.link,
+          documentUrl: invoice.link,
         })),
       );
       this.logger.log(
@@ -93,6 +113,15 @@ export class ExtractionService {
       for (const invoice of documents) {
         try {
           this.logger.log(`\n🔄 Processing invoice ${invoice.id}...`);
+          if(!PROCESABLES.some(item=> item === invoice.photoType)) {
+            await this.invoiceService.updateDocument({
+              id: invoice.id,
+              status: 'IGNORED',
+              validated: false,
+              errors: 'TIPO DE DOCUMENTO NO PROCESABLE',
+            });
+            continue;
+          }
 
           // 7.1. Download and validate image
           const { isValid: isDownloadable, path: imagePath } =
@@ -105,17 +134,22 @@ export class ExtractionService {
             this.logger.warn(
               `⚠️ Invoice ${invoice.id} - Image not downloadable or viewable`,
             );
+            await this.meikoService.createStatus({
+              digitalizationStatusId: InvoiceStatus.ERROR_DE_DESCARGA,
+              invoiceId: invoice.id,
+            })
             await this.invoiceService.updateDocument({
               id: invoice.id,
               path: imagePath,
               errors: 'NO DESCARGABLE O VISUALIZABLE',
               extracted: false,
               validated: false,
-              status: 'ERROR',
+              status: 'DELIVERED',
             });
             errorCount++;
             continue;
           }
+
 
           // 7.2. Process with OCR
           this.logger.log(`🔍 Invoice ${invoice.id} - Processing with OCR...`);
@@ -162,7 +196,7 @@ export class ExtractionService {
             await this.invoiceService.updateDocument({
               id: invoice.id,
               path: imagePath,
-              errors: `TIPO_DOCUMENTO_NO_SOPORTADO: ${photoTypeOcr}`,
+              errors: `UNEXPECTED ERROR: ${photoTypeOcr}`,
               extracted: false,
               validated: false,
               status: 'ERROR',
@@ -172,7 +206,23 @@ export class ExtractionService {
           }
 
           await document.process();
-          const { data: processedData, errors, isValid: isValidated } = document.get();
+          const { data: processedData, errors, isValid } = document.get();
+
+          if(!isValid) {
+            await this.meikoService.createStatus({
+              digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA,
+              invoiceId: invoice.id,
+            })
+            await this.invoiceService.updateDocument({
+              id: invoice.id,
+              path: imagePath,
+              errors: 'FECHA OBSOLETA',
+              extracted: false,
+              validated: false,
+              status: 'DELIVERED',
+            });
+            continue;
+          }
 
           // 7.4. Calculate overall confidence
           const confidence = this.calculateConfidence(processedData);
@@ -186,12 +236,13 @@ export class ExtractionService {
             `   └─ Details confidence: ${confidence.detailsConfidence.toFixed(2)}%`,
           );
 
+          const isFullConfidence = confidence.overall === 100;
           // 7.5. Save invoice with extracted fields
           await this.invoiceService.saveInvoiceWithFields(
             {
               id: invoice.id,
               extracted: true,
-              validated: isValidated,
+              validated: isFullConfidence,
               path: imagePath,
               photoTypeOCR: photoTypeOcr,
               status: 'PROCESSING', // Will update later based on confidence
@@ -201,20 +252,69 @@ export class ExtractionService {
 
           // 7.6. Decision logic based on confidence and validation
           const hasErrors = errors && Object.keys(errors).length > 0;
-          const isFullConfidence = confidence.overall === 100;
 
-          if (isValidated && isFullConfidence && !hasErrors) {
+          if ( isFullConfidence && !hasErrors) {
             // Scenario 1: 100% confidence → Deliver to our Meiko tables automatically
             this.logger.log(
               `✅ Invoice ${invoice.id} - 100% confidence → Delivering to Meiko tables`,
             );
 
             try {
-              await this.invoiceService.deliverToMeikoTables(
-                invoice.id,
-                invoice,
-                processedData,
-              );
+              // Extract header and details from processed data
+              const headerFields = processedData.encabezado || [];
+              const detailFields = processedData.detalles || [];
+
+              // Create MeikoResult entry for each detail row
+              for (let i = 0; i < detailFields.length; i++) {
+                const detailsGroup = detailFields.filter((f: any) => f.row === detailFields[i].row);
+
+                const numeroFactura = headerFields.find((f: any) => f.type === 'numero_factura')?.text;
+                const fechaFactura = DateTime.fromFormat(headerFields.find((f: any) => f.type === 'fecha_factura')?.text, 'dd/MM/yyyy').toString();
+                const razonSocial = headerFields.find((f: any) => f.type === 'razon_social')?.text;
+
+                const codigoProducto = detailsGroup.find((f: any) => f.type === 'codigo_producto')?.text;
+                const descripcion = detailsGroup.find((f: any) => f.type === 'item_descripcion_producto')?.text;
+                const tipoEmbalaje = detailsGroup.find((f: any) => f.type === 'tipo_embalaje')?.text;
+                const unidadEmbalaje = detailsGroup.find((f: any) => f.type === 'cantidad_embalaje')?.text;
+                const packVendidos = detailsGroup.find((f: any) => f.type === 'pack_vendidos')?.text;
+                const valorVenta = detailsGroup.find((f: any) => f.type === 'valor_venta_item')?.text;
+                const unidadesVendidas = detailsGroup.find((f: any) => f.type === 'unidades_vendidas')?.text;
+                const totalFactura = detailsGroup.find((f: any) => f.type === 'total_factura')?.text;
+                const valorIbua = detailsGroup.find((f: any) => f.type === 'valor_ibua_y_otros')?.text;
+
+                const confidence = (
+                  (detailsGroup.reduce((sum: number, f: any) => sum + (f.confidence || 0), 0) / detailsGroup.length) * 100
+                ).toFixed(2);
+
+                await this.meikoService.createFields({
+                  meikoDocument: { connect: { id: invoice.id } },
+                  surveyRecordId: Number(invoice.surveyRecordId),
+                  invoiceNumber: numeroFactura,
+                  documentDate: fechaFactura ? fechaFactura : null,
+                  businessName: razonSocial,
+                  productCode: codigoProducto,
+                  description: descripcion,
+                  packagingType: tipoEmbalaje,
+                  packagingUnit: unidadEmbalaje ? parseFloat(unidadEmbalaje) : null,
+                  packsSold: packVendidos ? parseFloat(packVendidos) : null,
+                  saleValue: valorVenta ? parseInt(valorVenta) : null,
+                  unitsSold: unidadesVendidas ? parseFloat(unidadesVendidas) : null,
+                  totalDocument: totalFactura ? parseFloat(totalFactura) : null,
+                  rowNumber: detailFields[i].row || 0,
+                  valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
+                  confidence: new Prisma.Decimal(confidence),
+                });
+              }
+
+              await this.meikoService.createStatus({
+                digitalizationStatusId: InvoiceStatus.PROCESADO,
+                invoiceId: invoice.id,
+              })
+              // await this.invoiceService.deliverToMeikoTables(
+              //   invoice.id,
+              //   invoice,
+              //   processedData,
+              // );
               await this.invoiceService.updateDocument({
                 id: invoice.id,
                 status: 'DELIVERED',
@@ -250,9 +350,7 @@ export class ExtractionService {
             if (hasErrors) {
               errorMessages.push(`VALIDATION_ERRORS: ${JSON.stringify(errors)}`);
             }
-            if (!isValidated) {
-              errorMessages.push('VALIDATION_FAILED');
-            }
+
 
             await this.invoiceService.updateDocument({
               id: invoice.id,

@@ -48,7 +48,6 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
 
     if (!isValidDate) {
       this.errors.fecha_factura = 'Fecha inválida (formato)';
-      this.isValid = false;
       return;
     }
 

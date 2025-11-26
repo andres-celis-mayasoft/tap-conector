@@ -32,7 +32,6 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
 
     if (!isValidDate) {
       this.errors.fecha_factura = 'Fecha inválida (formato)';
-      this.isValid = false;
       return;
     }
 

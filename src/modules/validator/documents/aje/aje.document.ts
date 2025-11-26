@@ -38,7 +38,6 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
 
     if (!isValidDate) {
       this.errors.fecha_factura = 'Fecha inválida (formato)';
-      this.isValid = false;
       return;
     }
 

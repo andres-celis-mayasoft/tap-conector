@@ -46,7 +46,6 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
 
     if (!isValidDate) {
       this.errors.fecha_factura = 'Fecha inválida (formato)';
-      this.isValid = false;
       return;
     }
 

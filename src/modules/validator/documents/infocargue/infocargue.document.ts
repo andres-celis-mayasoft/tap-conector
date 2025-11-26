@@ -46,7 +46,6 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
 
     if (!isValidDate) {
       this.errors.fecha_factura = 'Fecha inválida (formato)';
-      this.isValid = false;
       return;
     }
 

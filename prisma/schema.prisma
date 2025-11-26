@@ -58,70 +58,6 @@ model Field {
 
 }
 
-// Meiko Delivery Tables (Mirror of Meiko DB in our database)
-model MeikoDocument {
-  id                     Int           @id @default(autoincrement())
-  surveyRecordId       BigInt        @map("survey_record_id")
-  responseId            BigInt?       @map("response_id")
-  stickerQr             String?       @db.VarChar(50) @map("sticker_qr")
-  responseReceived      String?       @db.VarChar(100) @map("response_received")
-  variableName          String?       @db.VarChar(255) @map("variable_name")
-  photoType             String?       @db.VarChar(255) @map("photo_type")
-  link                   String?       @db.Text @map("link")
-  flagDigitalization    Int?          @db.SmallInt @map("flag_digitalization")
-  digitalizationDate    DateTime?     @map("digitalization_date")
-  extractionDate        DateTime?     @map("extraction_date")
-
-  // Additional tracking fields
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @updatedAt @map("updated_at")
-  deliveryStatus        String        @default("PENDING") @map("delivery_status") // PENDING, DELIVERED, ERROR
-
-  // Relations
-  results                MeikoResult[]
-
-  @@unique([surveyRecordId, variableName])
-  @@index([stickerQr])
-  @@index([photoType])
-  @@index([responseId])
-  @@map("meiko_document")
-}
-
-model MeikoResult {
-  id                      Int          @id @default(autoincrement())
-  meikoDocumentId       Int          @map("meiko_document_id")
-  surveyRecordId        Int          @map("survey_record_id")
-  documentNumber         String?      @db.VarChar(11) @map("document_number")
-  documentDate           DateTime?    @map("document_date")
-  businessName           String?      @db.Text @map("business_name")
-  productCode            String?      @db.VarChar(111) @map("product_code")
-  description             String?      @db.VarChar(500) @map("description")
-  packagingType          String?      @db.VarChar(255) @map("packaging_type")
-  packagingUnit          Decimal?     @db.Decimal(11, 2) @map("packaging_unit")
-  packsSold              Decimal?     @db.Decimal(11, 2) @map("packs_sold")
-  saleValue              Decimal?     @db.Decimal(10, 0) @map("sale_value")
-  unitsSold              Decimal?     @db.Decimal(11, 2) @map("units_sold")
-  totalDocument          Decimal?     @db.Decimal(11, 2) @map("total_document")
-  totalDocumentWithoutVat Decimal?  @db.Decimal(11, 2) @map("total_document_without_vat")
-  rowNumber              Int          @map("row_number")
-  valueIbuaAndOthers   Int?         @map("value_ibua_and_others")
-
-  // Additional tracking fields
-  createdAt              DateTime     @default(now()) @map("created_at")
-  confidence              Decimal?     @db.Decimal(5, 2) @map("confidence")
-
-  // Relations
-  meikoDocument           MeikoDocument @relation(fields: [meikoDocumentId], references: [id], onDelete: Cascade)
-
-  @@unique([meikoDocumentId, rowNumber])
-  @@index([surveyRecordId])
-  @@index([documentNumber])
-  @@index([description])
-  @@index([documentDate])
-  @@map("meiko_result")
-}
-
-
 // User Model for Authentication
 model User {
   id               Int       @id @default(autoincrement())
@@ -144,4 +80,78 @@ model ExcludedProducts {
   description       String? @db.VarChar(500) @map("description")
 
   @@map("excluded_products")
+}
+
+
+
+
+// Meiko Delivery Tables (Mirror of Meiko DB in our database)
+model MeikoDocument {
+  id                     Int           @id @default(autoincrement()) @map("id_factura")
+  surveyRecordId       BigInt        @map("idRegistroEncuesta")
+  responseId            BigInt?       @map("responseId")
+  stickerQr             String?       @db.VarChar(50) @map("sticketQR")
+  responseReceived      String?       @db.VarChar(100) @map("responseReceived")
+  variableName          String?       @db.VarChar(255) @map("nombre_variable")
+  photoType             String?       @db.VarChar(255) @map("tipo_foto")
+  link                   String?       @db.Text @map("link")
+  flagDigitalization    Int?          @db.SmallInt @map("flag_digitalizacion")
+  digitalizationDate    DateTime?     @map("fecha_digitalizacion")
+  extractionDate        DateTime?     @map("fechaExtraccion")
+
+  // Additional tracking fields
+  //createdAt             DateTime      @default(now()) @map("created_at")
+  //updatedAt             DateTime      @updatedAt @map("updated_at")
+  //deliveryStatus        String        @default("PENDING") @map("delivery_status") // PENDING, DELIVERED, ERROR
+
+  // Relations
+  results                MeikoResult[]
+
+  @@unique([surveyRecordId, variableName])
+  @@index([stickerQr])
+  @@index([photoType])
+  @@index([responseId])
+  @@map("factura")
+}
+
+model MeikoResult {
+  id                     Int          @id @default(autoincrement()) @map("id_detalle_factura")
+  invoiceId              Int          @map("id_factura")
+  surveyRecordId         Int          @map("idRegistroEncuesta")
+  invoiceNumber          String?      @db.VarChar(11) @map("numero_factura")
+  documentDate           DateTime?    @map("fecha_factura")
+  businessName           String?      @db.Text @map("razon_social")
+  productCode            String?      @db.VarChar(111) @map("codigoProducto")
+  description            String?      @db.VarChar(500) @map("descripcion")
+  packagingType          String?      @db.VarChar(255) @map("tipo_embalage")
+  packagingUnit          Decimal?     @db.Decimal(11, 2) @map("unidad_embalage")
+  packsSold              Decimal?     @db.Decimal(11, 2) @map("packs_vendidos")
+  saleValue              Decimal?     @db.Decimal(10, 0) @map("valor_venta")
+  unitsSold              Decimal?     @db.Decimal(11, 2) @map("unidades_vendidas")
+  totalDocument          Decimal?     @db.Decimal(11, 2) @map("total_factura")
+  totalDocumentWithoutIVA Decimal?  @db.Decimal(11, 2) @map("total_factura_sin_iva")
+  rowNumber              Int          @map("numeroFila")
+  valueIbuaAndOthers   Int?         @map("VALOR_IBUA_Y_OTROS")
+
+  // Additional tracking fields
+  createdAt              DateTime     @default(now()) @map("created_at")
+  confidence              Decimal?     @db.Decimal(5, 2) @map("confidence")
+
+  // Relations
+  meikoDocument           MeikoDocument @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, rowNumber])
+  @@index([surveyRecordId])
+  @@index([invoiceNumber])
+  @@index([description])
+  @@index([documentDate])
+  @@map("resultado_digitalizacion")
+}
+
+model EstadoDigitalizacionFactura {
+  id                      Int            @id @default(autoincrement())
+  invoiceId               Int            @unique @map("id_factura")
+  digitalizationStatusId  Int            @map("estado_digitalizacion_id")
+
+  @@map("estado_digitalizacion_factura")
 }

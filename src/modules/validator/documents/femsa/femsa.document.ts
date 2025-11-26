@@ -33,7 +33,6 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
 
     if (!isValidDate) {
       this.errors.fecha_factura = 'Fecha inválida (formato)';
-      this.isValid = false;
       return;
     }
 
@@ -74,7 +73,7 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
 
   prune() {
   }
-  
+
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<FemsaHeaderFields>(this.data.encabezado);

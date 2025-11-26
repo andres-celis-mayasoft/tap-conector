@@ -383,7 +383,6 @@ export class InvoiceService {
           flagDigitalization: 1, // Mark as digitalized
           digitalizationDate: new Date(),
           extractionDate: new Date(),
-          deliveryStatus: 'DELIVERED',
         },
       });
 

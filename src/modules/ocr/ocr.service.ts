@@ -91,7 +91,7 @@ export class OcrService {
           ...formData.getHeaders(),
           'X-API-Key': this.ocrApiKey,
         },
-        timeout: 60000, // 60 seconds timeout for OCR processing
+        timeout: 240000,
       };
 
       // Send POST request
