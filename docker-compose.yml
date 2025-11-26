@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tap-conector-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-tap_main}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tap-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tap-conector-app
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-tap_main}?schema=public
+      TAP_SERVICE_URL: ${TAP_SERVICE_URL:-http://tap-service-url/api/}
+      TAP_PROJECT_ID: ${TAP_PROJECT_ID:-1}
+      OCR_API_URL: ${OCR_API_URL:-http://ocr-service-url/api/process}
+      OCR_API_KEY: ${OCR_API_KEY:-your-ocr-api-key-here}
+      INVOICE_PROCESSING_THREADS: ${INVOICE_PROCESSING_THREADS:-4}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tap-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  tap-network:
+    driver: bridge
