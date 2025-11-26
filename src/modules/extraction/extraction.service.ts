@@ -33,7 +33,6 @@ export class ExtractionService {
   private readonly logger = new Logger(ExtractionService.name);
 
   constructor(
-    private readonly tapService: TapService,
     private readonly meikoService: MeikoService,
     private readonly invoiceService: InvoiceService,
     private readonly ocrService: OcrService,
@@ -60,13 +59,10 @@ export class ExtractionService {
       this.logger.log(`📅 Date: ${date}`);
 
       // 2. Get parameters (returns path)
-      const parameters = await this.tapService.getParameters(
-        TAP_MEIKO_ID,
-        TAP_PARAMS.RUTA_LISTA_LOTES,
-      );
+      const parameters = { path: '/opt/meiko/facturas/procesados' };
       // const basePath = parameters.path || parameters.ruta || parameters;
       const basePath =
-        parameters.path || parameters.ruta || parameters.replace('E', 'C');
+        parameters.path
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
 
       // 3. Create folder with path + date

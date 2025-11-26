@@ -1,7 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from './services/prisma.service';
 import { PrismaMeikoService } from './services/prisma-meiko.service';
-import { PrismaTapService } from './services/prisma-tap.service';
 
 /**
  * Database Health Controller
@@ -12,7 +11,6 @@ export class DatabaseHealthController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly prismaMeiko: PrismaMeikoService,
-    private readonly prismaTap: PrismaTapService,
   ) {}
 
   /**
@@ -21,14 +19,13 @@ export class DatabaseHealthController {
    */
   @Get()
   async checkAllDatabases() {
-    const [main, meiko, tap] = await Promise.allSettled([
+    const [main, meiko] = await Promise.allSettled([
       this.checkMainDatabase(),
       this.prismaMeiko.healthCheck(),
-      this.prismaTap.healthCheck(),
     ]);
 
     return {
-      status: this.determineOverallStatus(main, meiko, tap),
+      status: this.determineOverallStatus(main, meiko),
       timestamp: new Date().toISOString(),
       databases: {
         main: {
@@ -38,10 +35,6 @@ export class DatabaseHealthController {
         meiko: {
           status: meiko.status === 'fulfilled' && meiko.value ? 'healthy' : 'unhealthy',
           error: meiko.status === 'rejected' ? meiko.reason?.message : null,
-        },
-        tap: {
-          status: tap.status === 'fulfilled' && tap.value ? 'healthy' : 'unhealthy',
-          error: tap.status === 'rejected' ? tap.reason?.message : null,
         },
       },
     };
@@ -89,26 +82,6 @@ export class DatabaseHealthController {
     }
   }
 
-  /**
-   * Check health of TAP database only
-   * GET /health/database/tap
-   */
-  @Get('tap')
-  async checkTap() {
-    try {
-      const isHealthy = await this.prismaTap.healthCheck();
-      return {
-        status: isHealthy ? 'healthy' : 'unhealthy',
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        status: 'unhealthy',
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      };
-    }
-  }
 
   /**
    * Private method to check main database health
@@ -127,10 +100,9 @@ export class DatabaseHealthController {
    */
   private determineOverallStatus(
     main: PromiseSettledResult<boolean>,
-    meiko: PromiseSettledResult<boolean>,
-    tap: PromiseSettledResult<boolean>,
+    meiko: PromiseSettledResult<boolean>
   ): 'healthy' | 'degraded' | 'unhealthy' {
-    const results = [main, meiko, tap];
+    const results = [main, meiko];
     const healthyCount = results.filter(
       (r) => r.status === 'fulfilled' && r.value === true,
     ).length;

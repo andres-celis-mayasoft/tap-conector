@@ -15,7 +15,6 @@ import { MeikoService } from '../meiko/meiko.service';
 import { DateTime } from 'luxon';
 import { DocumentFactory } from './documents/base/document.factory';
 import { PrismaService } from '../../database/services/prisma.service';
-import { PrismaTapService } from 'src/database/services/prisma-tap.service';
 import { CokeInvoice } from './documents/coke/coke.document';
 import { InvoiceService } from '../invoice/invoice.service';
 import { Utils } from './documents/utils';
@@ -24,7 +23,6 @@ import { Utils } from './documents/utils';
 export class ValidatorService {
   constructor(
     private meikoService: MeikoService,
-    private tapService: PrismaTapService,
     private invoiceService: InvoiceService,
     private prisma: PrismaService,
   ) {}
@@ -745,9 +743,7 @@ export class ValidatorService {
    * Test endpoint: consulta una factura por ID, valida con el OCR y compara con el resultado esperado
    */
   async testInvoice(facturaId: number) {
-    const invoice = await this.tapService.extractionInvoiceMaya.findUnique({
-      where: { invoiceId: facturaId },
-    });
+    const invoice : any = {}
 
     if (!invoice) {
       throw new NotFoundException(`Factura con ID ${facturaId} no encontrada`);

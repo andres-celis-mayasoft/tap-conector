@@ -5,11 +5,11 @@ services:
     image: postgres:16-alpine
     container_name: tap-conector-postgres
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-tap_main}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -28,12 +28,17 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-tap_main}?schema=public
-      TAP_SERVICE_URL: ${TAP_SERVICE_URL:-http://tap-service-url/api/}
-      TAP_PROJECT_ID: ${TAP_PROJECT_ID:-1}
-      OCR_API_URL: ${OCR_API_URL:-http://ocr-service-url/api/process}
-      OCR_API_KEY: ${OCR_API_KEY:-your-ocr-api-key-here}
+      DB_USER : ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME : ${DB_NAME:-tap_main}
+      DB_PORT : ${DB_PORT:-5432}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_MEIKO_URL : ${DATABASE_MEIKO_URL}
       INVOICE_PROCESSING_THREADS: ${INVOICE_PROCESSING_THREADS:-4}
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-here}
+      JWT_EXPIRES_IN : ${JWT_EXPIRES_IN:-1d}
+      OCR_API_URL: ${OCR_API_URL}
+      OCR_API_KEY : ${OCR_API_KEY}
     ports:
       - "3000:3000"
     depends_on:

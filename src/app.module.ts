@@ -5,7 +5,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { MeikoModule } from './modules/meiko/meiko.module';
-import { TapModule } from './modules/tap/tap.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
 import { ExtractionModule } from './modules/extraction/extraction.module';
 import { OcrModule } from './modules/ocr/ocr.module';
@@ -26,11 +25,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     AuthModule,
     UsersModule,
     MeikoModule,
-    TapModule,
     InvoiceModule,
     ExtractionModule,
-    RadicationModule,
-    ControlProcessModule,
     OcrModule,
     ValidatorModule
   ],
