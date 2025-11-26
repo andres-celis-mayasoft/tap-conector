@@ -13,6 +13,7 @@ import { DocumentFactory } from '../validator/documents/base/document.factory';
 import { InvoiceStatus } from '../meiko/enums/status.enum';
 import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
+import pLimit from 'p-limit';
 
 /**
  * Extraction Service
@@ -75,7 +76,7 @@ export class ExtractionService {
 
       // 4. Get max invoice ID (only process new invoices not yet in our DB)
       // const maxId = await this.invoiceService.getMaxId();
-      const maxId = 4276793;
+      const maxId = 4276823;
       this.logger.log(`📊 Max invoice ID in our DB: ${maxId}`);
 
       // 5. Get new invoices from Meiko
@@ -106,318 +107,329 @@ export class ExtractionService {
         `✅ Created ${documents.length} invoice records with PROCESSING status`,
       );
 
-      // 7. Process each invoice
+      // 7. Process each invoice with multi-threading support
       let processedCount = 0;
       let deliveredCount = 0;
       let validationRequiredCount = 0;
       let errorCount = 0;
 
-      for (const invoice of documents) {
-        try {
-          this.logger.log(`\n🔄 Processing invoice ${invoice.id}...`);
-          if (!PROCESABLES.some((item) => item === invoice.photoType)) {
-            await this.invoiceService.updateDocument({
-              id: invoice.id,
-              status: 'IGNORED',
-              validated: false,
-              errors: 'TIPO DE DOCUMENTO NO PROCESABLE',
-            });
-            continue;
-          }
+      // Get thread count from environment variable, default to 4
+      const THREAD_COUNT = parseInt(process.env.INVOICE_PROCESSING_THREADS || '4', 10);
+      const limit = pLimit(THREAD_COUNT);
 
-          // 7.1. Download and validate image
-          const { isValid: isDownloadable, path: imagePath } =
-            await this.invoiceService.downloadAndValidate(
-              invoice,
-              extractionPath,
-            );
+      this.logger.log(`⚙️ Processing invoices with ${THREAD_COUNT} concurrent threads`);
 
-          if (!isDownloadable) {
-            this.logger.warn(
-              `⚠️ Invoice ${invoice.id} - Image not downloadable or viewable`,
-            );
-            await this.meikoService.createStatus({
-              digitalizationStatusId: InvoiceStatus.ERROR_DE_DESCARGA,
-              invoiceId: invoice.id,
-            });
-            await this.invoiceService.updateDocument({
-              id: invoice.id,
-              path: imagePath,
-              errors: 'NO DESCARGABLE O VISUALIZABLE',
-              extracted: false,
-              validated: false,
-              status: 'DELIVERED',
-            });
-            errorCount++;
-            continue;
-          }
-
-          // 7.2. Process with OCR
-          this.logger.log(`🔍 Invoice ${invoice.id} - Processing with OCR...`);
-          const ocrResult = await this.ocrService.processInvoice({
-            filePath: imagePath,
-            typeOfInvoice: invoice.photoType || '',
-          });
-
-          if (!ocrResult.success || !ocrResult.data) {
-            this.logger.error(
-              `❌ Invoice ${invoice.id} - OCR processing failed: ${ocrResult.error}`,
-            );
-            await this.invoiceService.updateDocument({
-              id: invoice.id,
-              path: imagePath,
-              errors: `OCR_ERROR: ${ocrResult.error}`,
-              extracted: false,
-              validated: false,
-              status: 'ERROR',
-            });
-            errorCount++;
-            continue;
-          }
-
-          // 7.3. Create document and process (normalize, validate, infer)
-          const photoTypeOcr =
-            ocrResult.data.data?.photoTypeOcr || invoice.photoType;
-          this.logger.log(
-            `📋 Invoice ${invoice.id} - Document type: ${photoTypeOcr}`,
-          );
-
-          let document: any;
+      const processingTasks = documents.map((invoice) =>
+        limit(async () => {
           try {
-            document = DocumentFactory.create(
-              photoTypeOcr,
-              ocrResult.data.response,
-              this.meikoService,
-              this.invoiceService,
-            );
-          } catch (error: any) {
-            this.logger.error(
-              `❌ Invoice ${invoice.id} - Unsupported document type: ${photoTypeOcr}`,
-            );
-            await this.invoiceService.updateDocument({
-              id: invoice.id,
-              path: imagePath,
-              errors: `UNEXPECTED ERROR: ${photoTypeOcr}`,
-              extracted: false,
-              validated: false,
-              status: 'ERROR',
-            });
-            errorCount++;
-            continue;
-          }
+            this.logger.log(`\n🔄 Processing invoice ${invoice.id}...`);
+            if (!PROCESABLES.some((item) => item === invoice.photoType)) {
+              await this.invoiceService.updateDocument({
+                id: invoice.id,
+                status: 'IGNORED',
+                validated: false,
+                errors: 'TIPO DE DOCUMENTO NO PROCESABLE',
+              });
+              return;
+            }
 
-          await document.process();
-          const { data: processedData, errors, isValid } = document.get();
+            // 7.1. Download and validate image
+            const { isValid: isDownloadable, path: imagePath } =
+              await this.invoiceService.downloadAndValidate(
+                invoice,
+                extractionPath,
+              );
 
-          if (!isValid) {
-            await this.meikoService.createStatus({
-              digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA,
-              invoiceId: invoice.id,
-            });
-            await this.invoiceService.updateDocument({
-              id: invoice.id,
-              path: imagePath,
-              errors: 'FECHA OBSOLETA',
-              extracted: false,
-              validated: false,
-              status: 'DELIVERED',
-            });
-            continue;
-          }
-
-          if(processedData.detalles.length === 0){
-            await this.meikoService.createStatus({
-              digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO,
-              invoiceId: invoice.id,
-            });
-            await this.invoiceService.updateDocument({
-              id: invoice.id,
-              errors: 'TODOS LOS PRODUCTOS FUERON EXCLUIDOS',
-              extracted: false,
-              validated: false,
-              status: 'DELIVERED',
-            });
-            continue;
-          }
-
-          // 7.4. Calculate overall confidence
-          const confidence = this.calculateConfidence(processedData);
-          this.logger.log(
-            `📊 Invoice ${invoice.id} - Overall confidence: ${confidence.overall.toFixed(2)}%`,
-          );
-          this.logger.log(
-            `   ├─ Header confidence: ${confidence.headerConfidence.toFixed(2)}%`,
-          );
-          this.logger.log(
-            `   └─ Details confidence: ${confidence.detailsConfidence.toFixed(2)}%`,
-          );
-
-          const isFullConfidence = confidence.overall === 100;
-          // 7.5. Save invoice with extracted fields
-          await this.invoiceService.saveInvoiceWithFields(
-            {
-              id: invoice.id,
-              extracted: true,
-              validated: isFullConfidence,
-              path: imagePath,
-              photoTypeOCR: photoTypeOcr,
-              status: 'PROCESSING', // Will update later based on confidence
-            },
-            processedData,
-          );
-
-          // 7.6. Decision logic based on confidence and validation
-          const hasErrors = errors && Object.keys(errors).length > 0;
-
-          if (isFullConfidence && !hasErrors) {
-            // Scenario 1: 100% confidence → Deliver to our Meiko tables automatically
-            this.logger.log(
-              `✅ Invoice ${invoice.id} - 100% confidence → Delivering to Meiko tables`,
-            );
-
-            try {
-              const headers = processedData.encabezado;
-
-              const numeroFactura = headers.find(
-                (f: any) => f.type === 'numero_factura',
-              )?.text;
-              const fechaFactura = DateTime.fromFormat(
-                headers.find((f: any) => f.type === 'fecha_factura')?.text,
-                'dd/MM/yyyy',
-              ).toString();
-              const razonSocial = headers.find(
-                (f: any) => f.type === 'razon_social',
-              )?.text;
-              const totalFactura = headers.find(
-                (f: any) => f.type === 'valor_total_factura',
-              )?.text;
-              const totalFacturaSinIva = headers.find(
-                (f: any) => f.type === 'total_factura_sin_iva',
-              )?.text;
-
-              const products = Utils.groupFields(processedData.detalles);
-
-              for (const product of products) {
-                const codigoProducto = product.find(
-                  (f: any) => f.type === 'codigo_producto',
-                )?.text;
-                const descripcion = product.find(
-                  (f: any) => f.type === 'item_descripcion_producto',
-                )?.text;
-                const tipoEmbalaje = product.find(
-                  (f: any) => f.type === 'tipo_embalaje',
-                )?.text;
-                const unidadEmbalaje = product.find(
-                  (f: any) => f.type === 'unidades_embalaje',
-                )?.text;
-                const packVendidos = product.find(
-                  (f: any) => f.type === 'packs_vendidos',
-                )?.text;
-                const valorVenta = product.find(
-                  (f: any) => f.type === 'valor_venta_item',
-                )?.text;
-                const unidadesVendidas = product.find(
-                  (f: any) => f.type === 'unidades_vendidas',
-                )?.text;
-                const valorIbua = product.find(
-                  (f: any) => f.type === 'valor_ibua_y_otros',
-                )?.text;
-                const row = product.find(
-                  (f: any) => f.type === 'item_descripcion_producto',
-                )?.row;
-
-                await this.meikoService.createFields({
-                  meikoDocument: { connect: { id: invoice.id } },
-                  surveyRecordId: Number(invoice.surveyRecordId),
-                  invoiceNumber: numeroFactura,
-                  documentDate: fechaFactura ? fechaFactura : null,
-                  businessName: razonSocial,
-                  productCode: codigoProducto,
-                  description: descripcion,
-                  packagingType: tipoEmbalaje,
-                  packagingUnit: unidadEmbalaje
-                    ? parseFloat(unidadEmbalaje)
-                    : null,
-                  packsSold: packVendidos ? parseFloat(packVendidos) : null,
-                  saleValue: valorVenta ? parseInt(valorVenta) : null,
-                  unitsSold: unidadesVendidas
-                    ? parseFloat(unidadesVendidas)
-                    : null,
-                  totalDocument: totalFactura ? parseFloat(totalFactura) : null,
-                  rowNumber: row,
-                  totalDocumentWithoutIVA: totalFacturaSinIva,
-                  valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
-                });
-              }
-
+            if (!isDownloadable) {
+              this.logger.warn(
+                `⚠️ Invoice ${invoice.id} - Image not downloadable or viewable`,
+              );
               await this.meikoService.createStatus({
-                digitalizationStatusId: InvoiceStatus.PROCESADO,
+                digitalizationStatusId: InvoiceStatus.ERROR_DE_DESCARGA,
                 invoiceId: invoice.id,
               });
               await this.invoiceService.updateDocument({
                 id: invoice.id,
+                path: imagePath,
+                errors: 'NO DESCARGABLE O VISUALIZABLE',
+                extracted: false,
+                validated: false,
                 status: 'DELIVERED',
-                validated: true,
               });
-              deliveredCount++;
-              this.logger.log(
-                `🚀 Invoice ${invoice.id} - Successfully delivered to Meiko tables`,
-              );
-            } catch (deliveryError: any) {
+              errorCount++;
+              return;
+            }
+
+            // 7.2. Process with OCR
+            this.logger.log(`🔍 Invoice ${invoice.id} - Processing with OCR...`);
+            const ocrResult = await this.ocrService.processInvoice({
+              filePath: imagePath,
+              typeOfInvoice: invoice.photoType || '',
+            });
+
+            if (!ocrResult.success || !ocrResult.data) {
               this.logger.error(
-                `❌ Invoice ${invoice.id} - Delivery to Meiko tables failed: ${deliveryError.message}`,
+                `❌ Invoice ${invoice.id} - OCR processing failed: ${ocrResult.error}`,
               );
               await this.invoiceService.updateDocument({
                 id: invoice.id,
-                status: 'PENDING_TO_SEND',
-                errors: `DELIVERY_ERROR: ${deliveryError.message}`,
+                path: imagePath,
+                errors: `OCR_ERROR: ${ocrResult.error}`,
+                extracted: false,
+                validated: false,
+                status: 'ERROR',
               });
               errorCount++;
+              return;
             }
-          } else {
-            // Scenario 2: < 100% confidence → Requires manual validation
+
+            // 7.3. Create document and process (normalize, validate, infer)
+            const photoTypeOcr =
+              ocrResult.data.data?.photoTypeOcr || invoice.photoType;
             this.logger.log(
-              `⚠️ Invoice ${invoice.id} - Confidence < 100% or has errors → Requires manual validation`,
+              `📋 Invoice ${invoice.id} - Document type: ${photoTypeOcr}`,
             );
 
-            const errorMessages: string[] = [];
-            if (!isFullConfidence) {
-              errorMessages.push(
-                `CONFIDENCE_LOW: ${confidence.overall.toFixed(2)}%`,
+            let document: any;
+            try {
+              document = DocumentFactory.create(
+                photoTypeOcr,
+                ocrResult.data.response,
+                this.meikoService,
+                this.invoiceService,
               );
+            } catch (error: any) {
+              this.logger.error(
+                `❌ Invoice ${invoice.id} - Unsupported document type: ${photoTypeOcr}`,
+              );
+              await this.invoiceService.updateDocument({
+                id: invoice.id,
+                path: imagePath,
+                errors: `UNEXPECTED ERROR: ${photoTypeOcr}`,
+                extracted: false,
+                validated: false,
+                status: 'ERROR',
+              });
+              errorCount++;
+              return;
             }
-            if (hasErrors) {
-              errorMessages.push(
-                `VALIDATION_ERRORS: ${JSON.stringify(errors)}`,
+
+            await document.process();
+            const { data: processedData, errors, isValid } = document.get();
+
+            if (!isValid) {
+              await this.meikoService.createStatus({
+                digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA,
+                invoiceId: invoice.id,
+              });
+              await this.invoiceService.updateDocument({
+                id: invoice.id,
+                path: imagePath,
+                errors: 'FECHA OBSOLETA',
+                extracted: false,
+                validated: false,
+                status: 'DELIVERED',
+              });
+              return;
+            }
+
+            if(processedData.detalles.length === 0){
+              await this.meikoService.createStatus({
+                digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO,
+                invoiceId: invoice.id,
+              });
+              await this.invoiceService.updateDocument({
+                id: invoice.id,
+                errors: 'TODOS LOS PRODUCTOS FUERON EXCLUIDOS',
+                extracted: false,
+                validated: false,
+                status: 'DELIVERED',
+              });
+              return;
+            }
+
+            // 7.4. Calculate overall confidence
+            const confidence = this.calculateConfidence(processedData);
+            this.logger.log(
+              `📊 Invoice ${invoice.id} - Overall confidence: ${confidence.overall.toFixed(2)}%`,
+            );
+            this.logger.log(
+              `   ├─ Header confidence: ${confidence.headerConfidence.toFixed(2)}%`,
+            );
+            this.logger.log(
+              `   └─ Details confidence: ${confidence.detailsConfidence.toFixed(2)}%`,
+            );
+
+            const isFullConfidence = confidence.overall === 100;
+            // 7.5. Save invoice with extracted fields
+            await this.invoiceService.saveInvoiceWithFields(
+              {
+                id: invoice.id,
+                extracted: true,
+                validated: isFullConfidence,
+                path: imagePath,
+                photoTypeOCR: photoTypeOcr,
+                status: 'PROCESSING', // Will update later based on confidence
+              },
+              processedData,
+            );
+
+            // 7.6. Decision logic based on confidence and validation
+            const hasErrors = errors && Object.keys(errors).length > 0;
+
+            if (isFullConfidence && !hasErrors) {
+              // Scenario 1: 100% confidence → Deliver to our Meiko tables automatically
+              this.logger.log(
+                `✅ Invoice ${invoice.id} - 100% confidence → Delivering to Meiko tables`,
+              );
+
+              try {
+                const headers = processedData.encabezado;
+
+                const numeroFactura = headers.find(
+                  (f: any) => f.type === 'numero_factura',
+                )?.text;
+                const fechaFactura = DateTime.fromFormat(
+                  headers.find((f: any) => f.type === 'fecha_factura')?.text,
+                  'dd/MM/yyyy',
+                ).toString();
+                const razonSocial = headers.find(
+                  (f: any) => f.type === 'razon_social',
+                )?.text;
+                const totalFactura = headers.find(
+                  (f: any) => f.type === 'valor_total_factura',
+                )?.text;
+                const totalFacturaSinIva = headers.find(
+                  (f: any) => f.type === 'total_factura_sin_iva',
+                )?.text;
+
+                const products = Utils.groupFields(processedData.detalles);
+
+                for (const product of products) {
+                  const codigoProducto = product.find(
+                    (f: any) => f.type === 'codigo_producto',
+                  )?.text;
+                  const descripcion = product.find(
+                    (f: any) => f.type === 'item_descripcion_producto',
+                  )?.text;
+                  const tipoEmbalaje = product.find(
+                    (f: any) => f.type === 'tipo_embalaje',
+                  )?.text;
+                  const unidadEmbalaje = product.find(
+                    (f: any) => f.type === 'unidades_embalaje',
+                  )?.text;
+                  const packVendidos = product.find(
+                    (f: any) => f.type === 'packs_vendidos',
+                  )?.text;
+                  const valorVenta = product.find(
+                    (f: any) => f.type === 'valor_venta_item',
+                  )?.text;
+                  const unidadesVendidas = product.find(
+                    (f: any) => f.type === 'unidades_vendidas',
+                  )?.text;
+                  const valorIbua = product.find(
+                    (f: any) => f.type === 'valor_ibua_y_otros',
+                  )?.text;
+                  const row = product.find(
+                    (f: any) => f.type === 'item_descripcion_producto',
+                  )?.row;
+
+                  await this.meikoService.createFields({
+                    meikoDocument: { connect: { id: invoice.id } },
+                    surveyRecordId: Number(invoice.surveyRecordId),
+                    invoiceNumber: numeroFactura,
+                    documentDate: fechaFactura ? fechaFactura : null,
+                    businessName: razonSocial,
+                    productCode: codigoProducto,
+                    description: descripcion,
+                    packagingType: tipoEmbalaje,
+                    packagingUnit: unidadEmbalaje
+                      ? parseFloat(unidadEmbalaje)
+                      : null,
+                    packsSold: packVendidos ? parseFloat(packVendidos) : null,
+                    saleValue: valorVenta ? parseInt(valorVenta) : null,
+                    unitsSold: unidadesVendidas
+                      ? parseFloat(unidadesVendidas)
+                      : null,
+                    totalDocument: totalFactura ? parseFloat(totalFactura) : null,
+                    rowNumber: row,
+                    totalDocumentWithoutIVA: totalFacturaSinIva,
+                    valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
+                  });
+                }
+
+                await this.meikoService.createStatus({
+                  digitalizationStatusId: InvoiceStatus.PROCESADO,
+                  invoiceId: invoice.id,
+                });
+                await this.invoiceService.updateDocument({
+                  id: invoice.id,
+                  status: 'DELIVERED',
+                  validated: true,
+                });
+                deliveredCount++;
+                this.logger.log(
+                  `🚀 Invoice ${invoice.id} - Successfully delivered to Meiko tables`,
+                );
+              } catch (deliveryError: any) {
+                this.logger.error(
+                  `❌ Invoice ${invoice.id} - Delivery to Meiko tables failed: ${deliveryError.message}`,
+                );
+                await this.invoiceService.updateDocument({
+                  id: invoice.id,
+                  status: 'PENDING_TO_SEND',
+                  errors: `DELIVERY_ERROR: ${deliveryError.message}`,
+                });
+                errorCount++;
+              }
+            } else {
+              // Scenario 2: < 100% confidence → Requires manual validation
+              this.logger.log(
+                `⚠️ Invoice ${invoice.id} - Confidence < 100% or has errors → Requires manual validation`,
+              );
+
+              const errorMessages: string[] = [];
+              if (!isFullConfidence) {
+                errorMessages.push(
+                  `CONFIDENCE_LOW: ${confidence.overall.toFixed(2)}%`,
+                );
+              }
+              if (hasErrors) {
+                errorMessages.push(
+                  `VALIDATION_ERRORS: ${JSON.stringify(errors)}`,
+                );
+              }
+
+              await this.invoiceService.updateDocument({
+                id: invoice.id,
+                status: 'PENDING_VALIDATION',
+                validated: false,
+                errors: errorMessages.join(' | '),
+              });
+              validationRequiredCount++;
+              this.logger.log(
+                `📋 Invoice ${invoice.id} - Moved to manual validation queue`,
               );
             }
 
+            processedCount++;
+          } catch (error) {
+            this.logger.error(
+              `❌ Error processing invoice ${invoice.id}: ${error.message}`,
+              error.stack,
+            );
             await this.invoiceService.updateDocument({
               id: invoice.id,
-              status: 'PENDING_VALIDATION',
-              validated: false,
-              errors: errorMessages.join(' | '),
+              status: 'ERROR',
+              errors: `PROCESSING_ERROR: ${error.message}`,
             });
-            validationRequiredCount++;
-            this.logger.log(
-              `📋 Invoice ${invoice.id} - Moved to manual validation queue`,
-            );
+            errorCount++;
           }
+        }),
+      );
 
-          processedCount++;
-        } catch (error) {
-          this.logger.error(
-            `❌ Error processing invoice ${invoice.id}: ${error.message}`,
-            error.stack,
-          );
-          await this.invoiceService.updateDocument({
-            id: invoice.id,
-            status: 'ERROR',
-            errors: `PROCESSING_ERROR: ${error.message}`,
-          });
-          errorCount++;
-        }
-      }
+      // Wait for all processing tasks to complete
+      await Promise.all(processingTasks);
 
       // 8. Summary log
       this.logger.log('\n📊 Extraction cron job completed');
