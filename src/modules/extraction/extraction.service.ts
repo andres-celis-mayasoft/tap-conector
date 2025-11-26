@@ -225,6 +225,21 @@ export class ExtractionService {
             continue;
           }
 
+          if(processedData.detalles.length === 0){
+            await this.meikoService.createStatus({
+              digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO,
+              invoiceId: invoice.id,
+            });
+            await this.invoiceService.updateDocument({
+              id: invoice.id,
+              errors: 'TODOS LOS PRODUCTOS FUERON EXCLUIDOS',
+              extracted: false,
+              validated: false,
+              status: 'DELIVERED',
+            });
+            continue;
+          }
+
           // 7.4. Calculate overall confidence
           const confidence = this.calculateConfidence(processedData);
           this.logger.log(
@@ -339,11 +354,6 @@ export class ExtractionService {
                 digitalizationStatusId: InvoiceStatus.PROCESADO,
                 invoiceId: invoice.id,
               });
-              // await this.invoiceService.deliverToMeikoTables(
-              //   invoice.id,
-              //   invoice,
-              //   processedData,
-              // );
               await this.invoiceService.updateDocument({
                 id: invoice.id,
                 status: 'DELIVERED',

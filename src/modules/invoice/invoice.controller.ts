@@ -88,7 +88,7 @@ export class InvoiceController {
       });
 
       this.logger.log(
-        `✅ Invoice ${saveInvoiceDto.invoiceId} saved successfully. Delivered: ${result.delivered}`,
+        `✅ Invoice ${saveInvoiceDto.invoiceId} saved successfully. `,
       );
 
       return result;
@@ -100,7 +100,7 @@ export class InvoiceController {
       throw error;
     }
   }
-
+  
   /**
    * Mark invoice as outdated
    * Inserts status record and updates document to DELIVERED

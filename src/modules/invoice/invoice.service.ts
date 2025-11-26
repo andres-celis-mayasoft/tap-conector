@@ -8,12 +8,18 @@ import { PrismaService } from 'src/database/services/prisma.service';
 import { Prisma } from '@prisma/client-bd';
 import { IMAGE_DPI } from 'src/constants/business';
 import { InvoiceStatus } from '../meiko/enums/status.enum';
+import { DateTime } from 'luxon';
+import { Utils } from '../validator/documents/utils';
+import { MeikoService } from '../meiko/meiko.service';
 
 @Injectable()
 export class InvoiceService {
   private readonly logger = new Logger(InvoiceService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly meikoService: MeikoService,
+  ) {}
 
   isExcluded(description: string) {
     return this.prisma.excludedProducts.findFirst({
@@ -644,6 +650,79 @@ export class InvoiceService {
     }
   }
 
+  async updateField(name: string, documentId: number, row: number | null, updates: Partial<Prisma.FieldUpdateInput>): Promise<void> {
+    const field = await this.prisma.field.findFirst({
+      where: { name, documentId, row },
+    });
+
+    if(!field) throw new Error(`Field ${name} not found for document ${documentId} and row ${row}`);
+
+    await this.prisma.field.update({
+      where: { id: field.id },
+      data: updates,
+    });
+
+
+  }
+
+  /**
+   * Release invoices that have been in IN_CAPTURE status for more than 30 minutes
+   * Changes their status back to PENDING_VALIDATION and clears the assignment
+   *
+   * @returns Number of invoices released
+   */
+  async releaseUnresolvedInvoices(): Promise<number> {
+    try {
+      const thirtyMinutesAgo = DateTime.now().minus({ minutes: 30 }).toJSDate();
+
+      // Find invoices in IN_CAPTURE status that were assigned more than 30 minutes ago
+      const unresolvedInvoices = await this.prisma.document.findMany({
+        where: {
+          status: 'IN_CAPTURE',
+          assignedAt: {
+            lt: thirtyMinutesAgo,
+          },
+          completedAt: null,
+        },
+      });
+
+      if (unresolvedInvoices.length === 0) {
+        return 0;
+      }
+
+      this.logger.log(`🔓 Found ${unresolvedInvoices.length} invoices to release`);
+
+      // Release all unresolved invoices
+      const result = await this.prisma.document.updateMany({
+        where: {
+          status: 'IN_CAPTURE',
+          assignedAt: {
+            lt: thirtyMinutesAgo,
+          },
+          completedAt: null,
+        },
+        data: {
+          status: 'PENDING_VALIDATION',
+          assignedUserId: null,
+          assignedAt: null,
+          captureStartDate: null,
+        },
+      });
+
+      this.logger.log(
+        `✅ Released ${result.count} invoices that exceeded 30 minutes without resolution`,
+      );
+
+      return result.count;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error releasing unresolved invoices: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
   /**
    * Save corrected invoice data from manual validation
    * Updates field values without overwriting the original OCR data
@@ -652,9 +731,9 @@ export class InvoiceService {
    * @returns Result with delivery status
    */
   async saveCorrectedInvoice(saveInvoiceDto: any): Promise<any> {
-    try {
+    try { 
       const { userId, invoiceId, encabezado, detalles } = saveInvoiceDto;
-
+    
       this.logger.log(
         `💾 Saving corrected invoice ${invoiceId} by user ${userId}`,
       );
@@ -673,135 +752,104 @@ export class InvoiceService {
         );
       }
 
-      // Update fields with corrected values
-      // We'll add new records with the corrected values instead of overwriting
-      const correctedHeaderFields = encabezado.map((field: any) => ({
-        invoiceId: document.documentId,
-        name: field.type,
-        value: field.text,
-        confidence: field.confidence,
-        type: 'ENCABEZADO',
-        extracted: false, // Mark as manually entered
-        validated: true,
-      }));
+      const headers = encabezado;
 
-      const correctedDetailFields = detalles.map((field: any) => ({
-        invoiceId: document.documentId,
-        row: field.row,
-        name: field.type,
-        value: field.text,
-        confidence: field.confidence,
-        type: 'DETALLE',
-        extracted: false, // Mark as manually entered
-        validated: true,
-      }));
+      const numeroFactura = headers.find(
+        (f: any) => f.type === 'numero_factura',
+      )?.text;
+      const fechaFactura = DateTime.fromFormat(
+        headers.find((f: any) => f.type === 'fecha_factura')?.text,
+        'dd/MM/yyyy',
+      ).toString();
+      const razonSocial = headers.find(
+        (f: any) => f.type === 'razon_social',
+      )?.text;
+      const totalFactura = headers.find(
+        (f: any) => f.type === 'valor_total_factura',
+      )?.text;
+      const totalFacturaSinIva = headers.find(
+        (f: any) => f.type === 'total_factura_sin_iva',
+      )?.text;
 
-      // Delete old fields and insert corrected ones in a transaction
-      await this.prisma.$transaction(async (tx) => {
-        // Delete existing fields
-        await tx.field.deleteMany({
-          where: { documentId: document.documentId },
+      const products = Utils.groupFields(detalles);
+
+      for (const product of products) {
+        const codigoProducto = product.find(
+          (f: any) => f.type === 'codigo_producto',
+        )?.text;
+        const descripcion = product.find(
+          (f: any) => f.type === 'item_descripcion_producto',
+        )?.text;
+        const tipoEmbalaje = product.find(
+          (f: any) => f.type === 'tipo_embalaje',
+        )?.text;
+        const unidadEmbalaje = product.find(
+          (f: any) => f.type === 'unidades_embalaje',
+        )?.text;
+        const packVendidos = product.find(
+          (f: any) => f.type === 'packs_vendidos',
+        )?.text;
+        const valorVenta = product.find(
+          (f: any) => f.type === 'valor_venta_item',
+        )?.text;
+        const unidadesVendidas = product.find(
+          (f: any) => f.type === 'unidades_vendidas',
+        )?.text;
+        const valorIbua = product.find(
+          (f: any) => f.type === 'valor_ibua_y_otros',
+        )?.text;
+        const row = product.find(
+          (f: any) => f.type === 'item_descripcion_producto',
+        )?.row;
+
+        await this.meikoService.createFields({
+          meikoDocument: { connect: { id: document.documentId } },
+          surveyRecordId: Number(document.surveyId),
+          invoiceNumber: numeroFactura,
+          documentDate: fechaFactura ? fechaFactura : null,
+          businessName: razonSocial,
+          productCode: codigoProducto,
+          description: descripcion,
+          packagingType: tipoEmbalaje,
+          packagingUnit: unidadEmbalaje ? parseFloat(unidadEmbalaje) : null,
+          packsSold: packVendidos ? parseFloat(packVendidos) : null,
+          saleValue: valorVenta ? parseInt(valorVenta) : null,
+          unitsSold: unidadesVendidas ? parseFloat(unidadesVendidas) : null,
+          totalDocument: totalFactura ? parseFloat(totalFactura) : null,
+          rowNumber: row,
+          totalDocumentWithoutIVA: totalFacturaSinIva,
+          valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
         });
 
-        // Insert corrected fields
-        await tx.field.createMany({
-          data: [...correctedHeaderFields, ...correctedDetailFields],
-        });
-      });
+      }
+      const fields = [...headers,...detalles]
 
-      // Update invoice JSON with corrected data
-      const correctedData = {
-        encabezado: encabezado.map((f: any) => ({
-          type: f.type,
-          text: f.text,
-          confidence: f.confidence,
-        })),
-        detalles: detalles.map((f: any) => ({
-          type: f.type,
-          text: f.text,
-          confidence: f.confidence,
-          row: f.row,
-        })),
-      };
+      for (const field of fields) {
 
-      // Calculate confidence to determine if we should auto-deliver
-      const headerConfidence =
-        encabezado.length > 0
-          ? (encabezado.reduce((sum: number, f: any) => sum + f.confidence, 0) /
-              encabezado.length) *
-            100
-          : 0;
+        const updates: Partial<Prisma.FieldUpdateInput> = {
+          corrected_value: field.text,
+        };
 
-      const detailsConfidence =
-        detalles.length > 0
-          ? (detalles.reduce((sum: number, f: any) => sum + f.confidence, 0) /
-              detalles.length) *
-            100
-          : 0;
-
-      const overallConfidence =
-        headerConfidence * 0.4 + detailsConfidence * 0.6;
-      const isFullConfidence = Math.round(overallConfidence) === 100;
-
-      let delivered = false;
-      let newStatus = 'VALIDATED';
-
-      // If 100% confidence, auto-deliver to Meiko tables
-      if (isFullConfidence) {
-        try {
-          // Get original Meiko invoice data
-          const meikoInvoice = await this.prisma.document.findUnique({
-            where: { id: document.id },
-          });
-
-          if (meikoInvoice) {
-            await this.deliverToMeikoTables(
-              invoiceId,
-              meikoInvoice,
-              correctedData,
-            );
-            newStatus = 'DELIVERED';
-            delivered = true;
-            this.logger.log(
-              `🚀 Invoice ${invoiceId} auto-delivered with 100% confidence`,
-            );
-          }
-        } catch (deliveryError) {
-          this.logger.error(
-            `❌ Auto-delivery failed for invoice ${invoiceId}: ${deliveryError.message}`,
-          );
-          newStatus = 'PENDING_TO_SEND';
-        }
+        await this.updateField(field.type, document.documentId, field.row || null, updates);
       }
 
-      // Update invoice status
-      await this.prisma.document.update({
-        where: { id: document.id },
-        data: {
-          mayaDocumentJSON: JSON.stringify(correctedData),
-          validated: true,
-          status: newStatus,
-          completedAt: new Date(),
-          captureEndDate: new Date(),
-        },
+      await this.meikoService.createStatus({
+        digitalizationStatusId: InvoiceStatus.PROCESADO,
+        invoiceId: document.documentId,
       });
 
-      this.logger.log(`✅ Invoice ${invoiceId} saved with status ${newStatus}`);
-
-      return {
-        success: true,
-        message: delivered
-          ? 'Invoice saved and delivered successfully'
-          : 'Invoice saved successfully',
-        invoiceId,
-        delivered,
-      };
-    } catch (error) {
+      await this.updateDocument({
+        id: document.id,
+        status: 'DELIVERED',
+        validated: true,
+        captureEndDate: new Date(),
+        completedAt: new Date()
+      });
+    } catch (e) {
       this.logger.error(
-        `❌ Error saving corrected invoice: ${error.message}`,
-        error.stack,
+        `❌ Error saving corrected invoice ${saveInvoiceDto.invoiceId}: ${e.message}`,
+        e.stack,
       );
-      throw error;
     }
   }
 }
