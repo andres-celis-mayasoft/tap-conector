@@ -89,6 +89,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
   }
 
   prune() {
+    this.data.detalles = Utils.removeFields(this.data.detalles, ["valor_unitario_item"]);
   }
 
   private inferEncabezado(): void {

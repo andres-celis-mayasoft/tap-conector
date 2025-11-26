@@ -86,6 +86,8 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
   }
 
   prune() {
+    this.data.encabezado = Utils.removeFields(this.data.encabezado, ["total_productos_filtrados"]);
+    this.data.detalles = Utils.removeFields(this.data.detalles, ["valor_iva", 'valor_descuento_item', 'precio_antes_iva']);
   }
 
   private inferEncabezado(): void {
