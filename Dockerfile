@@ -15,6 +15,9 @@ RUN npm ci
 # Copy source code
 COPY src ./src
 
+RUN npx prisma generate --schema=prisma/schema.prisma
+RUN npx prisma generate --schema=prisma/schema-meiko.prisma
+
 # Build the application
 RUN npm run build
 
