@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client-meiko';
+import { PrismaClient } from '@generated/client-meiko';
 
 /**
  * Prisma Service for Meiko Database

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaMeikoService } from '../../database/services/prisma-meiko.service';
 import { PrismaService } from '../../database/services/prisma.service';
-import { Prisma as PrismaMeikoTypes } from '@prisma/client-meiko';
-import { Prisma } from '@prisma/client-bd';
+import { Prisma } from '@generated/client';
+import { Prisma as PrismaMeiko } from '@generated/client-meiko';
 
 /**
  * Meiko Service
@@ -95,7 +95,7 @@ export class MeikoService {
     }
   }
 
-  async find(args: PrismaMeikoTypes.ResultFindFirstArgs) {
+  async find(args: PrismaMeiko.ResultFindFirstArgs) {
     return this.prismaMeiko.result.findFirst(args)
   }
 

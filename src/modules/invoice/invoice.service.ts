@@ -5,7 +5,8 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import sharp from 'sharp'; // 🧠 Used to validate image integrity
 import { PrismaService } from 'src/database/services/prisma.service';
-import { Prisma } from '@prisma/client-bd';
+import { Prisma } from '@generated/client';
+
 import { IMAGE_DPI } from 'src/constants/business';
 import { InvoiceStatus } from '../meiko/enums/status.enum';
 import { DateTime } from 'luxon';
@@ -650,19 +651,25 @@ export class InvoiceService {
     }
   }
 
-  async updateField(name: string, documentId: number, row: number | null, updates: Partial<Prisma.FieldUpdateInput>): Promise<void> {
+  async updateField(
+    name: string,
+    documentId: number,
+    row: number | null,
+    updates: Partial<Prisma.FieldUpdateInput>,
+  ): Promise<void> {
     const field = await this.prisma.field.findFirst({
       where: { name, documentId, row },
     });
 
-    if(!field) throw new Error(`Field ${name} not found for document ${documentId} and row ${row}`);
+    if (!field)
+      throw new Error(
+        `Field ${name} not found for document ${documentId} and row ${row}`,
+      );
 
     await this.prisma.field.update({
       where: { id: field.id },
       data: updates,
     });
-
-
   }
 
   /**
@@ -690,7 +697,9 @@ export class InvoiceService {
         return 0;
       }
 
-      this.logger.log(`🔓 Found ${unresolvedInvoices.length} invoices to release`);
+      this.logger.log(
+        `🔓 Found ${unresolvedInvoices.length} invoices to release`,
+      );
 
       // Release all unresolved invoices
       const result = await this.prisma.document.updateMany({
@@ -731,9 +740,9 @@ export class InvoiceService {
    * @returns Result with delivery status
    */
   async saveCorrectedInvoice(saveInvoiceDto: any): Promise<any> {
-    try { 
+    try {
       const { userId, invoiceId, encabezado, detalles } = saveInvoiceDto;
-    
+
       this.logger.log(
         `💾 Saving corrected invoice ${invoiceId} by user ${userId}`,
       );
@@ -820,17 +829,20 @@ export class InvoiceService {
           totalDocumentWithoutIVA: totalFacturaSinIva,
           valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
         });
-
       }
-      const fields = [...headers,...detalles]
+      const fields = [...headers, ...detalles];
 
       for (const field of fields) {
-
         const updates: Partial<Prisma.FieldUpdateInput> = {
           corrected_value: field.text,
         };
 
-        await this.updateField(field.type, document.documentId, field.row || null, updates);
+        await this.updateField(
+          field.type,
+          document.documentId,
+          field.row || null,
+          updates,
+        );
       }
 
       await this.meikoService.createStatus({
@@ -843,7 +855,7 @@ export class InvoiceService {
         status: 'DELIVERED',
         validated: true,
         captureEndDate: new Date(),
-        completedAt: new Date()
+        completedAt: new Date(),
       });
     } catch (e) {
       this.logger.error(

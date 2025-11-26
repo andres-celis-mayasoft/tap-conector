@@ -1,14 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { Prisma } from '@prisma/client-bd';
-import { TapService } from '../tap/tap.service';
 import { MeikoService } from '../meiko/meiko.service';
 import { InvoiceService } from '../invoice/invoice.service';
 import { DateUtils } from '../../utils/date';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { OcrService } from '../ocr/ocr.service';
-import { TAP_MEIKO_ID, TAP_PARAMS } from 'src/constants/business';
 import { DocumentFactory } from '../validator/documents/base/document.factory';
 import { InvoiceStatus } from '../meiko/enums/status.enum';
 import { DateTime } from 'luxon';
