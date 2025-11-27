@@ -73,7 +73,7 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
   }
 
   prune() {
-    this.data.detalles = Utils.removeFields(this.data.detalles, ["valor_unitario_item", 'valor_descuento_item', 'aplica_iva_item']);
+    this.data.detalles = Utils.removeFields(this.data.detalles, [ "valor_total_unitario_item","valor_unitario_item", 'valor_descuento_item', 'aplica_iva_item']);
   }
 
   private inferEncabezado(): void {
