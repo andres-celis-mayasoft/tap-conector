@@ -55,15 +55,15 @@ export class ExtractionService {
       this.logger.log(`📅 Date: ${date}`);
 
       // 2. Get parameters (returns path)
-      const parameters = { path: '/opt/meiko/facturas/procesados' };
+      const parameters = { path: '/app/uploads' };
       // const basePath = parameters.path || parameters.ruta || parameters;
       const basePath =
         parameters.path
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
 
       // 3. Create folder with path + date
-      const extractionPath = path.join(basePath, date);
-      await fs.mkdir(extractionPath, { recursive: true });
+      const extractionPath = path.join(basePath, '');
+      // await fs.mkdir(extractionPath, { recursive: true });
       this.logger.log(`✅ Created extraction folder: ${extractionPath}`);
 
       // 4. Get max invoice ID (only process new invoices not yet in our DB)
