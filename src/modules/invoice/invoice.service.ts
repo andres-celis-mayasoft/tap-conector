@@ -140,13 +140,16 @@ export class InvoiceService {
 
     try {
       this.logger.log(`🟡 Processing invoice ID ${invoice.id_factura}`);
-
+      
       const data = await this.downloadImage(invoice.link);
-
+      
+      this.logger.log(`🟡 Downloaded `);
       await this.saveTempFile(finalPath, data);
-
+      
+      this.logger.log(`🟡 Saved `);
       await this.validateImage(finalPath);
-
+      
+      this.logger.log(`🟡 Validated `);
       // Resize image with specified DPI
       // await this.resizeImageWithDPI(tempFile, finalPath);
 
