@@ -12,6 +12,7 @@ import { InvoiceStatus } from '../meiko/enums/status.enum';
 import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
 import { MeikoService } from '../meiko/meiko.service';
+import { DocumentFactory } from '../validator/documents/base/document.factory';
 
 @Injectable()
 export class InvoiceService {
@@ -140,15 +141,15 @@ export class InvoiceService {
 
     try {
       this.logger.log(`🟡 Processing invoice ID ${invoice.id_factura}`);
-      
+
       const data = await this.downloadImage(invoice.link);
-      
+
       this.logger.log(`🟡 Downloaded `);
       await this.saveTempFile(finalPath, data);
-      
+
       this.logger.log(`🟡 Saved `);
       await this.validateImage(finalPath);
-      
+
       this.logger.log(`🟡 Validated `);
       // Resize image with specified DPI
       // await this.resizeImageWithDPI(tempFile, finalPath);
@@ -865,5 +866,22 @@ export class InvoiceService {
         e.stack,
       );
     }
+  }
+
+  async testInvoice(
+    tipFoto: string,
+    testInvoice: { encabezado; detalles; tipoFacturaOcr },
+  ) {
+    const document = DocumentFactory.create(
+      testInvoice.tipoFacturaOcr,
+      { encabezado: testInvoice.encabezado, detalles: testInvoice.detalles },
+      this.meikoService,
+      this,
+    );
+    await document.process();
+
+    const { data } = document.get();
+    this.logger.log(`💾 Testing invoice with photo type ${tipFoto}`);
+    return data;
   }
 }

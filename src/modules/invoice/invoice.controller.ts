@@ -1,8 +1,17 @@
-import { Controller, Get, Post, Body, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Logger, Param } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
-import { GetInvoiceToFillDto, InvoiceToFillResponseDto } from './dto/invoice-to-fill.dto';
-import { SaveInvoiceDto, SaveInvoiceResponseDto, MarkInvoiceStatusDto, MarkInvoiceStatusResponseDto } from './dto/save-invoice.dto';
+import {
+  GetInvoiceToFillDto,
+  InvoiceToFillResponseDto,
+} from './dto/invoice-to-fill.dto';
+import {
+  SaveInvoiceDto,
+  SaveInvoiceResponseDto,
+  MarkInvoiceStatusDto,
+  MarkInvoiceStatusResponseDto,
+} from './dto/save-invoice.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('invoice')
 export class InvoiceController {
@@ -10,12 +19,6 @@ export class InvoiceController {
 
   constructor(private readonly invoiceService: InvoiceService) {}
 
-  /**
-   * Get invoice to fill for manual validation
-   * Assigns an invoice to the authenticated user or returns their currently assigned invoice
-   *
-   * @returns Invoice data with extracted fields
-   */
   @Get('invoice-to-fill')
   async getInvoiceToFill(
     @CurrentUser('id') userId: number,
@@ -27,7 +30,7 @@ export class InvoiceController {
 
       if (!invoice) {
         this.logger.warn(`⚠️ No invoices available for user ${userId}`);
-        return  {
+        return {
           invoiceId: 0,
         } as any;
       }
@@ -64,7 +67,6 @@ export class InvoiceController {
     }
   }
 
-
   /**
    * Save corrected invoice data from manual validation
    * Updates the invoice fields with corrected values
@@ -72,6 +74,29 @@ export class InvoiceController {
    * @param saveInvoiceDto - Invoice data with corrections
    * @returns Success response with delivery status
    */
+  @Public()
+  @Post('test-invoice')
+  async testInvoice(
+    @Param('tipoFoto') tipoFoto: string,
+    @Body() testInvoice: { encabezado; detalles; tipoFacturaOcr },
+  ) {
+    try {
+      const result = await this.invoiceService.testInvoice(
+        tipoFoto,
+        testInvoice,
+      );
+
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error testing invoice  ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
   @Post('save-invoice')
   async saveInvoice(
     @CurrentUser('id') userId: number,
@@ -100,7 +125,7 @@ export class InvoiceController {
       throw error;
     }
   }
-  
+
   /**
    * Mark invoice as outdated
    * Inserts status record and updates document to DELIVERED
