@@ -149,7 +149,7 @@ export class InvoiceService {
       await this.validateImage(tempFile);
 
       // Resize image with specified DPI
-      await this.resizeImageWithDPI(tempFile, finalPath);
+      // await this.resizeImageWithDPI(tempFile, finalPath);
 
       // this.updateInvoiceMetadata(invoice, finalPath, extension);
 

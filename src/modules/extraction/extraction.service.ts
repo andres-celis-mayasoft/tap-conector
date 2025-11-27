@@ -490,49 +490,6 @@ export class ExtractionService {
   }
 
   /**
-   * Process a single invoice
-   * Downloads, validates, and moves image to final path
-   */
-  private async processInvoice(invoice: any, extractionPath: string) {
-    const invoiceId = invoice.id_factura;
-    const imageUrl = invoice.stickerQR;
-
-    this.logger.log(`🟡 Processing invoice ${invoiceId}`);
-
-    if (!imageUrl) {
-      throw new Error(`Invoice ${invoiceId} has no stickerQR URL`);
-    }
-
-    // Generate temp and final paths
-    const tempFile = this.invoiceService.generateTempFilePath();
-    const extension = '.jpg';
-    const finalPath = this.invoiceService.generateFinalPath(
-      extractionPath,
-      `${invoiceId}${extension}`,
-    );
-
-    try {
-      // Download image
-      const imageData = await this.invoiceService.downloadImage(imageUrl);
-
-      // Save to temp file
-      await this.invoiceService.saveTempFile(tempFile, imageData);
-
-      // Validate image
-      await this.invoiceService.validateImage(tempFile);
-
-      // Move to final path if valid
-      await this.invoiceService.moveToFinalPath(tempFile, finalPath);
-
-      this.logger.log(`✅ Invoice ${invoiceId} processed successfully`);
-    } catch (error) {
-      // Cleanup temp file on error
-      await this.invoiceService.cleanupTempFile(tempFile);
-      throw error;
-    }
-  }
-
-  /**
    * Trigger extraction manually (for testing)
    * This can be called via an endpoint if needed
    */
