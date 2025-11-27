@@ -41,6 +41,10 @@ COPY --from=builder /app/prisma ./prisma
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
+RUN mkdir -p /app/uploads && \
+    chown -R nodejs:nodejs /app/uploads && \
+    chmod 755 /app/uploads
+
 USER nodejs
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
