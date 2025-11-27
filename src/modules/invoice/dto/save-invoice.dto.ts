@@ -15,6 +15,7 @@ export class FieldUpdateDto {
   type: string;
 
   @IsString()
+  @IsOptional()
   text: string;
 
   @IsNumber()
