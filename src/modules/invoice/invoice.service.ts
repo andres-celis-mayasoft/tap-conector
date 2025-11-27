@@ -133,7 +133,6 @@ export class InvoiceService {
     targetDir: string,
   ): Promise<{ isValid: boolean; path: string }> {
     const extension = '.jpg';
-    const tempFile = this.generateTempFilePath();
     const finalPath = this.generateFinalPath(
       targetDir,
       `${invoice.id}${extension}`,
@@ -144,9 +143,9 @@ export class InvoiceService {
 
       const data = await this.downloadImage(invoice.link);
 
-      await this.saveTempFile(tempFile, data);
+      await this.saveTempFile(finalPath, data);
 
-      await this.validateImage(tempFile);
+      await this.validateImage(finalPath);
 
       // Resize image with specified DPI
       // await this.resizeImageWithDPI(tempFile, finalPath);
@@ -161,7 +160,7 @@ export class InvoiceService {
       this.logger.error(
         `❌ Error processing invoice ${invoice.id_factura}: ${error.message}`,
       );
-      await this.cleanupTempFile(tempFile);
+      // await this.cleanupTempFile(tempFile);
       await this.handleDownloadError(invoice, error);
       return { path: finalPath, isValid: false };
     }
