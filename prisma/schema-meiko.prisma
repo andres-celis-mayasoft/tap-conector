@@ -3,7 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "./generated/client-meiko"
+  output   = "generated/client-meiko"
 }
 
 datasource db {

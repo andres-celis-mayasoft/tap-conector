@@ -1,19 +1,46 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { PrismaClient } from '@generated/client-meiko';
+import { join } from 'path';
 
-/**
- * Prisma Service for Meiko Database
- * Manages connection to the Meiko MySQL database
- */
 @Injectable()
-export class PrismaMeikoService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaMeikoService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaMeikoService.name);
+  private prisma: any;
 
   constructor() {
-    super({
-      log: ['error', 'warn'],
-      errorFormat: 'pretty',
-    });
+    // Import the Prisma Client at runtime using dynamic require with absolute path
+    try {
+      const clientPath = join(process.cwd(), 'prisma/generated/client-meiko');
+      const { PrismaClient } = require(clientPath);
+      this.prisma = new PrismaClient({
+        log: ['error', 'warn'],
+        errorFormat: 'pretty',
+      });
+    } catch (error) {
+      this.logger.error('Failed to load Meiko Prisma Client', error);
+      throw error;
+    }
+  }
+
+  // Expose PrismaClient methods
+  get $connect() {
+    return this.prisma.$connect.bind(this.prisma);
+  }
+
+  get $disconnect() {
+    return this.prisma.$disconnect.bind(this.prisma);
+  }
+
+  get $queryRaw() {
+    return this.prisma.$queryRaw;
+  }
+
+  // Expose models
+  get invoice() {
+    return this.prisma.invoice;
+  }
+
+  get result() {
+    return this.prisma.result;
   }
 
   async onModuleInit() {
