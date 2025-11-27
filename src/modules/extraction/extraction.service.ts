@@ -3,7 +3,6 @@ import { MeikoService } from '../meiko/meiko.service';
 import { InvoiceService } from '../invoice/invoice.service';
 import { DateUtils } from '../../utils/date';
 import * as path from 'path';
-import * as fs from 'fs/promises';
 import { OcrService } from '../ocr/ocr.service';
 import { DocumentFactory } from '../validator/documents/base/document.factory';
 import { InvoiceStatus } from '../meiko/enums/status.enum';
@@ -91,6 +90,7 @@ export class ExtractionService {
         documents.map((invoice) => ({
           status: 'PROCESSING',
           documentId: invoice.id,
+          surveyRecordId: invoice.surveyRecordId,
           photoType: invoice.photoType,
           documentUrl: invoice.link,
         })),
@@ -105,6 +105,7 @@ export class ExtractionService {
       let validationRequiredCount = 0;
       let errorCount = 0;
 
+      
       // Get thread count from environment variable, default to 4
       const THREAD_COUNT = parseInt(process.env.INVOICE_PROCESSING_THREADS || '4', 10);
       const limit = pLimit(THREAD_COUNT);
