@@ -1,4 +1,7 @@
-import { TiquetePosPostobonBodyFields, TiquetePosPostobonHeaderFields } from './tiquete-pos-postobon.fields';
+import {
+  TiquetePosPostobonBodyFields,
+  TiquetePosPostobonHeaderFields,
+} from './tiquete-pos-postobon.fields';
 import { TiquetePosPostobonInvoiceSchema } from './tiquete-pos-postobon.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
@@ -74,6 +77,9 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
   }
 
   prune() {
+    this.data.detalles = Utils.removeFields(this.data.detalles, [
+      'valor_descuento',
+    ]);
   }
 
   private inferEncabezado(): void {
@@ -100,10 +106,8 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     const products = Utils.groupFields(this.data.detalles);
 
     for (const product of products) {
-      const {
-        item_descripcion_producto: descripcion,
-        tipo_embalaje,
-      } = Utils.getFields<TiquetePosPostobonBodyFields>(product);
+      const { item_descripcion_producto: descripcion, tipo_embalaje } =
+        Utils.getFields<TiquetePosPostobonBodyFields>(product);
 
       if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
         product.forEach((field) => (field.confidence = 1));
@@ -114,7 +118,6 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
         razon_social?.text || '',
         descripcion?.text || '',
       );
-
 
       if (productDB?.description === descripcion.text?.toUpperCase()) {
         descripcion.confidence = 1;
@@ -138,9 +141,8 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
       return;
     }
 
-    const { total_factura_sin_iva } = Utils.getFields<TiquetePosPostobonHeaderFields>(
-      this.data.encabezado,
-    );
+    const { total_factura_sin_iva } =
+      Utils.getFields<TiquetePosPostobonHeaderFields>(this.data.encabezado);
 
     if (!total_factura_sin_iva) {
       return;
