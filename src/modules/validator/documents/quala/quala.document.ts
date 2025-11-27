@@ -57,6 +57,7 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
   async infer(): Promise<this> {
     this.inferEncabezado();
     await this.inferDetalles();
+    this.inferTotal();
     this.guessConfidence();
     return this;
   }
@@ -72,7 +73,8 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
       if (
         QUALA_PRODUCTS_TO_EXCLUDE_KEYWORDS.some((item) =>
           descripcion.text.includes(item),
-        ) && descripcion?.text != ''
+        ) &&
+        descripcion?.text != ''
       ) {
         rows.push(descripcion.row);
       }
@@ -93,8 +95,46 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
   }
 
   prune() {
-    this.data.encabezado = Utils.removeFields(this.data.encabezado, ["total_productos_filtrados"]);
-    this.data.detalles = Utils.removeFields(this.data.detalles, ["valor_iva", 'total_ico', 'valor_unitario_item']);
+    this.data.encabezado = Utils.removeFields(this.data.encabezado, [
+      'total_productos_filtrados',
+    ]);
+    this.data.detalles = Utils.removeFields(this.data.detalles, [
+      'procentaje_icui',
+      'valor_iva',
+      'total_ico',
+      'valor_unitario_item',
+    ]);
+  }
+
+  private inferTotal() {
+    const { valor_total_factura_sin_iva } = Utils.getFields<QualaHeaderFields>(
+      this.data.encabezado,
+    );
+    let total = 0;
+    const products = Utils.groupFields(this.data.detalles);
+
+    for (const product of products) {
+      const { valor_unitario_item, unidades_vendidas } =
+        Utils.getFields<QualaBodyFields>(product);
+      total =
+        total +
+        this.toNumber(valor_unitario_item) * this.toNumber(unidades_vendidas);
+    }
+
+    const difference = Math.abs(
+      this.toNumber(valor_total_factura_sin_iva) - total,
+    );
+    
+    // PARAMETRIZAR MARGEN DE ERROR
+    if (difference <= 1.0) {
+      valor_total_factura_sin_iva.confidence = 1;
+      for (const product of products) {
+        const { valor_unitario_item, unidades_vendidas } =
+          Utils.getFields<QualaBodyFields>(product);
+        valor_unitario_item.confidence = 1;
+        unidades_vendidas.confidence = 1;
+      }
+    }
   }
 
   private inferEncabezado(): void {
