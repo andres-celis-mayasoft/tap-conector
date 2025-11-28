@@ -5,12 +5,14 @@ export type AjeInvoiceSchema = {
     type: AjeHeaderFields;
     text?: string;
     confidence: number;
+    error?: string;
   }[];
   detalles: {
     type: AjeBodyFields;
     text?: string;
     confidence: number;
     row?: number;
+    error?: string;
   }[];
   tipoFacturaOcr?: string;
   urlFactura?: string;

@@ -872,16 +872,33 @@ export class InvoiceService {
     tipFoto: string,
     testInvoice: { encabezado; detalles; tipoFacturaOcr },
   ) {
-    const document = DocumentFactory.create(
-      testInvoice.tipoFacturaOcr,
-      { encabezado: testInvoice.encabezado, detalles: testInvoice.detalles },
-      this.meikoService,
-      this,
-    );
-    await document.process();
+    try {
 
-    const { data } = document.get();
-    this.logger.log(`💾 Testing invoice with photo type ${tipFoto}`);
-    return data;
+      const document = DocumentFactory.create(
+        testInvoice.tipoFacturaOcr,
+        { encabezado: testInvoice.encabezado, detalles: testInvoice.detalles },
+        this.meikoService,
+        this,
+      );
+      await document.process();
+      
+      const { data, isValid } = document.get();
+      
+      data.encabezado = data.encabezado.filter((field) => (field.confidence < 1))as any;
+      // si no tiene error, fue el 
+      data.detalles = data.detalles.filter((field) => (field.confidence < 1 )) as any;
+      
+      
+      this.logger.log(`💾 Testing invoice with photo type ${tipFoto}`);
+      return data;
+    }catch(error){
+      this.logger.error(
+        `❌ Error testing invoice: ${error.message}`,
+        error.stack,
+      );
+      return {
+        error: error.message
+      }
+    }
   }
 }

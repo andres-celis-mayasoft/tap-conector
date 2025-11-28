@@ -5,12 +5,14 @@ export type PostobonInvoiceSchema = {
     type: PostobonHeaderFields;
     text?: string;
     confidence: number;
+    error?: string;
   }[];
   detalles: {
     type: PostobonBodyFields;
     text?: string;
     confidence: number;
     row?: number;
+    error?: string;
   }[];
   tipoFacturaOcr?: string;
   urlFactura?: string;

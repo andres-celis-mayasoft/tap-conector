@@ -8,12 +8,14 @@ export type CokeInvoiceSchema = {
     type: CokeHeaderFields;
     text?: string;
     confidence: number;
+    error?: string;
   }[];
   detalles: {
     type: CokeBodyFields;
     text?: string;
     confidence: number;
     row?: number;
+    error?: string;
   }[];
   tipoFacturaOcr?: string;
   urlFactura?: string;

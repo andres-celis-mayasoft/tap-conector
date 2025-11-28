@@ -47,13 +47,15 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
     const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {
-      this.errors.fecha_factura = 'Fecha inválida (formato)';
+      fecha_factura.error = 'Fecha inválida (formato)';
       return;
     }
 
     const isValid = Utils.hasMonthsPassed(fecha_factura.text);
     this.isValid = isValid;
-    if (!isValid) this.errors.fecha_factura = 'Fecha obsoleta';
+    if (!isValid) {
+      fecha_factura.error = 'Fecha obsoleta';
+    }
   }
 
   async infer(): Promise<this> {
@@ -88,19 +90,27 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
   }
 
   prune() {
-    this.data.detalles = Utils.removeFields(this.data.detalles, ["valor_unitario_item"]);
+    this.data.detalles = Utils.removeFields(this.data.detalles, [
+      'valor_unitario_item',
+    ]);
   }
 
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<CokeHeaderFields>(this.data.encabezado);
 
-    if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
+    if (
+      DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid &&
+      !fecha_factura.error
+    ) {
       fecha_factura.confidence = 1;
     }
+
     if (this.isNumeric(numero_factura?.text?.slice(-5))) {
       numero_factura.confidence = 1;
       numero_factura.text = numero_factura?.text?.slice(-5);
+    } else {
+      numero_factura.error = 'Número de factura inválido';
     }
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
@@ -119,8 +129,8 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
         item_descripcion_producto: descripcion,
         codigo_producto,
         tipo_embalaje,
-        valor_total_unitario_item,
-        valor_ibua_y_otros
+        valor_unitario_item,
+        valor_ibua_y_otros,
       } = Utils.getFields<CokeBodyFields>(product);
 
       if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
@@ -141,7 +151,10 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
         codigo_producto.confidence = 1;
       }
 
-      if (productDB && productDB?.description === descripcion?.text?.toUpperCase()) {
+      if (
+        productDB &&
+        productDB?.description === descripcion?.text?.toUpperCase()
+      ) {
         descripcion.confidence = 1;
       }
 
@@ -150,45 +163,58 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
         tipo_embalaje.confidence = 1;
       }
 
-      if (productDB && productDB?.saleValue === valor_total_unitario_item?.text) {
-        valor_total_unitario_item.confidence = 1;
+      if (productDB && productDB?.saleValue === valor_unitario_item?.text) {
+        valor_unitario_item.confidence = 1;
       }
 
-      if (productDB && productDB?.valueIbuaAndOthers === valor_ibua_y_otros?.text) {
+      if (
+        productDB &&
+        productDB?.valueIbuaAndOthers === valor_ibua_y_otros?.text
+      ) {
         valor_ibua_y_otros.confidence = 1;
       }
 
-
       // Custom calculation
       this.inferProductByCalculation(product);
-      
     }
   }
   private inferProductByCalculation(product: any): void {
     const {
       valor_venta_item,
-      valor_total_unitario_item,
+      valor_unitario_item,
       valor_ibua_y_otros,
       unidades_embalaje,
       unidades_vendidas,
     } = Utils.getFields<CokeBodyFields>(product);
 
-    if(!valor_venta_item || !valor_total_unitario_item||
-      !valor_ibua_y_otros || 
-      !unidades_embalaje||
-      !unidades_vendidas ) return ;
+    if (
+      !valor_venta_item ||
+      !valor_unitario_item ||
+      !valor_ibua_y_otros ||
+      !unidades_embalaje ||
+      !unidades_vendidas
+    ) {
+      valor_venta_item.error = 'Missing fields for calculation inference';
+      return;
+    }
 
     const unidadesItem =
       this.toNumber(unidades_embalaje) / this.toNumber(unidades_vendidas);
-    const valorItem = this.toNumber(valor_total_unitario_item) / unidadesItem;
+    const valorItem = this.toNumber(valor_unitario_item) / unidadesItem;
     const valorVentaCalculado = valorItem - this.toNumber(valor_ibua_y_otros);
 
     if (valorVentaCalculado === this.toNumber(valor_venta_item)) {
       unidades_embalaje.confidence = 1;
       unidades_vendidas.confidence = 1;
-      valor_total_unitario_item.confidence = 1;
+      valor_unitario_item.confidence = 1;
       valor_ibua_y_otros.confidence = 1;
       valor_venta_item.confidence = 1;
+    } else {
+      valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_ibua_y_otros.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_unitario_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      unidades_vendidas.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      unidades_embalaje.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
     }
   }
 
@@ -214,23 +240,29 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
       calculatedTotal === this.toNumber(valorTotalFactura)
     ) {
       valorTotalFactura.confidence = 1;
-    }
+    } else
+      valorTotalFactura.error = `Total factura no coincide. Calculado: ${calculatedTotal}, Esperado: ${this.toNumber(valorTotalFactura)} `;
   }
 
   private guessConfidence(): void {
     for (const field of this.data.encabezado) {
-      if (field.confidence >= 0.95) {
+      if (!field.error && field.confidence < 0.95) {
+        field.error = 'Confianza insuficiente';
+      }
+      if (!field.error && field.confidence >= 0.95) {
         field.confidence = 1;
       }
     }
 
     for (const field of this.data.detalles) {
-      if (field.confidence >= 0.95) {
+      if (!field.error && field.confidence < 0.95) {
+        field.error = 'Confianza insuficiente';
+      }
+      if (!field.error && field.confidence >= 0.95) {
         field.confidence = 1;
       }
     }
   }
-
 
   private isNumeric(value: string | undefined): boolean {
     if (!value) return false;
