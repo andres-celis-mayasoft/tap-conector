@@ -2,7 +2,10 @@ import { PostobonBodyFields, PostobonHeaderFields } from './postobon.fields';
 import { PostobonInvoiceSchema } from './postobon.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
-import { EMBALAJES, EMBALAJES_POSTOBON_CAJA } from '../../utils/validator.utils';
+import {
+  EMBALAJES,
+  EMBALAJES_POSTOBON_CAJA,
+} from '../../utils/validator.utils';
 import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
@@ -31,20 +34,21 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {
-      this.errors.fecha_factura = 'Fecha inválida (formato)';
+      fecha_factura.error = 'Fecha inválida (formato)';
       return;
     }
 
     const isValid = Utils.hasMonthsPassed(fecha_factura.text);
     this.isValid = isValid;
-    if (!isValid) this.errors.fecha_factura = 'Fecha obsoleta';
+    if (!isValid) {
+      fecha_factura.error = 'Fecha obsoleta';
+    }
   }
 
   async infer(): Promise<this> {
     this.inferEncabezado();
     await this.inferDetalles();
     this.inferTotalFacturaSinIva();
-    this.addEsDevolucionField();
     this.guessConfidence();
     return this;
   }
@@ -73,20 +77,30 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
   }
 
   prune() {
-    this.data.detalles = Utils.removeFields(this.data.detalles, [ "valor_total_unitario_item","valor_unitario_item", 'valor_descuento_item', 'aplica_iva_item']);
+    this.data.detalles = Utils.removeFields(this.data.detalles, [
+      'valor_unitario_item',
+      'valor_total_unitario_item',
+      'valor_descuento_item',
+      'aplica_iva_item',
+    ]);
   }
 
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<PostobonHeaderFields>(this.data.encabezado);
 
-    if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
+    if (
+      DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid &&
+      !fecha_factura.error
+    ) {
       fecha_factura.confidence = 1;
     }
+
     if (this.isNumeric(numero_factura?.text?.slice(-5))) {
       numero_factura.confidence = 1;
       numero_factura.text = numero_factura?.text?.slice(-5);
-    }
+    } else numero_factura.error = 'Número de factura inválido';
+
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
       razon_social.confidence = 1;
@@ -136,7 +150,9 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
         tipo_embalaje.confidence = 1;
       }
 
-      if (productDB?.packagingUnit?.toNumber() === Number(unidades_embalaje?.text)) {
+      if (
+        productDB?.packagingUnit?.toNumber() === Number(unidades_embalaje?.text)
+      ) {
         unidades_embalaje.confidence = 1;
       }
 
@@ -153,17 +169,9 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     }
   }
 
-  /**
-   * Maneja la lógica específica de embalaje de Postobon:
-   * - Si es CAJA: el valor viene por packs_vendidos, unidades_vendidas se limpia
-   * - Si NO es CAJA: el valor viene por unidades_vendidas, packs_vendidos se limpia
-   */
   private inferEmbalaje(product: any[]): void {
-    const {
-      tipo_embalaje,
-      unidades_vendidas,
-      packs_vendidos,
-    } = Utils.getFields<PostobonBodyFields>(product);
+    const { tipo_embalaje, unidades_vendidas, packs_vendidos } =
+      Utils.getFields<PostobonBodyFields>(product);
 
     const embalaje = (tipo_embalaje?.text || '').trim().toUpperCase();
 
@@ -190,13 +198,6 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     }
   }
 
-  /**
-   * Valida los campos mediante cálculo:
-   * valorBase = cantidad * valorUnitario
-   * valorProducto = valorBase - descuento
-   * valorIva = valorProducto * (aplicaIva / 100)
-   * valorVentaCalculado = valorProducto + valorIva
-   */
   private inferProductByCalculation(product: any[]): void {
     const {
       packs_vendidos,
@@ -239,17 +240,25 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
       if (tipo_embalaje) tipo_embalaje.confidence = 1;
       if (valor_descuento_item) valor_descuento_item.confidence = 1;
       if (aplica_iva_item) aplica_iva_item.confidence = 1;
+    } else {
+      packs_vendidos.error = 'Valor de venta no concuerda con el cálculo';
+      unidades_vendidas.error = 'Valor de venta no concuerda con el cálculo';
+      valor_unitario_item.error = 'Valor de venta no concuerda con el cálculo';
+      valor_venta_item.error = 'Valor de venta no concuerda con el cálculo';
+      tipo_embalaje.error = 'Valor de venta no concuerda con el cálculo';
+      valor_descuento_item.error = 'Valor de venta no concuerda con el cálculo';
+      aplica_iva_item.error = 'Valor de venta no concuerda con el cálculo';
+      valor_venta_item.error = 'Valor de venta no concuerda con el cálculo';
     }
   }
 
-  /**
-   * Valida el total de factura sin IVA sumando los valores base de cada producto
-   */
+
   private inferTotalFacturaSinIva(): void {
     const products = Utils.groupFields(this.data.detalles);
     const headers = Utils.getFields<PostobonHeaderFields>(this.data.encabezado);
 
-    const totalFacturaSinIvaField = headers[PostobonHeaderFields.TOTAL_FACTURA_SIN_IVA];
+    const totalFacturaSinIvaField =
+      headers[PostobonHeaderFields.TOTAL_FACTURA_SIN_IVA];
     if (!totalFacturaSinIvaField) return;
 
     const totalFacturaSinIva = this.toNumber(totalFacturaSinIvaField) || 0;
@@ -266,7 +275,9 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
 
     if (diferencia >= 0.0 && diferencia <= 1.0) {
       totalFacturaSinIvaField.confidence = 1;
-    }
+    } else
+      totalFacturaSinIvaField.error =
+        'Total factura sin IVA no concuerda con la suma de los productos';
   }
 
   private calcularValorBaseProducto(product: any[]): number | null {
@@ -292,46 +303,9 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     return cantidadUnidades * valorUnitarioDbl;
   }
 
-  /**
-   * Agrega el campo ES_DEVOLUCION a cada producto si no existe
-   */
-  private addEsDevolucionField(): void {
-    const products = Utils.groupFields(this.data.detalles);
-
-    for (const product of products) {
-      if (!product || product.length === 0) continue;
-
-      const rowNumber = product[0].row;
-
-      const exists = product.some(
-        (f) => f.type === PostobonBodyFields.ES_DEVOLUCION,
-      );
-      if (exists) continue;
-
-      const newField: BodyField = {
-        type: PostobonBodyFields.ES_DEVOLUCION,
-        text: '0',
-        confidence: 1,
-        row: rowNumber,
-      };
-
-      product.push(newField);
-      this.data.detalles.push(newField);
-    }
-  }
-
   private guessConfidence(): void {
-    for (const field of this.data.encabezado) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
-
-    for (const field of this.data.detalles) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
+    Utils.guessConfidence(this.data.encabezado);
+    Utils.guessConfidence(this.data.detalles);
   }
 
   private isNumeric(value: string | undefined): boolean {

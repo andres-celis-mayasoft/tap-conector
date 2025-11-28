@@ -40,7 +40,6 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
   }
 
   validate(): void {
-    // Validate FECHA_FACTURA passed months
     const { fecha_factura } = Utils.getFields<CokeHeaderFields>(
       this.data.encabezado,
     );
@@ -109,9 +108,8 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
     if (this.isNumeric(numero_factura?.text?.slice(-5))) {
       numero_factura.confidence = 1;
       numero_factura.text = numero_factura?.text?.slice(-5);
-    } else {
-      numero_factura.error = 'Número de factura inválido';
-    }
+    } else numero_factura.error = 'Número de factura inválido';
+
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
       razon_social.confidence = 1;
@@ -245,23 +243,8 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
   }
 
   private guessConfidence(): void {
-    for (const field of this.data.encabezado) {
-      if (!field.error && field.confidence < 0.95) {
-        field.error = 'Confianza insuficiente';
-      }
-      if (!field.error && field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
-
-    for (const field of this.data.detalles) {
-      if (!field.error && field.confidence < 0.95) {
-        field.error = 'Confianza insuficiente';
-      }
-      if (!field.error && field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
+    Utils.guessConfidence(this.data.encabezado);
+    Utils.guessConfidence(this.data.detalles);
   }
 
   private isNumeric(value: string | undefined): boolean {

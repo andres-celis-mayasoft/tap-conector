@@ -34,6 +34,17 @@ export class Utils {
     return output.filter( r => r);
   }
 
+  static guessConfidence(fields) {
+    for (const field of fields) {
+      if (!field.error && field.confidence < 0.95) {
+        field.error = 'Confianza insuficiente';
+      }
+      if (!field.error && field.confidence >= 0.95) {
+        field.confidence = 1;
+      }
+    }
+  }
+
   static removeFields(rows: any[], types: string[]): any[] {
     return rows.filter((field) => !types.includes(field.type));
   }
