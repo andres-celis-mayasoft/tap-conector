@@ -873,7 +873,6 @@ export class InvoiceService {
     testInvoice: { encabezado; detalles; tipoFacturaOcr },
   ) {
     try {
-
       const document = DocumentFactory.create(
         testInvoice.tipoFacturaOcr,
         { encabezado: testInvoice.encabezado, detalles: testInvoice.detalles },
@@ -881,24 +880,41 @@ export class InvoiceService {
         this,
       );
       await document.process();
-      
+
       const { data, isValid } = document.get();
-      
-      data.encabezado = data.encabezado.filter((field) => (field.confidence < 1))as any;
-      // si no tiene error, fue el 
-      data.detalles = data.detalles.filter((field) => (field.confidence < 1 )) as any;
-      
-      
+
+      data.encabezado = data.encabezado.filter(
+        (field) => field.confidence < 1,
+      ) as any;
+      // si no tiene error, fue el
+      data.detalles = data.detalles.filter(
+        (field) => field.confidence < 1,
+      ) as any;
+
       this.logger.log(`💾 Testing invoice with photo type ${tipFoto}`);
-      return data;
-    }catch(error){
+      return [
+        ...data.encabezado.map((field) =>  'Field: ' +
+            field.type +
+            ' Error: ' +
+            field.error,),
+        ...data.detalles.map(
+          (field) =>
+            'Field: ' +
+            field.type +
+            ' Row: ' +
+            field.row +
+            ' Error: ' +
+            field.error,
+        ),
+      ];
+    } catch (error) {
       this.logger.error(
         `❌ Error testing invoice: ${error.message}`,
         error.stack,
       );
       return {
-        error: error.message
-      }
+        error: error.message,
+      };
     }
   }
 }
