@@ -11,7 +11,6 @@ export enum QualaBodyFields {
   ITEM_DESCRIPCION_PRODUCTO = 'item_descripcion_producto',
   UNIDADES_EMBALAJE = 'unidades_embalaje',
   UNIDADES_VENDIDAS = 'unidades_vendidas',
-  TIPO_EMBALAJE = 'tipo_embalaje',
   VALOR_VENTA_ITEM = 'valor_venta_item',
   VALOR_UNITARIO_ITEM = 'valor_unitario_item',
 

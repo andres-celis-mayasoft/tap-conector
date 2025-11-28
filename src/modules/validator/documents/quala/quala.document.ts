@@ -45,13 +45,15 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {
-      this.errors.fecha_factura = 'Fecha inválida (formato)';
+      fecha_factura.error = 'Fecha inválida (formato)';
       return;
     }
 
     const isValid = Utils.hasMonthsPassed(fecha_factura.text);
     this.isValid = isValid;
-    if (!isValid) this.errors.fecha_factura = 'Fecha obsoleta';
+    if (!isValid) {
+      fecha_factura.error = 'Fecha obsoleta';
+    }
   }
 
   async infer(): Promise<this> {
@@ -99,9 +101,10 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
       'total_productos_filtrados',
     ]);
     this.data.detalles = Utils.removeFields(this.data.detalles, [
-      'procentaje_icui',
-      'valor_iva',
       'total_ico',
+      'procentaje_icui',
+      'total_ibua',
+      'valor_iva',
       'valor_unitario_item',
     ]);
   }
@@ -124,7 +127,7 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     const difference = Math.abs(
       this.toNumber(valor_total_factura_sin_iva) - total,
     );
-    
+
     // PARAMETRIZAR MARGEN DE ERROR
     if (difference <= 1.0) {
       valor_total_factura_sin_iva.confidence = 1;
@@ -134,6 +137,14 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
         valor_unitario_item.confidence = 1;
         unidades_vendidas.confidence = 1;
       }
+    } else {
+      valor_total_factura_sin_iva.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura_sin_iva)} `;
+      for (const product of products) {
+        const { valor_unitario_item, unidades_vendidas } =
+          Utils.getFields<QualaBodyFields>(product);
+        valor_unitario_item.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura_sin_iva)} `;
+        unidades_vendidas.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura_sin_iva)} `;
+      }
     }
   }
 
@@ -141,13 +152,18 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<QualaHeaderFields>(this.data.encabezado);
 
-    if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
+    if (
+      DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid &&
+      !fecha_factura.error
+    ) {
       fecha_factura.confidence = 1;
     }
+
     if (this.isNumeric(numero_factura?.text?.slice(-5))) {
       numero_factura.confidence = 1;
       numero_factura.text = numero_factura?.text?.slice(-5);
-    }
+    } else numero_factura.error = 'Número de factura inválido';
+
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
       razon_social.confidence = 1;
@@ -161,11 +177,8 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     const products = Utils.groupFields(this.data.detalles);
 
     for (const product of products) {
-      const {
-        item_descripcion_producto: descripcion,
-        codigo_producto,
-        tipo_embalaje,
-      } = Utils.getFields<QualaBodyFields>(product);
+      const { item_descripcion_producto: descripcion, codigo_producto } =
+        Utils.getFields<QualaBodyFields>(product);
 
       if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
         product.forEach((field) => (field.confidence = 1));
@@ -194,11 +207,6 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
 
       if (productDB?.description === descripcion.text?.toUpperCase()) {
         descripcion.confidence = 1;
-      }
-
-      const embalaje = (tipo_embalaje?.text || '').trim().toUpperCase();
-      if (EMBALAJES.includes(embalaje)) {
-        tipo_embalaje.confidence = 1;
       }
 
       // Validación específica de Quala por cálculo
@@ -292,6 +300,9 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     if (diferencia <= 1.0) {
       if (unidades_vendidas) unidades_vendidas.confidence = 1;
       if (valor_venta_item) valor_venta_item.confidence = 1;
+    } else {
+      unidades_vendidas.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
     }
   }
 
@@ -303,17 +314,8 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
   }
 
   private guessConfidence(): void {
-    for (const field of this.data.encabezado) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
-
-    for (const field of this.data.detalles) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
+    Utils.guessConfidence(this.data.encabezado);
+    Utils.guessConfidence(this.data.detalles);
   }
 
   private isNumeric(value: string | undefined): boolean {
