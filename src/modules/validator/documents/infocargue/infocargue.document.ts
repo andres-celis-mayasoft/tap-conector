@@ -88,16 +88,13 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
   }
 
   private inferEncabezado(): void {
-    const { fecha_factura, numero_factura, razon_social } =
+    const { fecha_factura, razon_social } =
       Utils.getFields<InfocargueHeaderFields>(this.data.encabezado);
 
     if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
       fecha_factura.confidence = 1;
     }
-    if (this.isNumeric(numero_factura?.text?.slice(-5))) {
-      numero_factura.confidence = 1;
-      numero_factura.text = numero_factura?.text?.slice(-5);
-    }
+    
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
       razon_social.confidence = 1;
@@ -113,11 +110,6 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
     for (const product of products) {
       const {
         item_descripcion_producto: descripcion,
-        codigo_producto,
-        tipo_embalaje,
-        valor_unitario_item,
-        valor_ibua_y_otros,
-        unidades_embalaje,
       } = Utils.getFields<InfocargueBodyFields>(product);
 
       if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
@@ -130,30 +122,8 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
         descripcion?.text || '',
       );
 
-      const result = await this.meikoService.find({
-        where: { productCode: codigo_producto.text },
-        select: { productCode: true },
-      });
-
-      if (result?.productCode === codigo_producto.text) {
-        codigo_producto.confidence = 1;
-      }
-
       if (productDB?.description === descripcion.text?.toUpperCase()) {
         descripcion.confidence = 1;
-      }
-
-      const embalaje = (tipo_embalaje.text || '').trim().toUpperCase();
-      if (EMBALAJES.includes(embalaje)) {
-        tipo_embalaje.confidence = 1;
-      }
-
-      if (productDB?.saleValue === valor_unitario_item.text) {
-        valor_unitario_item.confidence = 1;
-      }
-
-      if (productDB?.valueIbuaAndOthers === valor_ibua_y_otros.text) {
-        valor_ibua_y_otros.confidence = 1;
       }
 
       this.inferUnidadesEmbalaje(product, descripcion?.text || '');
@@ -190,7 +160,7 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
 
         if (valorExistente === numeroDescripcion) {
           unidades_embalaje.confidence = 1;
-        }
+        } else unidades_embalaje.error = `Unidades embalaje do not match description: Found ${numeroDescripcion}, Expected ${valorExistente}`;
       } catch (e) {
         // Valor no numérico, se ignora
       }
