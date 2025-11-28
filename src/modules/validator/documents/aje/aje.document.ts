@@ -11,11 +11,7 @@ import { InvoiceService } from 'src/modules/invoice/invoice.service';
 type HeaderField = AjeInvoiceSchema['encabezado'][number];
 type BodyField = AjeInvoiceSchema['detalles'][number];
 
-const AJE_PRODUCTS_TO_EXCLUDE_KEYWORDS = [
-  "ANDINA",
-  "ATUN ACEITE",
-  "TRULU",
-]
+const AJE_PRODUCTS_TO_EXCLUDE_KEYWORDS = ['ANDINA', 'ATUN ACEITE', 'TRULU'];
 
 export class AjeInvoice extends Document<AjeInvoiceSchema> {
   constructor(
@@ -37,14 +33,17 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
     const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {
-      this.errors.fecha_factura = 'Fecha inválida (formato)';
+      fecha_factura.error = 'Fecha inválida (formato)';
       return;
     }
 
     const isValid = Utils.hasMonthsPassed(fecha_factura.text);
     this.isValid = isValid;
-    if (!isValid) this.errors.fecha_factura = 'Fecha obsoleta';
+    if (!isValid) {
+      fecha_factura.error = 'Fecha obsoleta';
+    }
   }
+
 
   async infer(): Promise<this> {
     this.inferEncabezado();
@@ -64,7 +63,8 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
       if (
         AJE_PRODUCTS_TO_EXCLUDE_KEYWORDS.some((item) =>
           descripcion.text.includes(item),
-        ) && descripcion?.text != ''
+        ) &&
+        descripcion?.text != ''
       ) {
         rows.push(descripcion.row);
       }
@@ -85,21 +85,33 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
   }
 
   prune() {
-    this.data.encabezado = Utils.removeFields(this.data.encabezado, ["total_productos_filtrados"]);
-    this.data.detalles = Utils.removeFields(this.data.detalles, ["valor_iva", 'valor_descuento_item', 'precio_antes_iva']);
+    this.data.encabezado = Utils.removeFields(this.data.encabezado, [
+      'total_productos_filtrados',
+    ]);
+    this.data.detalles = Utils.removeFields(this.data.detalles, [
+      'total_pacas',
+      'valor_descuento',
+      'precio_antes_iva',
+      'valor_iva',
+    ]);
   }
 
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<AjeHeaderFields>(this.data.encabezado);
 
-    if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
+    if (
+      DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid &&
+      !fecha_factura.error
+    ) {
       fecha_factura.confidence = 1;
     }
+
     if (this.isNumeric(numero_factura?.text?.slice(-5))) {
       numero_factura.confidence = 1;
       numero_factura.text = numero_factura?.text?.slice(-5);
-    }
+    } else numero_factura.error = 'Número de factura inválido';
+
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
       razon_social.confidence = 1;
@@ -152,13 +164,6 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
     }
   }
 
-  /**
-   * Validación específica de Factura AJE:
-   * valorIvaCalculado = (precioAntesIva - valorDescuento) * (valorIva / 100)
-   * valorVentaCalculado = (precioAntesIva - valorDescuento) + valorIvaCalculado
-   *
-   * Si la diferencia con valorVentaItem es <= 1.0, se validan todos los campos
-   */
   private inferProductByCalculation(product: any[]): void {
     const {
       precio_antes_iva,
@@ -185,21 +190,17 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
       if (valor_descuento_item) valor_descuento_item.confidence = 1;
       if (valor_iva) valor_iva.confidence = 1;
       if (valor_venta_item) valor_venta_item.confidence = 1;
+    } else {
+      precio_antes_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `
+      valor_descuento_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `
+      valor_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `
+      valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `
     }
   }
 
   private guessConfidence(): void {
-    for (const field of this.data.encabezado) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
-
-    for (const field of this.data.detalles) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
+    Utils.guessConfidence(this.data.encabezado);
+    Utils.guessConfidence(this.data.detalles);
   }
 
   private isNumeric(value: string | undefined): boolean {
