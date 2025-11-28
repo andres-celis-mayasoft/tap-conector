@@ -110,7 +110,7 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
   }
 
   private inferTotal() {
-    const { valor_total_factura_sin_iva } = Utils.getFields<QualaHeaderFields>(
+    const { valor_total_factura } = Utils.getFields<QualaHeaderFields>(
       this.data.encabezado,
     );
     let total = 0;
@@ -125,12 +125,12 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     }
 
     const difference = Math.abs(
-      this.toNumber(valor_total_factura_sin_iva) - total,
+      this.toNumber(valor_total_factura) - total,
     );
 
     // PARAMETRIZAR MARGEN DE ERROR
     if (difference <= 1.0) {
-      valor_total_factura_sin_iva.confidence = 1;
+      valor_total_factura.confidence = 1;
       for (const product of products) {
         const { valor_unitario_item, unidades_vendidas } =
           Utils.getFields<QualaBodyFields>(product);
@@ -138,12 +138,12 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
         unidades_vendidas.confidence = 1;
       }
     } else {
-      valor_total_factura_sin_iva.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura_sin_iva)} `;
+      valor_total_factura.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura)} `;
       for (const product of products) {
         const { valor_unitario_item, unidades_vendidas } =
           Utils.getFields<QualaBodyFields>(product);
-        valor_unitario_item.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura_sin_iva)} `;
-        unidades_vendidas.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura_sin_iva)} `;
+        valor_unitario_item.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura)} `;
+        unidades_vendidas.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura)} `;
       }
     }
   }

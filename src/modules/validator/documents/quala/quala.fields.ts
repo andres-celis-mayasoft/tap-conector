@@ -3,7 +3,7 @@ export enum QualaHeaderFields {
   NUMERO_FACTURA = 'numero_factura',
   RAZON_SOCIAL = 'razon_social',
   VALOR_TOTAL_FACTURA = 'valor_total_factura',
-  VALOR_TOTAL_FACTURA_SIN_IVA = 'valor_total_factura_sin_iva',
+  TOTAL_FACTURA_SIN_IVA = 'total_factura_sin_iva',
 }
 
 export enum QualaBodyFields {

@@ -25,20 +25,21 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
   }
 
   validate(): void {
-    // Validate FECHA_FACTURA passed months
     const { fecha_factura } = Utils.getFields<FemsaHeaderFields>(
       this.data.encabezado,
     );
     const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {
-      this.errors.fecha_factura = 'Fecha inválida (formato)';
+      fecha_factura.error = 'Fecha inválida (formato)';
       return;
     }
 
     const isValid = Utils.hasMonthsPassed(fecha_factura.text);
     this.isValid = isValid;
-    if (!isValid) this.errors.fecha_factura = 'Fecha obsoleta';
+    if (!isValid) {
+      fecha_factura.error = 'Fecha obsoleta';
+    }
   }
 
   async infer(): Promise<this> {
@@ -72,19 +73,27 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
   }
 
   prune() {
+    this.data.detalles = Utils.removeFields(this.data.detalles, [
+      'valor_unitario_item',
+    ]);
   }
 
   private inferEncabezado(): void {
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<FemsaHeaderFields>(this.data.encabezado);
 
-    if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
+    if (
+      DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid &&
+      !fecha_factura.error
+    ) {
       fecha_factura.confidence = 1;
     }
+
     if (this.isNumeric(numero_factura?.text?.slice(-5))) {
       numero_factura.confidence = 1;
       numero_factura.text = numero_factura?.text?.slice(-5);
-    }
+    } else numero_factura.error = 'Número de factura inválido';
+
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
       razon_social.confidence = 1;
@@ -102,7 +111,7 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
         item_descripcion_producto: descripcion,
         codigo_producto,
         tipo_embalaje,
-        valor_total_unitario_item,
+        valor_unitario_item,
       } = Utils.getFields<FemsaBodyFields>(product);
 
       const productDB = await this.meikoService.findByDescription(
@@ -128,27 +137,16 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
         tipo_embalaje.confidence = 1;
       }
 
-      if (productDB?.saleValue === valor_total_unitario_item.text) {
-        valor_total_unitario_item.confidence = 1;
+      if (productDB?.saleValue === valor_unitario_item.text) {
+        valor_unitario_item.confidence = 1;
       }
-    
     }
   }
 
   private guessConfidence(): void {
-    for (const field of this.data.encabezado) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
-
-    for (const field of this.data.detalles) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
+    Utils.guessConfidence(this.data.encabezado);
+    Utils.guessConfidence(this.data.detalles);
   }
-
 
   private isNumeric(value: string | undefined): boolean {
     if (!value) return false;

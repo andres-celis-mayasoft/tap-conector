@@ -1,4 +1,7 @@
-import { InfocargueBodyFields, InfocargueHeaderFields } from './infocargue.fields';
+import {
+  InfocargueBodyFields,
+  InfocargueHeaderFields,
+} from './infocargue.fields';
 import { InfocargueInvoiceSchema } from './infocargue.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
@@ -84,17 +87,19 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
     return this;
   }
 
-  prune() {
-  }
+  prune() {}
 
   private inferEncabezado(): void {
     const { fecha_factura, razon_social } =
       Utils.getFields<InfocargueHeaderFields>(this.data.encabezado);
 
-    if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
+    if (
+      DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid &&
+      !fecha_factura.error
+    ) {
       fecha_factura.confidence = 1;
     }
-    
+
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
       razon_social.confidence = 1;
@@ -108,9 +113,8 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
     const products = Utils.groupFields(this.data.detalles);
 
     for (const product of products) {
-      const {
-        item_descripcion_producto: descripcion,
-      } = Utils.getFields<InfocargueBodyFields>(product);
+      const { item_descripcion_producto: descripcion } =
+        Utils.getFields<InfocargueBodyFields>(product);
 
       if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
         product.forEach((field) => (field.confidence = 1));
@@ -135,7 +139,8 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
    * Busca patrones como "x12", "X24", etc.
    */
   private inferUnidadesEmbalaje(product: any[], descripcion: string): void {
-    const { unidades_embalaje } = Utils.getFields<InfocargueBodyFields>(product);
+    const { unidades_embalaje } =
+      Utils.getFields<InfocargueBodyFields>(product);
 
     if (!unidades_embalaje) return;
 
@@ -160,7 +165,8 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
 
         if (valorExistente === numeroDescripcion) {
           unidades_embalaje.confidence = 1;
-        } else unidades_embalaje.error = `Unidades embalaje do not match description: Found ${numeroDescripcion}, Expected ${valorExistente}`;
+        } else
+          unidades_embalaje.error = `Unidades embalaje do not match description: Found ${numeroDescripcion}, Expected ${valorExistente}`;
       } catch (e) {
         // Valor no numérico, se ignora
       }
