@@ -42,13 +42,14 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
 
     const isValid = Utils.hasMonthsPassed(fecha_factura.text);
     this.isValid = isValid;
-    if (!isValid) this.errors.fecha_factura = 'Fecha obsoleta';
+    if (!isValid) {
+      fecha_factura.error = 'Fecha obsoleta';
+    }
   }
 
   async infer(): Promise<this> {
     this.inferEncabezado();
     await this.inferDetalles();
-    this.ajustarARiesgo();
     this.guessConfidence();
     return this;
   }
@@ -77,8 +78,13 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
   }
 
   prune() {
+    this.data.encabezado = Utils.removeFields(this.data.encabezado, [
+      'total_articulos',
+    ]);
     this.data.detalles = Utils.removeFields(this.data.detalles, [
+      'total_articulos',
       'valor_descuento',
+      'valor_subtotal_item',
     ]);
   }
 
@@ -86,13 +92,18 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     const { fecha_factura, numero_factura, razon_social } =
       Utils.getFields<TiquetePosPostobonHeaderFields>(this.data.encabezado);
 
-    if (DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid) {
+    if (
+      DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid &&
+      !fecha_factura.error
+    ) {
       fecha_factura.confidence = 1;
     }
+
     if (this.isNumeric(numero_factura?.text?.slice(-5))) {
       numero_factura.confidence = 1;
       numero_factura.text = numero_factura?.text?.slice(-5);
-    }
+    } else numero_factura.error = 'Número de factura inválido';
+
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
       razon_social.confidence = 1;
@@ -130,47 +141,9 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     }
   }
 
-  /**
-   * Ajuste a Riesgo específico de TiquetePosPostobon:
-   * Si no hay errores y TOTAL_FACTURA_SIN_IVA tiene confianza >= 85%,
-   * se autocorrige a 100%
-   */
-  private ajustarARiesgo(): void {
-    // Si hay errores, no aplicar ajuste
-    if (Object.keys(this.errors).length > 0) {
-      return;
-    }
-
-    const { total_factura_sin_iva } =
-      Utils.getFields<TiquetePosPostobonHeaderFields>(this.data.encabezado);
-
-    if (!total_factura_sin_iva) {
-      return;
-    }
-
-    const confianza = total_factura_sin_iva.confidence || 0;
-
-    // Confianza debe ser >= 85%
-    if (confianza < MIN_CONFIANZA_OCR_85) {
-      return;
-    }
-
-    // Autocorregir a 100%
-    total_factura_sin_iva.confidence = 1;
-  }
-
   private guessConfidence(): void {
-    for (const field of this.data.encabezado) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
-
-    for (const field of this.data.detalles) {
-      if (field.confidence >= 0.95) {
-        field.confidence = 1;
-      }
-    }
+    Utils.guessConfidence(this.data.encabezado);
+    Utils.guessConfidence(this.data.detalles);
   }
 
   private isNumeric(value: string | undefined): boolean {

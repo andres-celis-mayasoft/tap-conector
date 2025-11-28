@@ -4,12 +4,16 @@ export enum TiquetePosPostobonHeaderFields {
   VALOR_TOTAL_FACTURA = 'valor_total_factura',
   TOTAL_FACTURA_SIN_IVA = 'total_factura_sin_iva',
   RAZON_SOCIAL = 'razon_social',
+  TOTAL_ARTICULOS = 'total_articulos',
 }
 
 export enum TiquetePosPostobonBodyFields {
-  ITEM_DESCRIPCION_PRODUCTO = 'item_descripcion_producto',
   TIPO_EMBALAJE = 'tipo_embalaje',
-  UNIDADES_VENDIDAS = 'unidades_vendidas',
   UNIDADES_EMBALAJE = 'unidades_embalaje',
-  VALOR_VENTA_ITEM = 'valor_venta_item',
+  PACKS_VENDIDOS = 'packs_vendidos',
+  ITEM_DESCRIPCION_PRODUCTO = 'item_descripcion_producto',
+  VALOR_VENTA_ITEM_TOTAL_NC = 'valor_venta_item_total_nc',
+  
+  VALOR_SUBTOTAL_ITEM= 'valor_subtotal_item',
+  VALOR_DESCUENTO = 'valor_descuento',
 }
