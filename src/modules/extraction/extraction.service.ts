@@ -119,9 +119,9 @@ export class ExtractionService {
             if (!PROCESABLES.some((item) => item === invoice.photoType)) {
               await this.invoiceService.updateDocument({
                 id: invoice.id,
-                status: 'IGNORED',
+                status: 'PENDING_VALIDATION',
                 validated: false,
-                errors: 'TIPO DE DOCUMENTO NO PROCESABLE',
+                extracted: false,
               });
               return;
             }
