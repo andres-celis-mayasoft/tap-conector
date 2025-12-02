@@ -34,12 +34,12 @@ export class Utils {
     return output.filter( r => r);
   }
 
-  static guessConfidence(fields) {
+  static guessConfidence(fields, thresholds: Record<string, number>) {
     for (const field of fields) {
-      if (!field.error && field.confidence < 0.95) {
+      if (!field.error && field.confidence < thresholds[field.type]) {
         field.error = 'Confianza insuficiente';
       }
-      if (!field.error && field.confidence >= 0.95) {
+      if (!field.error && field.confidence >= thresholds[field.type]) {
         field.confidence = 1;
       }
     }
