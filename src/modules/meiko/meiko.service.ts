@@ -61,6 +61,40 @@ export class MeikoService {
       throw error;
     }
   }
+  async getInvoicesTest(ids: number[]) {
+    try {
+      const invoices = await this.prismaMeiko.invoice.findMany({
+        where: {
+          id: {
+            in: ids,
+          },
+          // surveyRecordId: {
+          //   not: null,
+          // },
+          responseId: {
+            not: null,
+          },
+          stickerQR: {
+            not: null,
+          },
+        },
+        orderBy: {
+          id: 'asc',
+        },
+        take: 30,
+      });
+
+      this.logger.log(`Found ${invoices.length} invoices matching criteria`);
+
+      return invoices;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching invoices from Meiko database: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 
   /**
    * Find digitization results by product description
@@ -79,13 +113,12 @@ export class MeikoService {
       return this.prismaMeiko.result.findFirst({
         where: {
           description,
-          businessName: razonSocial
+          businessName: razonSocial,
         },
         orderBy: {
-          id: 'desc'
-        }
-      })
-
+          id: 'desc',
+        },
+      });
     } catch (error) {
       this.logger.error(
         `Error finding digitization result by description: ${error.message}`,
@@ -96,7 +129,7 @@ export class MeikoService {
   }
 
   async find(args: PrismaMeiko.ResultFindFirstArgs) {
-    return this.prismaMeiko.result.findFirst(args)
+    return this.prismaMeiko.result.findFirst(args);
   }
 
   /**
@@ -138,7 +171,9 @@ export class MeikoService {
         data,
       });
 
-      this.logger.log(`EstadoDigitalizacionFactura created successfully with id: ${estado.id}`);
+      this.logger.log(
+        `EstadoDigitalizacionFactura created successfully with id: ${estado.id}`,
+      );
       return estado;
     } catch (error) {
       this.logger.error(

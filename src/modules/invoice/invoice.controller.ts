@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Logger, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Logger, Param, Query } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import {
   GetInvoiceToFillDto,
@@ -77,7 +77,7 @@ export class InvoiceController {
   @Public()
   @Post('test-invoice')
   async testInvoice(
-    @Param('tipoFoto') tipoFoto: string,
+    @Query('tipoFoto') tipoFoto: string,
     @Body() testInvoice: { encabezado; detalles; tipoFacturaOcr },
   ) {
     try {

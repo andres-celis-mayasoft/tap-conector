@@ -10,6 +10,11 @@ import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
 import pLimit from 'p-limit';
 
+// const ids = [
+//   4306318, 4306314, 4306292, 4306283, 4306224, 4306082, 4306005, 4304154,
+//   4304152, 4303752, 4306230, 4305356, 4305121,
+// ];
+
 /**
  * Extraction Service
  * Handles automated invoice extraction via cron job
@@ -17,9 +22,9 @@ import pLimit from 'p-limit';
 const PROCESABLES = [
   'Factura Coke',
   'Factura Postobon',
-  'Factura Infocargue',
+  'Infocargue Postobon',
   'Factura Tiquete POS Postobon',
-  'Femsa',
+  'Factura Femsa',
   'Factura Aje',
   'Factura Quala',
 ];
@@ -45,6 +50,7 @@ export class ExtractionService {
   // })
 
   // idea, que sea una función recursiva, si no encuentra datos, hace un await de 1 minuto
+
   async handleExtractionCron() {
     this.logger.log('🚀 Starting extraction cron job');
 
@@ -55,9 +61,9 @@ export class ExtractionService {
 
       // 2. Get parameters (returns path)
       const parameters = { path: '/app/uploads' };
+      // const parameters = { path: '/opt/files' };
       // const basePath = parameters.path || parameters.ruta || parameters;
-      const basePath =
-        parameters.path
+      const basePath = parameters.path;
       this.logger.log(`📂 Base path from parameters: ${basePath}`);
 
       // 3. Create folder with path + date
@@ -72,6 +78,7 @@ export class ExtractionService {
 
       // 5. Get new invoices from Meiko
       const documents = await this.meikoService.getInvoices(maxId);
+      // const documents = await this.meikoService.getInvoicesTest(ids);
       // const document = await this.meikoService.getInvoiceById(4276816);
       // if (!document) {
       //   this.logger.log('ℹ️ No new invoices to process');
@@ -90,7 +97,7 @@ export class ExtractionService {
         documents.map((invoice) => ({
           status: 'PROCESSING',
           documentId: invoice.id,
-          surveyRecordId: invoice.surveyRecordId,
+          surveyId: invoice.surveyRecordId.toString(),
           photoType: invoice.photoType,
           documentUrl: invoice.link,
         })),
@@ -105,12 +112,16 @@ export class ExtractionService {
       let validationRequiredCount = 0;
       let errorCount = 0;
 
-      
       // Get thread count from environment variable, default to 4
-      const THREAD_COUNT = parseInt(process.env.INVOICE_PROCESSING_THREADS || '4', 10);
+      const THREAD_COUNT = parseInt(
+        process.env.INVOICE_PROCESSING_THREADS || '4',
+        10,
+      );
       const limit = pLimit(THREAD_COUNT);
 
-      this.logger.log(`⚙️ Processing invoices with ${THREAD_COUNT} concurrent threads`);
+      this.logger.log(
+        `⚙️ Processing invoices with ${THREAD_COUNT} concurrent threads`,
+      );
 
       const processingTasks = documents.map((invoice) =>
         limit(async () => {
@@ -154,7 +165,9 @@ export class ExtractionService {
             }
 
             // 7.2. Process with OCR
-            this.logger.log(`🔍 Invoice ${invoice.id} - Processing with OCR...`);
+            this.logger.log(
+              `🔍 Invoice ${invoice.id} - Processing with OCR...`,
+            );
             const ocrResult = await this.ocrService.processInvoice({
               filePath: imagePath,
               typeOfInvoice: invoice.photoType || '',
@@ -170,7 +183,7 @@ export class ExtractionService {
                 errors: `OCR_ERROR: ${ocrResult.error}`,
                 extracted: false,
                 validated: false,
-                status: 'ERROR',
+                status: 'PENDING_VALIDATION',
               });
               errorCount++;
               return;
@@ -226,7 +239,7 @@ export class ExtractionService {
               return;
             }
 
-            if(processedData.detalles.length === 0){
+            if (processedData.detalles.length === 0) {
               await this.meikoService.createStatus({
                 digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO,
                 invoiceId: invoice.id,
@@ -344,7 +357,9 @@ export class ExtractionService {
                     unitsSold: unidadesVendidas
                       ? parseFloat(unidadesVendidas)
                       : null,
-                    totalDocument: totalFactura ? parseFloat(totalFactura) : null,
+                    totalDocument: totalFactura
+                      ? parseFloat(totalFactura)
+                      : null,
                     rowNumber: row,
                     totalDocumentWithoutIVA: totalFacturaSinIva,
                     valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,

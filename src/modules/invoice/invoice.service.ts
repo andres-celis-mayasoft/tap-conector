@@ -34,9 +34,10 @@ export class InvoiceService {
   updateDocument(
     document: Prisma.DocumentUpdateInput & { id: number },
   ): Promise<Prisma.BatchPayload> {
+    const { id, ...data } = document;
     return this.prisma.document.updateMany({
-      where: { documentId: document.id },
-      data: document,
+      where: { documentId: id },
+      data: data,
     });
   }
 
@@ -869,12 +870,12 @@ export class InvoiceService {
   }
 
   async testInvoice(
-    tipFoto: string,
+    tipFoto: any,
     testInvoice: { encabezado; detalles; tipoFacturaOcr },
   ) {
     try {
       const document = DocumentFactory.create(
-        testInvoice.tipoFacturaOcr,
+        tipFoto,
         { encabezado: testInvoice.encabezado, detalles: testInvoice.detalles },
         this.meikoService,
         this,
