@@ -122,10 +122,19 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
         continue;
       }
 
-      const productDB = await this.meikoService.findByDescription(
+      let productDB;
+        
+      productDB = await this.meikoService.findByDescription(
         razon_social?.text || '',
-        descripcion?.text || '',
+        descripcion?.text.slice(1) || '',
       );
+      
+      if(!productDB) {
+        productDB = await this.meikoService.findByDescription(
+          razon_social?.text || '',
+          descripcion?.text || '',
+        );
+      }
 
       if (productDB?.description === descripcion.text?.toUpperCase()) {
         descripcion.confidence = 1;

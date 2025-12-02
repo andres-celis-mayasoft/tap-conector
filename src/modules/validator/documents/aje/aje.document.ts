@@ -135,10 +135,19 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
         continue;
       }
 
-      const productDB = await this.meikoService.findByDescription(
+      let productDB;
+        
+      productDB = await this.meikoService.findByDescription(
         razon_social?.text || '',
-        descripcion?.text || '',
+        descripcion?.text.slice(1) || '',
       );
+      
+      if(!productDB) {
+        productDB = await this.meikoService.findByDescription(
+          razon_social?.text || '',
+          descripcion?.text || '',
+        );
+      }
 
       const result = await this.meikoService.find({
         where: { productCode: codigo_producto.text },
