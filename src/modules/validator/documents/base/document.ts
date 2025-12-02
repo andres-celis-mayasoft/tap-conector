@@ -1,6 +1,6 @@
 export abstract class Document<TSchema> {
   protected normalized = {} as TSchema;
-  protected errors = {} as any;
+  protected errors = {} as Record<string, string>;
   protected isValid = true;
 
   constructor(protected data: TSchema) {
