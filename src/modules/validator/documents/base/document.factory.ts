@@ -22,7 +22,7 @@ export class DocumentFactory {
       case 'Factura Postobon':
         return new PostobonInvoice(ocrResponse, meikoService, invoiceService);
 
-      case 'Factura Infocargue':
+      case 'Infocargue Postobon':
         return new InfocargueInvoice(ocrResponse, meikoService, invoiceService);
 
       case 'Factura Tiquete POS Postobon':
@@ -32,7 +32,7 @@ export class DocumentFactory {
           invoiceService,
         );
 
-      case 'Femsa':
+      case 'Factura Femsa':
         return new FemsaInvoice(ocrResponse, meikoService, invoiceService);
 
       case 'Factura Aje':
