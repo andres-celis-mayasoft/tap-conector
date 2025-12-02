@@ -5,7 +5,11 @@ import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { FemsaInvoiceSchema } from './femsa.schema';
-import { FemsaBodyFields, FemsaHeaderFields } from './femsa.fields';
+import {
+  FEMSA_THRESOLDS,
+  FemsaBodyFields,
+  FemsaHeaderFields,
+} from './femsa.fields';
 import { InvoiceService } from 'src/modules/invoice/invoice.service';
 
 type HeaderField = FemsaInvoiceSchema['encabezado'][number];
@@ -144,8 +148,8 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
   }
 
   private guessConfidence(): void {
-    Utils.guessConfidence(this.data.encabezado);
-    Utils.guessConfidence(this.data.detalles);
+    Utils.guessConfidence(this.data.encabezado, FEMSA_THRESOLDS);
+    Utils.guessConfidence(this.data.detalles, FEMSA_THRESOLDS);
   }
 
   private isNumeric(value: string | undefined): boolean {

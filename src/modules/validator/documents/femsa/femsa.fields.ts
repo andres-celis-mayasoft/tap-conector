@@ -17,3 +17,18 @@ export enum FemsaBodyFields {
   UNIDADES_EMBALAJE = 'unidades_embalaje',
 }
 
+export const FEMSA_THRESOLDS = {
+  [FemsaHeaderFields.FECHA_FACTURA]: 0.95,
+  [FemsaHeaderFields.NUMERO_FACTURA]: 0.97,
+  [FemsaHeaderFields.VALOR_TOTAL_FACTURA]: 0.88,
+  [FemsaHeaderFields.RAZON_SOCIAL]: 0.99,
+  [FemsaHeaderFields.TOTAL_FACTURA_SIN_IVA]: 0.88,
+  [FemsaBodyFields.CODIGO_PRODUCTO]: 0.95,
+  [FemsaBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.92,
+  [FemsaBodyFields.TIPO_EMBALAJE]: 0.88,
+  [FemsaBodyFields.UNIDADES_VENDIDAS]: 0.83,
+  [FemsaBodyFields.VALOR_UNITARIO_ITEM]: 0.93,
+  [FemsaBodyFields.VALOR_VENTA_ITEM]: 0.9,
+  [FemsaBodyFields.VALOR_IBUA_Y_OTROS]: 0.89,
+  [FemsaBodyFields.UNIDADES_EMBALAJE]: 0.85,
+};

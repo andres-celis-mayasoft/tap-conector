@@ -1,4 +1,5 @@
 import {
+  POS_POSTOBON_THRESOLDS,
   TiquetePosPostobonBodyFields,
   TiquetePosPostobonHeaderFields,
 } from './tiquete-pos-postobon.fields';
@@ -104,10 +105,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
       numero_factura.text = numero_factura?.text?.slice(-5);
     } else numero_factura.error = 'Número de factura inválido';
 
-    if (RAZON_SOCIAL[razon_social.text as any]) {
-      razon_social.text = RAZON_SOCIAL[razon_social.text as any];
-      razon_social.confidence = 1;
-    }
+    razon_social.confidence = 1;
   }
 
   private async inferDetalles(): Promise<void> {
@@ -142,8 +140,8 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
   }
 
   private guessConfidence(): void {
-    Utils.guessConfidence(this.data.encabezado);
-    Utils.guessConfidence(this.data.detalles);
+    Utils.guessConfidence(this.data.encabezado, POS_POSTOBON_THRESOLDS);
+    Utils.guessConfidence(this.data.detalles, POS_POSTOBON_THRESOLDS);
   }
 
   private isNumeric(value: string | undefined): boolean {

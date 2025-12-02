@@ -1,4 +1,4 @@
-import { CokeBodyFields, CokeHeaderFields } from './coke.fields';
+import { COKE_THRESOLDS, CokeBodyFields, CokeHeaderFields } from './coke.fields';
 import { CokeInvoiceSchema } from './coke.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
@@ -243,8 +243,8 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
   }
 
   private guessConfidence(): void {
-    Utils.guessConfidence(this.data.encabezado);
-    Utils.guessConfidence(this.data.detalles);
+    Utils.guessConfidence(this.data.encabezado, COKE_THRESOLDS);
+    Utils.guessConfidence(this.data.detalles,COKE_THRESOLDS);
   }
 
   private isNumeric(value: string | undefined): boolean {

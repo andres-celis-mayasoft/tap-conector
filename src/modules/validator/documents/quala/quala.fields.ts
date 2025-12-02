@@ -20,3 +20,17 @@ export enum QualaBodyFields {
   PORCENTAJE_ICUI = 'porcentaje_icui',
   TOTAL_IBUA = 'total_ibua',
 }
+
+export const QUALA_THRESOLDS = {
+  [QualaHeaderFields.FECHA_FACTURA]: 0.98,
+  [QualaHeaderFields.NUMERO_FACTURA]: 0.91,
+  [QualaHeaderFields.RAZON_SOCIAL]: 0.99,
+  [QualaHeaderFields.TOTAL_FACTURA_SIN_IVA]: 0.77,
+  [QualaHeaderFields.VALOR_TOTAL_FACTURA]: 0.96,
+  [QualaBodyFields.CODIGO_PRODUCTO]: 0.96,
+  [QualaBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.95,
+  [QualaBodyFields.UNIDADES_VENDIDAS]: 0.94,
+  [QualaBodyFields.TOTAL_IBUA]: 0.82,
+  [QualaBodyFields.UNIDADES_EMBALAJE]: 0.97,
+  [QualaBodyFields.VALOR_VENTA_ITEM]: 0.8,
+  };

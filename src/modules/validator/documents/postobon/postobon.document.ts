@@ -1,4 +1,8 @@
-import { PostobonBodyFields, PostobonHeaderFields } from './postobon.fields';
+import {
+  POSTOBON_THRESOLDS,
+  PostobonBodyFields,
+  PostobonHeaderFields,
+} from './postobon.fields';
 import { PostobonInvoiceSchema } from './postobon.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
@@ -101,10 +105,7 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
       numero_factura.text = numero_factura?.text?.slice(-5);
     } else numero_factura.error = 'Número de factura inválido';
 
-    if (RAZON_SOCIAL[razon_social.text as any]) {
-      razon_social.text = RAZON_SOCIAL[razon_social.text as any];
-      razon_social.confidence = 1;
-    }
+    razon_social.confidence = 1;
   }
 
   private async inferDetalles(): Promise<void> {
@@ -252,7 +253,6 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     }
   }
 
-
   private inferTotalFacturaSinIva(): void {
     const products = Utils.groupFields(this.data.detalles);
     const headers = Utils.getFields<PostobonHeaderFields>(this.data.encabezado);
@@ -304,8 +304,8 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
   }
 
   private guessConfidence(): void {
-    Utils.guessConfidence(this.data.encabezado);
-    Utils.guessConfidence(this.data.detalles);
+    Utils.guessConfidence(this.data.encabezado, POSTOBON_THRESOLDS);
+    Utils.guessConfidence(this.data.detalles, POSTOBON_THRESOLDS);
   }
 
   private isNumeric(value: string | undefined): boolean {

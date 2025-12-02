@@ -1,4 +1,4 @@
-import { AjeBodyFields, AjeHeaderFields } from './aje.fields';
+import { AJE_THRESOLDS, AjeBodyFields, AjeHeaderFields } from './aje.fields';
 import { AjeInvoiceSchema } from './aje.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
@@ -43,7 +43,6 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
       fecha_factura.error = 'Fecha obsoleta';
     }
   }
-
 
   async infer(): Promise<this> {
     this.inferEncabezado();
@@ -165,15 +164,11 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
   }
 
   private inferProductByCalculation(product: any[]): void {
-    const {
-      precio_antes_iva,
-      valor_descuento_item,
-      valor_iva,
-      valor_venta_item,
-    } = Utils.getFields<AjeBodyFields>(product);
+    const { precio_antes_iva, valor_descuento, valor_iva, valor_venta_item } =
+      Utils.getFields<AjeBodyFields>(product);
 
     const precioAntesIvaDbl = this.toNumber(precio_antes_iva) || 0;
-    const valorDescuentoItemDbl = this.toNumber(valor_descuento_item) || 0;
+    const valorDescuentoItemDbl = this.toNumber(valor_descuento) || 0;
     const valorIvaDbl = this.toNumber(valor_iva) || 0;
     const valorVentaItemDbl = this.toNumber(valor_venta_item) || 0;
 
@@ -187,20 +182,20 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
 
     if (diferencia <= 1.0) {
       if (precio_antes_iva) precio_antes_iva.confidence = 1;
-      if (valor_descuento_item) valor_descuento_item.confidence = 1;
+      if (valor_descuento) valor_descuento.confidence = 1;
       if (valor_iva) valor_iva.confidence = 1;
       if (valor_venta_item) valor_venta_item.confidence = 1;
     } else {
-      precio_antes_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `
-      valor_descuento_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `
-      valor_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `
-      valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `
+      precio_antes_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_descuento.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
     }
   }
 
   private guessConfidence(): void {
-    Utils.guessConfidence(this.data.encabezado);
-    Utils.guessConfidence(this.data.detalles);
+    Utils.guessConfidence(this.data.encabezado, AJE_THRESOLDS);
+    Utils.guessConfidence(this.data.detalles, AJE_THRESOLDS);
   }
 
   private isNumeric(value: string | undefined): boolean {

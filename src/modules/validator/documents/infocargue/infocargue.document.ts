@@ -1,4 +1,5 @@
 import {
+  INFOCARGUE_THRESOLDS,
   InfocargueBodyFields,
   InfocargueHeaderFields,
 } from './infocargue.fields';
@@ -174,8 +175,8 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
   }
 
   private guessConfidence(): void {
-    Utils.guessConfidence(this.data.encabezado);
-    Utils.guessConfidence(this.data.detalles);
+    Utils.guessConfidence(this.data.encabezado, INFOCARGUE_THRESOLDS);
+    Utils.guessConfidence(this.data.detalles, INFOCARGUE_THRESOLDS);
   }
 
   private isNumeric(value: string | undefined): boolean {

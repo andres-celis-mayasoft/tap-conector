@@ -1,4 +1,8 @@
-import { QualaBodyFields, QualaHeaderFields } from './quala.fields';
+import {
+  QUALA_THRESOLDS,
+  QualaBodyFields,
+  QualaHeaderFields,
+} from './quala.fields';
 import { QualaInvoiceSchema } from './quala.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
@@ -124,9 +128,7 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
         this.toNumber(valor_unitario_item) * this.toNumber(unidades_vendidas);
     }
 
-    const difference = Math.abs(
-      this.toNumber(valor_total_factura) - total,
-    );
+    const difference = Math.abs(this.toNumber(valor_total_factura) - total);
 
     // PARAMETRIZAR MARGEN DE ERROR
     if (difference <= 1.0) {
@@ -314,8 +316,8 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
   }
 
   private guessConfidence(): void {
-    Utils.guessConfidence(this.data.encabezado);
-    Utils.guessConfidence(this.data.detalles);
+    Utils.guessConfidence(this.data.encabezado, QUALA_THRESOLDS);
+    Utils.guessConfidence(this.data.detalles, QUALA_THRESOLDS);
   }
 
   private isNumeric(value: string | undefined): boolean {
