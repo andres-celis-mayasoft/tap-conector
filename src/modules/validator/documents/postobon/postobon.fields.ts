@@ -34,4 +34,5 @@ export const POSTOBON_THRESOLDS = {
   [PostobonBodyFields.TIPO_EMBALAJE]: 0.99,
   [PostobonBodyFields.PACKS_VENDIDOS]: 0.99,
   [PostobonBodyFields.VALOR_VENTA_ITEM]: 0.94,
+  [PostobonBodyFields.UNIDADES_EMBALAJE]: 0.95,
   };
