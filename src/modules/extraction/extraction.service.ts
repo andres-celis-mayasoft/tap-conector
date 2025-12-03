@@ -72,8 +72,8 @@ export class ExtractionService {
       this.logger.log(`✅ Created extraction folder: ${extractionPath}`);
 
       // 4. Get max invoice ID (only process new invoices not yet in our DB)
-      // const maxId = await this.invoiceService.getMaxId();
-      const maxId = 4310963;
+      const maxId = await this.invoiceService.getMaxId();
+      // const maxId = 4276823;
       this.logger.log(`📊 Max invoice ID in our DB: ${maxId}`);
 
       // 5. Get new invoices from Meiko
