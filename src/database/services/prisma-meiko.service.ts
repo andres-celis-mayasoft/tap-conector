@@ -1,10 +1,12 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { join } from 'path';
+import { PrismaClient } from 'prisma/generated/client-meiko'; // <-- IMPORTA TIPOS
+
 
 @Injectable()
 export class PrismaMeikoService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaMeikoService.name);
-  private prisma: any;
+  private prisma: PrismaClient;
 
   constructor() {
     // Import the Prisma Client at runtime using dynamic require with absolute path
@@ -41,6 +43,10 @@ export class PrismaMeikoService implements OnModuleInit, OnModuleDestroy {
 
   get result() {
     return this.prisma.result;
+  }
+
+  get estadoDigitalizacionFactura() {
+    return this.prisma.estadoDigitalizacionFactura;
   }
 
   async onModuleInit() {

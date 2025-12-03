@@ -342,10 +342,10 @@ export class ExtractionService {
                   )?.row;
 
                   await this.meikoService.createFields({
-                    meikoDocument: { connect: { documentId: doc.documentId } },
+                    invoice: { connect: { id: doc.documentId } },
                     surveyRecordId: Number(doc.surveyId),
                     invoiceNumber: numeroFactura,
-                    documentDate: fechaFactura ? fechaFactura : null,
+                    invoiceDate: fechaFactura ? fechaFactura : null,
                     businessName: razonSocial,
                     productCode: codigoProducto,
                     description: descripcion,
@@ -358,11 +358,11 @@ export class ExtractionService {
                     unitsSold: unidadesVendidas
                       ? parseFloat(unidadesVendidas)
                       : null,
-                    totalDocument: totalFactura
+                    totalInvoice: totalFactura
                       ? parseFloat(totalFactura)
                       : null,
                     rowNumber: row,
-                    totalDocumentWithoutIVA: totalFacturaSinIva,
+                    totalInvoiceWithoutVAT: totalFacturaSinIva,
                     valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
                   });
                 }

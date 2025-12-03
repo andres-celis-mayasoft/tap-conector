@@ -65,3 +65,12 @@ model Result {
   @@index([invoiceDate], map: "resultado_digitalizacion_fecha_factura_IDX")
   @@map("resultado_digitalizacion")
 }
+
+model EstadoDigitalizacionFactura {
+  id                       Int @id @default(autoincrement())
+  invoiceId                Int @map("id_factura")
+  digitalizationStatusId   Int @map("estado_digitalizacion_id")
+
+  @@unique([invoiceId], map: "ix_unico_id_factura")
+  @@map("estado_digitalizacion_factura")
+}

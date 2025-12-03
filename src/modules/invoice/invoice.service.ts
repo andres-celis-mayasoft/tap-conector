@@ -13,6 +13,7 @@ import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
 import { MeikoService } from '../meiko/meiko.service';
 import { DocumentFactory } from '../validator/documents/base/document.factory';
+import { PrismaMeikoService } from 'src/database/services/prisma-meiko.service';
 
 @Injectable()
 export class InvoiceService {
@@ -20,6 +21,7 @@ export class InvoiceService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly prismaMeikoService: PrismaMeikoService,
     private readonly meikoService: MeikoService,
   ) {}
 
@@ -377,13 +379,13 @@ export class InvoiceService {
       );
 
       // Create MeikoInvoice record
-      const meikoInvoice = await this.prisma.meikoDocument.create({
+      const meikoInvoice = await this.prismaMeikoService.invoice.create({
         data: {
           surveyRecordId: BigInt(meikoInvoiceData.surveyRecordId || 0),
           responseId: meikoInvoiceData.responseId
             ? BigInt(meikoInvoiceData.responseId)
             : null,
-          stickerQr: meikoInvoiceData.stickerQR || null,
+          stickerQR: meikoInvoiceData.stickerQR || null,
           responseReceived: meikoInvoiceData.responseReceived || null,
           variableName: meikoInvoiceData.variableName || null,
           photoType: meikoInvoiceData.photoType || null,
@@ -441,7 +443,7 @@ export class InvoiceService {
 
       // Create all results
       if (meikoResults.length > 0) {
-        await this.prisma.meikoResult.createMany({
+        await this.prismaMeikoService.result.createMany({
           data: meikoResults,
         });
         this.logger.log(
@@ -628,7 +630,7 @@ export class InvoiceService {
       }
 
       // Insert into EstadoDigitalizacionFactura (status 1 = outdated)
-      await this.prisma.estadoDigitalizacionFactura.create({
+      await this.prismaMeikoService.estadoDigitalizacionFactura.create({
         data: {
           invoiceId,
           digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA, // Status for outdated
@@ -681,7 +683,7 @@ export class InvoiceService {
       }
 
       // Insert into EstadoDigitalizacionFactura (status 2 = illegible)
-      await this.prisma.estadoDigitalizacionFactura.create({
+      await this.prismaMeikoService.estadoDigitalizacionFactura.create({
         data: {
           invoiceId,
           digitalizationStatusId: InvoiceStatus.NO_PROCESABLE, // Status for illegible
@@ -875,10 +877,10 @@ export class InvoiceService {
         )?.row;
 
         await this.meikoService.createFields({
-          meikoDocument: { connect: { documentId: document.documentId } },
+          invoice: { connect: { id: document.documentId } },
           surveyRecordId: Number(document.surveyId),
           invoiceNumber: numeroFactura,
-          documentDate: fechaFactura ? fechaFactura : null,
+          invoiceDate: fechaFactura ? fechaFactura : null,
           businessName: razonSocial,
           productCode: codigoProducto,
           description: descripcion,
@@ -887,9 +889,9 @@ export class InvoiceService {
           packsSold: packVendidos ? parseFloat(packVendidos) : null,
           saleValue: valorVenta ? parseInt(valorVenta) : null,
           unitsSold: unidadesVendidas ? parseFloat(unidadesVendidas) : null,
-          totalDocument: totalFactura ? parseFloat(totalFactura) : null,
+          totalInvoice: totalFactura ? parseFloat(totalFactura) : null,
           rowNumber: row,
-          totalDocumentWithoutIVA: totalFacturaSinIva,
+          totalInvoiceWithoutVAT: totalFacturaSinIva,
           valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
         });
       }

@@ -149,11 +149,11 @@ export class MeikoService {
    * @param data MeikoResult data to create
    * @returns Created MeikoResult record
    */
-  async createFields(data: Prisma.MeikoResultCreateInput) {
+  async createFields(data: PrismaMeiko.ResultCreateInput) {
     try {
       this.logger.log(`Creating MeikoResult entry`);
 
-      const result = await this.prisma.meikoResult.create({
+      const result = await this.prismaMeiko.result.create({
         data,
       });
 
@@ -178,7 +178,7 @@ export class MeikoService {
     try {
       this.logger.log(`Creating EstadoDigitalizacionFactura entry`);
 
-      const estado = await this.prisma.estadoDigitalizacionFactura.create({
+      const estado = await this.prismaMeiko.estadoDigitalizacionFactura.create({
         data,
       });
 
