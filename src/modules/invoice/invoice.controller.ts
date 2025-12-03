@@ -35,10 +35,10 @@ export class InvoiceController {
         } as any;
       }
 
-      // Parse the OCR data
-      const ocrData = invoice.mayaDocumentJSON
-        ? JSON.parse(invoice.mayaDocumentJSON)
-        : { encabezado: [], detalles: [] };
+      // Get OCR data from Fields table
+      const invoiceWithFields = await this.invoiceService.getInvoiceWithFields(
+        invoice.documentId,
+      );
 
       const response: InvoiceToFillResponseDto = {
         invoiceId: invoice.documentId,
@@ -49,12 +49,12 @@ export class InvoiceController {
         status: invoice.status,
         errors: invoice.errors || undefined,
         assignedAt: invoice.assignedAt || new Date(),
-        encabezado: ocrData.encabezado || [],
-        detalles: ocrData.detalles || [],
+        encabezado: invoiceWithFields.encabezado,
+        detalles: invoiceWithFields.detalles,
       };
 
       this.logger.log(
-        `✅ Assigned invoice ${invoice.invoiceId} to user ${userId}`,
+        `✅ Assigned invoice ${invoice.documentId} to user ${userId}`,
       );
 
       return response;

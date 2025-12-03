@@ -14,7 +14,6 @@ datasource db {
 model Document {
   id                Int       @id @default(autoincrement())
   documentId       Int       @unique @map("document_id")
-  fileId           String?   @map("file_id")
   surveyId           String?   @map("survey_id")
   photoType        String?   @map("photo_type")
   photoTypeOCR    String?   @map("photo_type_ocr")
@@ -27,7 +26,6 @@ model Document {
   captureEndDate  DateTime? @map("capture_end_date")
   documentUrl      String?   @map("document_url")
   mayaDocumentJSON String?  @map("maya_document_json")
-  tapDocumentJSON String?   @map("tap_document_json")
   path              String?   @map("path")
 
   // Manual validation assignment tracking

@@ -10,10 +10,10 @@ import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
 import pLimit from 'p-limit';
 
-// const ids = [
-//   4306318, 4306314, 4306292, 4306283, 4306224, 4306082, 4306005, 4304154,
-//   4304152, 4303752, 4306230, 4305356, 4305121,
-// ];
+ const ids = [
+   4306318, 4306314, 4306292, 4306283, 4306224, 4306082, 4306005, 4304154,
+   4304152, 4303752, 4306230, 4305356, 4305121,
+ ];
 
 /**
  * Extraction Service
@@ -72,8 +72,8 @@ export class ExtractionService {
       this.logger.log(`✅ Created extraction folder: ${extractionPath}`);
 
       // 4. Get max invoice ID (only process new invoices not yet in our DB)
-      // const maxId = await this.invoiceService.getMaxId();
-      const maxId = 4276823;
+      const maxId = await this.invoiceService.getMaxId();
+      // const maxId = 4276823;
       this.logger.log(`📊 Max invoice ID in our DB: ${maxId}`);
 
       // 5. Get new invoices from Meiko
@@ -93,7 +93,7 @@ export class ExtractionService {
       }
 
       // 6. Create invoice records in our DB with initial PROCESSING status
-      await this.invoiceService.createInvoices(
+      const docs = await this.invoiceService.createInvoices(
         documents.map((invoice) => ({
           status: 'PROCESSING',
           documentId: invoice.id,
@@ -123,13 +123,13 @@ export class ExtractionService {
         `⚙️ Processing invoices with ${THREAD_COUNT} concurrent threads`,
       );
 
-      const processingTasks = documents.map((invoice) =>
+      const processingTasks = docs.map((doc) =>
         limit(async () => {
           try {
-            this.logger.log(`\n🔄 Processing invoice ${invoice.id}...`);
-            if (!PROCESABLES.some((item) => item === invoice.photoType)) {
+            this.logger.log(`\n🔄 Processing invoice ${doc.id}...`);
+            if (!PROCESABLES.some((item) => item === doc.photoType)) {
               await this.invoiceService.updateDocument({
-                id: invoice.id,
+                id: doc.id,
                 status: 'PENDING_VALIDATION',
                 validated: false,
                 extracted: false,
@@ -140,20 +140,20 @@ export class ExtractionService {
             // 7.1. Download and validate image
             const { isValid: isDownloadable, path: imagePath } =
               await this.invoiceService.downloadAndValidate(
-                invoice,
+                doc,
                 extractionPath,
               );
 
             if (!isDownloadable) {
               this.logger.warn(
-                `⚠️ Invoice ${invoice.id} - Image not downloadable or viewable`,
+                `⚠️ Invoice ${doc.id} - Image not downloadable or viewable`,
               );
               await this.meikoService.createStatus({
                 digitalizationStatusId: InvoiceStatus.ERROR_DE_DESCARGA,
-                invoiceId: invoice.id,
+                invoiceId: doc.id,
               });
               await this.invoiceService.updateDocument({
-                id: invoice.id,
+                id: doc.id,
                 path: imagePath,
                 errors: 'NO DESCARGABLE O VISUALIZABLE',
                 extracted: false,
@@ -166,19 +166,19 @@ export class ExtractionService {
 
             // 7.2. Process with OCR
             this.logger.log(
-              `🔍 Invoice ${invoice.id} - Processing with OCR...`,
+              `🔍 Invoice ${doc.id} - Processing with OCR...`,
             );
             const ocrResult = await this.ocrService.processInvoice({
               filePath: imagePath,
-              typeOfInvoice: invoice.photoType || '',
+              typeOfInvoice: doc.photoType || '',
             });
 
             if (!ocrResult.success || !ocrResult.data) {
               this.logger.error(
-                `❌ Invoice ${invoice.id} - OCR processing failed: ${ocrResult.error}`,
+                `❌ Invoice ${doc.id} - OCR processing failed: ${ocrResult.error}`,
               );
               await this.invoiceService.updateDocument({
-                id: invoice.id,
+                id: doc.id,
                 path: imagePath,
                 errors: `OCR_ERROR: ${ocrResult.error}`,
                 extracted: false,
@@ -191,9 +191,9 @@ export class ExtractionService {
 
             // 7.3. Create document and process (normalize, validate, infer)
             const photoTypeOcr =
-              ocrResult.data.data?.photoTypeOcr || invoice.photoType;
+              ocrResult.data.data?.photoTypeOcr || doc.photoType;
             this.logger.log(
-              `📋 Invoice ${invoice.id} - Document type: ${photoTypeOcr}`,
+              `📋 Invoice ${doc.id} - Document type: ${photoTypeOcr}`,
             );
 
             let document: any;
@@ -206,10 +206,10 @@ export class ExtractionService {
               );
             } catch (error: any) {
               this.logger.error(
-                `❌ Invoice ${invoice.id} - Unsupported document type: ${photoTypeOcr}`,
+                `❌ Invoice ${doc.id} - Unsupported document type: ${photoTypeOcr}`,
               );
               await this.invoiceService.updateDocument({
-                id: invoice.id,
+                id: doc.id,
                 path: imagePath,
                 errors: `UNEXPECTED ERROR: ${photoTypeOcr}`,
                 extracted: false,
@@ -226,10 +226,10 @@ export class ExtractionService {
             if (!isValid) {
               await this.meikoService.createStatus({
                 digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA,
-                invoiceId: invoice.id,
+                invoiceId: doc.id,
               });
               await this.invoiceService.updateDocument({
-                id: invoice.id,
+                id: doc.id,
                 path: imagePath,
                 errors: 'FECHA OBSOLETA',
                 extracted: false,
@@ -242,10 +242,10 @@ export class ExtractionService {
             if (processedData.detalles.length === 0) {
               await this.meikoService.createStatus({
                 digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO,
-                invoiceId: invoice.id,
+                invoiceId: doc.id,
               });
               await this.invoiceService.updateDocument({
-                id: invoice.id,
+                id: doc.id,
                 errors: 'TODOS LOS PRODUCTOS FUERON EXCLUIDOS',
                 extracted: false,
                 validated: false,
@@ -257,7 +257,7 @@ export class ExtractionService {
             // 7.4. Calculate overall confidence
             const confidence = this.calculateConfidence(processedData);
             this.logger.log(
-              `📊 Invoice ${invoice.id} - Overall confidence: ${confidence.overall.toFixed(2)}%`,
+              `📊 Invoice ${doc.id} - Overall confidence: ${confidence.overall.toFixed(2)}%`,
             );
             this.logger.log(
               `   ├─ Header confidence: ${confidence.headerConfidence.toFixed(2)}%`,
@@ -270,7 +270,7 @@ export class ExtractionService {
             // 7.5. Save invoice with extracted fields
             await this.invoiceService.saveInvoiceWithFields(
               {
-                id: invoice.id,
+                id: doc.id,
                 extracted: true,
                 validated: isFullConfidence,
                 path: imagePath,
@@ -278,6 +278,7 @@ export class ExtractionService {
                 status: 'PROCESSING', // Will update later based on confidence
               },
               processedData,
+              ocrResult.data,
             );
 
             // 7.6. Decision logic based on confidence and validation
@@ -286,7 +287,7 @@ export class ExtractionService {
             if (isFullConfidence && !hasErrors) {
               // Scenario 1: 100% confidence → Deliver to our Meiko tables automatically
               this.logger.log(
-                `✅ Invoice ${invoice.id} - 100% confidence → Delivering to Meiko tables`,
+                `✅ Invoice ${doc.id} - 100% confidence → Delivering to Meiko tables`,
               );
 
               try {
@@ -341,8 +342,8 @@ export class ExtractionService {
                   )?.row;
 
                   await this.meikoService.createFields({
-                    meikoDocument: { connect: { id: invoice.id } },
-                    surveyRecordId: Number(invoice.surveyRecordId),
+                    meikoDocument: { connect: { documentId: doc.documentId } },
+                    surveyRecordId: Number(doc.surveyId),
                     invoiceNumber: numeroFactura,
                     documentDate: fechaFactura ? fechaFactura : null,
                     businessName: razonSocial,
@@ -368,23 +369,23 @@ export class ExtractionService {
 
                 await this.meikoService.createStatus({
                   digitalizationStatusId: InvoiceStatus.PROCESADO,
-                  invoiceId: invoice.id,
+                  invoiceId: doc.documentId,
                 });
                 await this.invoiceService.updateDocument({
-                  id: invoice.id,
+                  id: doc.id,
                   status: 'DELIVERED',
                   validated: true,
                 });
                 deliveredCount++;
                 this.logger.log(
-                  `🚀 Invoice ${invoice.id} - Successfully delivered to Meiko tables`,
+                  `🚀 Invoice ${doc.id} - Successfully delivered to Meiko tables`,
                 );
               } catch (deliveryError: any) {
                 this.logger.error(
-                  `❌ Invoice ${invoice.id} - Delivery to Meiko tables failed: ${deliveryError.message}`,
+                  `❌ Invoice ${doc.id} - Delivery to Meiko tables failed: ${deliveryError.message}`,
                 );
                 await this.invoiceService.updateDocument({
-                  id: invoice.id,
+                  id: doc.id,
                   status: 'PENDING_TO_SEND',
                   errors: `DELIVERY_ERROR: ${deliveryError.message}`,
                 });
@@ -393,7 +394,7 @@ export class ExtractionService {
             } else {
               // Scenario 2: < 100% confidence → Requires manual validation
               this.logger.log(
-                `⚠️ Invoice ${invoice.id} - Confidence < 100% or has errors → Requires manual validation`,
+                `⚠️ Invoice ${doc.id} - Confidence < 100% or has errors → Requires manual validation`,
               );
 
               const errorMessages: string[] = [];
@@ -409,26 +410,26 @@ export class ExtractionService {
               }
 
               await this.invoiceService.updateDocument({
-                id: invoice.id,
+                id: doc.id,
                 status: 'PENDING_VALIDATION',
                 validated: false,
                 errors: errorMessages.join(' | '),
               });
               validationRequiredCount++;
               this.logger.log(
-                `📋 Invoice ${invoice.id} - Moved to manual validation queue`,
+                `📋 Invoice ${doc.id} - Moved to manual validation queue`,
               );
             }
 
             processedCount++;
           } catch (error) {
             this.logger.error(
-              `❌ Error processing invoice ${invoice.id}: ${error.message}`,
+              `❌ Error processing invoice ${doc.id}: ${error.message}`,
               error.stack,
             );
             await this.invoiceService.updateDocument({
-              id: invoice.id,
-              status: 'ERROR',
+              id: doc.id,
+              status: 'PENDING_VALIDATION',
               errors: `PROCESSING_ERROR: ${error.message}`,
             });
             errorCount++;

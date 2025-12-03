@@ -36,16 +36,18 @@ export class InvoiceService {
   ): Promise<Prisma.BatchPayload> {
     const { id, ...data } = document;
     return this.prisma.document.updateMany({
-      where: { documentId: id },
+      where: { id },
       data: data,
     });
   }
+  
 
   getDocument(id: number) {
     return this.prisma.document.findUnique({
       where: { id },
     });
   }
+
 
   async getMaxId(): Promise<number> {
     try {
@@ -103,32 +105,12 @@ export class InvoiceService {
   }
 
   createInvoices(documents: Prisma.DocumentCreateInput[]) {
-    return this.prisma.document.createMany({
+    return this.prisma.document.createManyAndReturn({
       data: documents,
       skipDuplicates: true,
     });
   }
 
-  checkBatch() {
-    this.prisma.$transaction(async (prisma) => {
-      const result = await prisma.$queryRawUnsafe(`
-      SELECT id
-      FROM (
-      SELECT id,
-             status,
-             LAG(status, 1) OVER (ORDER BY id) prev_status,
-             ROW_NUMBER() OVER (ORDER BY id) - 
-             ROW_NUMBER() OVER (PARTITION BY status ORDER BY id) grp
-      FROM invoice
-      ) t
-      WHERE status = 'PENDING_TO_SEND'
-      GROUP BY grp
-      HAVING COUNT(*) >= 30
-      `);
-      this.logger.log(`Batch check result: ${JSON.stringify(result)}`);
-      return result;
-    });
-  }
 
   async downloadAndValidate(
     invoice: any,
@@ -141,9 +123,9 @@ export class InvoiceService {
     );
 
     try {
-      this.logger.log(`🟡 Processing invoice ID ${invoice.id_factura}`);
+      this.logger.log(`🟡 Processing invoice ID ${invoice.id}`);
 
-      const data = await this.downloadImage(invoice.link);
+      const data = await this.downloadImage(invoice.documentUrl);
 
       this.logger.log(`🟡 Downloaded `);
       await this.saveTempFile(finalPath, data);
@@ -187,7 +169,7 @@ export class InvoiceService {
       throw new Error('Downloaded file is empty');
     }
     return response.data;
-  }
+  } 
 
   async saveTempFile(tempFile: string, data: Buffer): Promise<void> {
     await fs.writeFile(tempFile, data);
@@ -261,6 +243,20 @@ export class InvoiceService {
       }>;
       tipoFacturaOcr?: string;
     },
+    mayaInvoiceJsonRaw: {
+      encabezado: Array<{
+        type: string;
+        text: string;
+        confidence: number;
+      }>;
+      detalles: Array<{
+        type: string;
+        text: string;
+        confidence: number;
+        row: number;
+      }>;
+      tipoFacturaOcr?: string;
+    },
   ): Promise<void> {
     try {
       this.logger.log(`💾 Saving invoice ${invoiceData.id} with fields`);
@@ -268,7 +264,7 @@ export class InvoiceService {
       // Update invoice with OCR data
       await this.updateDocument({
         ...invoiceData,
-        mayaDocumentJSON: JSON.stringify(mayaInvoiceJson),
+        mayaDocumentJSON: JSON.stringify(mayaInvoiceJsonRaw),
         photoTypeOCR: mayaInvoiceJson.tipoFacturaOcr,
       });
 
@@ -475,6 +471,68 @@ export class InvoiceService {
       0,
     );
     return sum / fields.length;
+  }
+
+  /**
+   * Get invoice with fields from the Field table
+   * @param documentId - Document ID
+   * @returns Invoice data with encabezado and detalles from Field table
+   */
+  async getInvoiceWithFields(documentId: number): Promise<{
+    encabezado: Array<{ type: string; text: string; confidence: number }>;
+    detalles: Array<{
+      type: string;
+      text: string;
+      confidence: number;
+      row: number;
+    }>;
+  }> {
+    try {
+      this.logger.log(`🔍 Getting fields for document ${documentId}`);
+
+      // Get all fields for this document
+      const fields = await this.prisma.field.findMany({
+        where: {
+          documentId,
+        },
+        orderBy: [{ type: 'asc' }, { row: 'asc' }],
+      });
+
+      // Separate fields into encabezado and detalles
+      const encabezado = fields
+        .filter((field) => field.type === 'ENCABEZADO')
+        .map((field) => ({
+          id: field.id,
+          type: field.name,
+          text: field.value || '',
+          confidence: field.confidence ? Number(field.confidence) : 0,
+        }));
+
+      const detalles = fields
+        .filter((field) => field.type === 'DETALLE')
+        .map((field) => ({
+          id: field.id,
+          type: field.name,
+          text: field.value || '',
+          confidence: field.confidence ? Number(field.confidence) : 0,
+          row: field.row || 0,
+        }));
+
+      this.logger.log(
+        `✅ Retrieved ${encabezado.length} header fields and ${detalles.length} detail fields`,
+      );
+
+      return {
+        encabezado,
+        detalles,
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Error getting fields for document ${documentId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 
   /**
@@ -736,6 +794,7 @@ export class InvoiceService {
     }
   }
 
+
   /**
    * Save corrected invoice data from manual validation
    * Updates field values without overwriting the original OCR data
@@ -816,7 +875,7 @@ export class InvoiceService {
         )?.row;
 
         await this.meikoService.createFields({
-          meikoDocument: { connect: { id: document.documentId } },
+          meikoDocument: { connect: { documentId: document.documentId } },
           surveyRecordId: Number(document.surveyId),
           invoiceNumber: numeroFactura,
           documentDate: fechaFactura ? fechaFactura : null,
@@ -836,17 +895,33 @@ export class InvoiceService {
       }
       const fields = [...headers, ...detalles];
 
+      // Process field updates and creations
       for (const field of fields) {
-        const updates: Partial<Prisma.FieldUpdateInput> = {
-          corrected_value: field.text,
-        };
-
-        await this.updateField(
-          field.type,
-          document.documentId,
-          field.row || null,
-          updates,
-        );
+        if (field.id) {
+          // Update existing field using its ID
+          await this.prisma.field.update({
+            where: { id: field.id },
+            data: {
+              corrected_value: field.text,
+              validated: true,
+            },
+          });
+        } else {
+          // Create new field (created in frontend)
+          await this.prisma.field.create({
+            data: {
+              documentId: document.documentId,
+              row: field.row || null,
+              name: field.type,
+              value: field.text,
+              corrected_value: field.text,
+              confidence: field.confidence || 1,
+              type: field.row ? 'DETALLE' : 'ENCABEZADO',
+              extracted: false,
+              validated: true,
+            },
+          });
+        }
       }
 
       await this.meikoService.createStatus({

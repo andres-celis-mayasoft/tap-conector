@@ -11,6 +11,10 @@ import {
 import { Type } from 'class-transformer';
 
 export class FieldUpdateDto {
+  @IsOptional()
+  @IsInt()
+  id?: number;
+
   @IsString()
   type: string;
 

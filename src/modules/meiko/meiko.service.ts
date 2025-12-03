@@ -34,6 +34,17 @@ export class MeikoService {
           id: {
             gt: maxId,
           },
+          photoType: {
+            in: [
+              'Factura Coke',
+              'Factura Postobon',
+              'Factura Aje',
+              'Factura Tiquete POS Postobon',
+              'Factura Quala',
+              'Infocargue Postobon',
+              'Factura Femsa',
+            ],
+          },
           // surveyRecordId: {
           //   not: null,
           // },

@@ -1,17 +1,19 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { PrismaClient } from 'prisma/generated/client'; // <-- IMPORTA TIPOS
 import { join } from 'path';
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
-  private prisma: any;
+  private prisma: PrismaClient; // <-- TIPADO
 
   constructor() {
-    // Import the Prisma Client at runtime using dynamic require with absolute path
     try {
       const clientPath = join(process.cwd(), 'prisma/generated/client');
-      const { PrismaClient } = require(clientPath);
-      this.prisma = new PrismaClient({
+      // runtime import:
+      const { PrismaClient: RuntimeClient } = require(clientPath);
+
+      this.prisma = new RuntimeClient({
         log: ['error', 'warn'],
         errorFormat: 'pretty',
       });
@@ -21,24 +23,12 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // Expose PrismaClient methods
-  get $connect() {
-    return this.prisma.$connect.bind(this.prisma);
+  // Expose PrismaClient
+  get client() {
+    return this.prisma;
   }
 
-  get $disconnect() {
-    return this.prisma.$disconnect.bind(this.prisma);
-  }
-
-  get $queryRaw() {
-    return this.prisma.$queryRaw;
-  }
-
-  get $transaction() {
-    return this.prisma.$transaction.bind(this.prisma);
-  }
-
-  // Expose models
+  // Models are now correctly typed:
   get user() {
     return this.prisma.user;
   }
@@ -68,43 +58,12 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    try {
-      await this.$connect();
-      this.logger.log('Successfully connected to Database');
-    } catch (error) {
-      this.logger.error('Failed to connect to Database', error);
-      throw error;
-    }
+    await this.prisma.$connect();
+    this.logger.log('Connected to database');
   }
 
   async onModuleDestroy() {
-    try {
-      await this.$disconnect();
-      this.logger.log('Disconnected from Database');
-    } catch (error) {
-      this.logger.error('Error disconnecting from Database', error);
-    }
-  }
-
-  /**
-   * Clean database - useful for testing
-   */
-  async cleanDatabase() {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Cannot clean database in production');
-    }
-
-    const models = Reflect.ownKeys(this.prisma).filter(
-      (key) => key[0] !== '_' && typeof key === 'string',
-    );
-
-    return Promise.all(
-      models.map((modelKey) => {
-        const model = this.prisma[modelKey as keyof typeof this.prisma];
-        if (model && typeof model === 'object' && 'deleteMany' in model) {
-          return (model as any).deleteMany();
-        }
-      }),
-    );
+    await this.prisma.$disconnect();
+    this.logger.log('Disconnected from Database');
   }
 }

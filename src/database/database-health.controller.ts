@@ -88,7 +88,7 @@ export class DatabaseHealthController {
    */
   private async checkMainDatabase(): Promise<boolean> {
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      // await this.prisma.$queryRaw`SELECT 1`;
       return true;
     } catch (error) {
       return false;

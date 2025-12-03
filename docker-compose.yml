@@ -18,9 +18,9 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - tap-network
+      - meiko-network
 
-  app:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
@@ -45,7 +45,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - tap-network
+      - meiko-network
     restart: unless-stopped
 
 volumes:
@@ -53,5 +53,6 @@ volumes:
     driver: local
 
 networks:
-  tap-network:
+  meiko-network:
+    external: true
     driver: bridge

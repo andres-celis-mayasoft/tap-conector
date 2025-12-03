@@ -10,11 +10,13 @@ export class InvoiceToFillResponseDto {
   errors?: string;
   assignedAt: Date;
   encabezado: Array<{
+    id?: number;
     type: string;
     text: string;
     confidence: number;
   }>;
   detalles: Array<{
+    id?: number;
     type: string;
     text: string;
     confidence: number;
