@@ -58,7 +58,7 @@ export class MeikoService {
         orderBy: {
           id: 'asc',
         },
-        take: 30,
+        take: 1,
       });
 
       this.logger.log(`Found ${invoices.length} invoices matching criteria`);
