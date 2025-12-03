@@ -165,7 +165,7 @@ export class ExtractionService {
               );
               await this.meikoService.createStatus({
                 digitalizationStatusId: InvoiceStatus.ERROR_DE_DESCARGA,
-                invoiceId: doc.id,
+                invoiceId: doc.documentId,
               });
               await this.invoiceService.updateDocument({
                 id: doc.id,
@@ -239,7 +239,7 @@ export class ExtractionService {
             if (!isValid) {
               await this.meikoService.createStatus({
                 digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA,
-                invoiceId: doc.id,
+                invoiceId: doc.documentId,
               });
               await this.invoiceService.updateDocument({
                 id: doc.id,
@@ -255,7 +255,7 @@ export class ExtractionService {
             if (processedData.detalles.length === 0) {
               await this.meikoService.createStatus({
                 digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO,
-                invoiceId: doc.id,
+                invoiceId: doc.documentId,
               });
               await this.invoiceService.updateDocument({
                 id: doc.id,
