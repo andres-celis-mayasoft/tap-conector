@@ -187,11 +187,7 @@ export class MeikoService {
       );
       return estado;
     } catch (error) {
-      this.logger.error(
-        `Error creating EstadoDigitalizacionFactura: ${error.message}`,
-        error.stack,
-      );
-      throw error;
+      this.logger.log('Issue creating')
     }
   }
 
