@@ -64,6 +64,7 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     this.inferEncabezado();
     await this.inferDetalles();
     this.inferTotal();
+    this.inferSubTotal();
     this.guessConfidence();
     return this;
   }
@@ -106,15 +107,16 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
     ]);
     this.data.detalles = Utils.removeFields(this.data.detalles, [
       'total_ico',
-      'procentaje_icui',
+      'porcentaje_icui',
       'total_ibua',
       'valor_iva',
       'valor_unitario_item',
+      'es_devolucion',
     ]);
   }
 
-  private inferTotal() {
-    const { valor_total_factura } = Utils.getFields<QualaHeaderFields>(
+  private inferSubTotal() {
+    const { total_factura_sin_iva } = Utils.getFields<QualaHeaderFields>(
       this.data.encabezado,
     );
     let total = 0;
@@ -128,11 +130,11 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
         this.toNumber(valor_unitario_item) * this.toNumber(unidades_vendidas);
     }
 
-    const difference = Math.abs(this.toNumber(valor_total_factura) - total);
+    const difference = Math.abs(this.toNumber(total_factura_sin_iva) - total);
 
     // PARAMETRIZAR MARGEN DE ERROR
     if (difference <= 1.0) {
-      valor_total_factura.confidence = 1;
+      total_factura_sin_iva.confidence = 1;
       for (const product of products) {
         const { valor_unitario_item, unidades_vendidas } =
           Utils.getFields<QualaBodyFields>(product);
@@ -140,12 +142,12 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
         unidades_vendidas.confidence = 1;
       }
     } else {
-      valor_total_factura.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura)} `;
+      total_factura_sin_iva.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(total_factura_sin_iva)} `;
       for (const product of products) {
         const { valor_unitario_item, unidades_vendidas } =
           Utils.getFields<QualaBodyFields>(product);
-        valor_unitario_item.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura)} `;
-        unidades_vendidas.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura)} `;
+        valor_unitario_item.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(total_factura_sin_iva)} `;
+        unidades_vendidas.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(total_factura_sin_iva)} `;
       }
     }
   }
@@ -194,13 +196,13 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
       }
 
       let productDB;
-        
+
       productDB = await this.meikoService.findByDescription(
         razon_social?.text || '',
         descripcion?.text.slice(1) || '',
       );
-      
-      if(!productDB) {
+
+      if (!productDB) {
         productDB = await this.meikoService.findByDescription(
           razon_social?.text || '',
           descripcion?.text || '',
@@ -222,6 +224,65 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
 
       // Validación específica de Quala por cálculo
       this.inferProductByCalculation(product);
+    }
+  }
+
+  private inferTotal() {
+    const { valor_total_factura } = Utils.getFields<QualaHeaderFields>(
+      this.data.encabezado,
+    );
+    let total = 0;
+    const products = Utils.groupFields(this.data.detalles);
+
+    for (const product of products) {
+      const {
+        valor_venta_item,
+        valor_unitario_item,
+        unidades_vendidas,
+        valor_iva,
+        total_ico,
+        total_ibua,
+        porcentaje_icui,
+      } = Utils.getFields<QualaBodyFields>(product);
+
+      const totalProducto =
+        this.toNumber(valor_unitario_item) * this.toNumber(unidades_vendidas);
+
+      const iva = totalProducto * (this.toNumber(valor_iva) / 100);
+
+      const icui = totalProducto * (this.toNumber(porcentaje_icui) / 100);
+
+      const totalByProduct =
+        this.toNumber(total_ico) +
+        this.toNumber(total_ibua) +
+        totalProducto +
+        iva +
+        icui;
+
+      total = total + totalByProduct;
+
+      if (this.toNumber(valor_venta_item) === totalByProduct) {
+        valor_venta_item.confidence = 1;
+        unidades_vendidas.confidence = 1;
+      } else {
+        valor_venta_item.error = `Value do not match expected: ${this.toNumber(valor_venta_item)}, Calculated: ${totalByProduct}`;
+        unidades_vendidas.error = `Value do not match expected: ${this.toNumber(valor_venta_item)}, Calculated: ${totalByProduct}`;
+      }
+    }
+
+    const difference = Math.abs(this.toNumber(valor_total_factura) - total);
+
+    // PARAMETRIZAR MARGEN DE ERROR
+    if (difference <= 1.0) {
+      valor_total_factura.confidence = 1;
+      for (const product of products) {
+        const { valor_unitario_item, unidades_vendidas } =
+          Utils.getFields<QualaBodyFields>(product);
+        valor_unitario_item.confidence = 1;
+        unidades_vendidas.confidence = 1;
+      }
+    } else {
+      valor_total_factura.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura)}`;
     }
   }
 

@@ -60,6 +60,7 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
 
   async infer(): Promise<this> {
     this.inferEncabezado();
+    this.inferPacks();
     await this.inferDetalles();
     this.guessConfidence();
     return this;
@@ -117,19 +118,14 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
       const { item_descripcion_producto: descripcion } =
         Utils.getFields<InfocargueBodyFields>(product);
 
-      if (descripcion?.text?.toUpperCase() === 'REDUCCION') {
-        product.forEach((field) => (field.confidence = 1));
-        continue;
-      }
-
       let productDB;
-        
+
       productDB = await this.meikoService.findByDescription(
         razon_social?.text || '',
         descripcion?.text.slice(1) || '',
       );
-      
-      if(!productDB) {
+
+      if (!productDB) {
         productDB = await this.meikoService.findByDescription(
           razon_social?.text || '',
           descripcion?.text || '',
@@ -144,6 +140,19 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
     }
   }
 
+  private async inferPacks() {
+    const products = Utils.groupFields(this.data.detalles);
+    const pattern = /^\d+\/\d+$/;
+
+    for (const product of products) {
+      const { packs_con_unidades } =
+        Utils.getFields<InfocargueBodyFields>(product);
+
+      if (pattern.test(packs_con_unidades.text)) {
+        packs_con_unidades.confidence = 1;
+      }
+    }
+  }
   /**
    * Infiere UNIDADES_EMBALAJE desde la descripción del producto
    * Busca patrones como "x12", "X24", etc.
@@ -157,7 +166,7 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
     const valor = unidades_embalaje.text || '';
     const confianza = unidades_embalaje.confidence || 0;
 
-    const pattern = /[xX]\s*(\d+)/;
+    const pattern = /.*[xX]\s*(\d+)/;
     const match = descripcion.match(pattern);
 
     if ((!valor || valor.trim() === '') && confianza === 0) {
