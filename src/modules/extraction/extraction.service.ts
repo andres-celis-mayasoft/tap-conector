@@ -9,11 +9,12 @@ import { InvoiceStatus } from '../meiko/enums/status.enum';
 import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
 import pLimit from 'p-limit';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
- const ids = [
-   4306318, 4306314, 4306292, 4306283, 4306224, 4306082, 4306005, 4304154,
-   4304152, 4303752, 4306230, 4305356, 4305121,
- ];
+const ids = [
+  4306318, 4306314, 4306292, 4306283, 4306224, 4306082, 4306005, 4304154,
+  4304152, 4303752, 4306230, 4305356, 4305121,
+];
 
 /**
  * Extraction Service
@@ -45,16 +46,30 @@ export class ExtractionService {
    * Current schedule: Every day at 2:00 AM
    * Modify the cron expression as needed
    */
-  // @Cron(CronExpression.EVERY_DAY_AT_2AM, {
-  //   name: 'extraction',
-  // })
+  @Cron(CronExpression.EVERY_10_MINUTES, {
+    name: 'extraction',
+  })
 
   // idea, que sea una función recursiva, si no encuentra datos, hace un await de 1 minuto
-
   async handleExtractionCron() {
     this.logger.log('🚀 Starting extraction cron job');
 
     try {
+      // 0. Check if there are documents already being processed
+      const processingDocuments =
+        await this.invoiceService.countByStatus('PROCESSING');
+
+      if (processingDocuments > 0) {
+        this.logger.warn(
+          `⏸️ Found ${processingDocuments} document(s) already in PROCESSING status. Skipping this cron execution.`,
+        );
+        return;
+      }
+
+      this.logger.log(
+        '✅ No documents in PROCESSING status. Proceeding with extraction.',
+      );
+
       // 1. Get current date
       const date = DateUtils.getDate();
       this.logger.log(`📅 Date: ${date}`);
@@ -165,9 +180,7 @@ export class ExtractionService {
             }
 
             // 7.2. Process with OCR
-            this.logger.log(
-              `🔍 Invoice ${doc.id} - Processing with OCR...`,
-            );
+            this.logger.log(`🔍 Invoice ${doc.id} - Processing with OCR...`);
             const ocrResult = await this.ocrService.processInvoice({
               filePath: imagePath,
               typeOfInvoice: doc.photoType || '',

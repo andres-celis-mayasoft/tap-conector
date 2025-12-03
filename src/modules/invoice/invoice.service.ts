@@ -72,6 +72,29 @@ export class InvoiceService {
     }
   }
 
+  /**
+   * Count documents by status
+   * @param status - Document status to count
+   * @returns Number of documents with the specified status
+   */
+  async countByStatus(status: string): Promise<number> {
+    try {
+      const count = await this.prisma.document.count({
+        where: {
+          status,
+        },
+      });
+
+      return count;
+    } catch (error) {
+      this.logger.error(
+        `Error counting documents by status ${status}: ${error.message}`,
+        error.stack,
+      );
+      return 0;
+    }
+  }
+
   async getInvoices(maxId: number) {
     try {
       this.logger.log(`Fetching invoices with id_factura > ${maxId}`);
