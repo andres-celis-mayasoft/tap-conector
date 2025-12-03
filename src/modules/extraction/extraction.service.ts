@@ -375,7 +375,7 @@ export class ExtractionService {
                       ? parseFloat(totalFactura)
                       : null,
                     rowNumber: row,
-                    totalInvoiceWithoutVAT: totalFacturaSinIva,
+                    totalInvoiceWithoutVAT: totalFacturaSinIva || null,
                     valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
                   });
                 }
