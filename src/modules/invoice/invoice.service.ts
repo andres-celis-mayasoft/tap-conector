@@ -915,6 +915,7 @@ export class InvoiceService {
 
       const products = Utils.groupFields(detalles);
 
+      let counter= 1;
       for (const product of products) {
         const codigoProducto = product.find(
           (f: any) => f.type === 'codigo_producto',
@@ -959,10 +960,12 @@ export class InvoiceService {
           saleValue: valorVenta ? parseInt(valorVenta) : null,
           unitsSold: unidadesVendidas ? parseFloat(unidadesVendidas) : null,
           totalInvoice: totalFactura ? parseFloat(totalFactura) : null,
-          rowNumber: row,
+          rowNumber: counter,
           totalInvoiceWithoutVAT: totalFacturaSinIva || null,
           valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
         });
+
+        counter++;
       }
       const fields = [...headers, ...detalles];
 
