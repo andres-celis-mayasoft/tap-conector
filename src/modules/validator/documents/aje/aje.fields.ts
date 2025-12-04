@@ -4,6 +4,8 @@ export enum AjeHeaderFields {
   VALOR_TOTAL_FACTURA = 'valor_total_factura',
   TOTAL_FACTURA_SIN_IVA = 'total_factura_sin_iva',
   RAZON_SOCIAL = 'razon_social',
+  TOTAL_UNIDADES = 'total_unidades',
+  TOTAL_PACAS = 'total_pacas',
 }
 
 export enum AjeBodyFields {
@@ -21,19 +23,19 @@ export enum AjeBodyFields {
 
 
 export const AJE_THRESOLDS = {
-[AjeHeaderFields.FECHA_FACTURA]: 0.94,
-[AjeHeaderFields.NUMERO_FACTURA]: 0.86,
+[AjeHeaderFields.FECHA_FACTURA]: 0.90,
+[AjeHeaderFields.NUMERO_FACTURA]: 0.85,
 [AjeHeaderFields.TOTAL_FACTURA_SIN_IVA]: 0.95,
-[AjeHeaderFields.VALOR_TOTAL_FACTURA]: 0.97,
-[AjeHeaderFields.RAZON_SOCIAL]: 0.99,
-[AjeBodyFields.CODIGO_PRODUCTO]: 0.93,
-[AjeBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.94,
-[AjeBodyFields.TIPO_EMBALAJE]: 0.96,
-[AjeBodyFields.PACKS_VENDIDOS]: 0.87,
-[AjeBodyFields.UNIDADES_VENDIDAS]: 0.92,
-[AjeBodyFields.VALOR_VENTA_ITEM]: 0.96,
-[AjeBodyFields.UNIDADES_EMBALAJE]: 0.97,
+[AjeHeaderFields.VALOR_TOTAL_FACTURA]: 0.95,
+[AjeHeaderFields.RAZON_SOCIAL]: 0.95,
+[AjeBodyFields.CODIGO_PRODUCTO]: 0.90,
+[AjeBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.90,
+[AjeBodyFields.TIPO_EMBALAJE]: 0.95,
+[AjeBodyFields.PACKS_VENDIDOS]: 0.85,
+[AjeBodyFields.UNIDADES_VENDIDAS]: 0.90,
+[AjeBodyFields.VALOR_VENTA_ITEM]: 0.95,
+[AjeBodyFields.UNIDADES_EMBALAJE]: 0.90,
 [AjeBodyFields.PRECIO_ANTES_IVA]: 0.95,
-[AjeBodyFields.VALOR_DESCUENTO_ITEM]: 0.83,
+[AjeBodyFields.VALOR_DESCUENTO_ITEM]: 0.80,
 [AjeBodyFields.VALOR_IVA]: 0.9,
   };

@@ -53,6 +53,7 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     this.inferEncabezado();
     await this.inferDetalles();
     this.inferTotalFacturaSinIva();
+    this.inferTotal();
     this.guessConfidence();
     return this;
   }
@@ -130,13 +131,13 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
       }
 
       let productDB;
-        
+
       productDB = await this.meikoService.findByDescription(
         razon_social?.text || '',
         descripcion?.text.slice(1) || '',
       );
-      
-      if(!productDB) {
+
+      if (!productDB) {
         productDB = await this.meikoService.findByDescription(
           razon_social?.text || '',
           descripcion?.text || '',
@@ -208,6 +209,33 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     }
   }
 
+  private inferTotal() {
+    const { valor_total_factura } = Utils.getFields<PostobonHeaderFields>(
+      this.data.encabezado,
+    );
+
+    const products = Utils.groupFields(this.data.detalles);
+
+    let total = 0;
+
+    for (const product of products) {
+      const { valor_venta_item } = Utils.getFields<PostobonBodyFields>(product);
+
+      total = total + this.toNumber(valor_venta_item);
+    }
+
+    const difference = Math.abs(total - this.toNumber(valor_total_factura));
+
+    if (difference <= 1) {
+      valor_total_factura.confidence = 1;
+      for (const product of products) {
+        const { valor_venta_item } =
+          Utils.getFields<PostobonBodyFields>(product);
+        valor_venta_item.confidence = 1;
+      }
+    }
+  }
+
   private inferProductByCalculation(product: any[]): void {
     const {
       packs_vendidos,
@@ -258,7 +286,6 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
       tipo_embalaje.error = 'Valor de venta no concuerda con el cálculo';
       valor_descuento_item.error = 'Valor de venta no concuerda con el cálculo';
       aplica_iva_item.error = 'Valor de venta no concuerda con el cálculo';
-      valor_venta_item.error = 'Valor de venta no concuerda con el cálculo';
     }
   }
 
