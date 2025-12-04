@@ -61,6 +61,7 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
   async infer(): Promise<this> {
     this.inferEncabezado();
     this.inferPacks();
+    this.inferTotal();
     await this.inferDetalles();
     this.guessConfidence();
     return this;
@@ -150,6 +151,31 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
 
       if (pattern.test(packs_con_unidades.text)) {
         packs_con_unidades.confidence = 1;
+      }
+    }
+  }
+
+
+  private inferTotal() {
+    const { valor_total_factura } = Utils.getFields<InfocargueHeaderFields>(
+      this.data.encabezado,
+    );
+
+    const products = Utils.groupFields(this.data.detalles);
+
+    let subtotal = 0;
+
+    for (const product of products) {
+      const { valor_venta_item } = Utils.getFields<InfocargueBodyFields>(product);
+
+      subtotal = subtotal + this.toNumber(valor_venta_item);
+    }
+
+    if (subtotal === valor_total_factura) {
+      valor_total_factura.confidence = 1;
+      for (const product of products) {
+        const { valor_venta_item } = Utils.getFields<InfocargueBodyFields>(product);
+        valor_venta_item.confidence = 1;
       }
     }
   }

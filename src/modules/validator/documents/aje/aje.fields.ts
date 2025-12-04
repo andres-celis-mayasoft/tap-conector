@@ -4,6 +4,8 @@ export enum AjeHeaderFields {
   VALOR_TOTAL_FACTURA = 'valor_total_factura',
   TOTAL_FACTURA_SIN_IVA = 'total_factura_sin_iva',
   RAZON_SOCIAL = 'razon_social',
+  TOTAL_UNIDADES = 'total_unidades',
+  TOTAL_PACAS = 'total_pacas',
 }
 
 export enum AjeBodyFields {

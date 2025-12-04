@@ -46,6 +46,8 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
 
   async infer(): Promise<this> {
     this.inferEncabezado();
+    this.inferSubtotal();
+    this.inferTotal();
     await this.inferDetalles();
     this.guessConfidence();
     return this;
@@ -86,6 +88,8 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
   prune() {
     this.data.encabezado = Utils.removeFields(this.data.encabezado, [
       'total_productos_filtrados',
+      AjeHeaderFields.TOTAL_PACAS,
+      AjeHeaderFields.TOTAL_UNIDADES,
     ]);
     this.data.detalles = Utils.removeFields(this.data.detalles, [
       'total_pacas',
@@ -170,6 +174,9 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
       // Validación específica de AJE por cálculo
       this.inferProductByCalculation(product);
     }
+
+    this.inferTotalUnidades();
+    this.inferTotalPacks();
   }
 
   private inferProductByCalculation(product: any[]): void {
@@ -206,6 +213,92 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
 
       if (valor_venta_item)
         valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+    }
+  }
+
+  private inferTotalUnidades() {
+    const { total_unidades } = Utils.getFields<AjeHeaderFields>(
+      this.data.encabezado,
+    );
+    const products = Utils.groupFields(this.data.detalles);
+
+    let totalUnidades = 0;
+    for (const product of products) {
+      const { unidades_vendidas } = Utils.getFields<AjeBodyFields>(product);
+      totalUnidades = totalUnidades + this.toNumber(unidades_vendidas);
+    }
+
+    if (this.toNumber(total_unidades) === totalUnidades) {
+      for (const product of products) {
+        const { unidades_vendidas } = Utils.getFields<AjeBodyFields>(product);
+        unidades_vendidas.confidence = 1;
+      }
+    }
+  }
+
+  private inferTotalPacks() {
+    const { total_pacas } = Utils.getFields<AjeHeaderFields>(
+      this.data.encabezado,
+    );
+    const products = Utils.groupFields(this.data.detalles);
+
+    let totalPacks = 0;
+    for (const product of products) {
+      const { packs_vendidos } = Utils.getFields<AjeBodyFields>(product);
+      totalPacks = totalPacks + this.toNumber(packs_vendidos);
+    }
+
+    if (this.toNumber(total_pacas) === totalPacks) {
+      for (const product of products) {
+        const { packs_vendidos } = Utils.getFields<AjeBodyFields>(product);
+        packs_vendidos.confidence = 1;
+      }
+    }
+  }
+
+  private inferSubtotal() {
+    const { total_factura_sin_iva } = Utils.getFields<AjeHeaderFields>(
+      this.data.encabezado,
+    );
+
+    const products = Utils.groupFields(this.data.detalles);
+
+    let subtotal = 0;
+
+    for (const product of products) {
+      const { precio_antes_iva } = Utils.getFields<AjeBodyFields>(product);
+
+      subtotal = subtotal + this.toNumber(precio_antes_iva);
+    }
+
+    if (subtotal === total_factura_sin_iva) {
+      total_factura_sin_iva.confidence = 1;
+    }
+
+    return;
+  }
+
+  private inferTotal() {
+    const { valor_total_factura } = Utils.getFields<AjeHeaderFields>(
+      this.data.encabezado,
+    );
+
+    const products = Utils.groupFields(this.data.detalles);
+
+    let subtotal = 0;
+
+    for (const product of products) {
+      const { valor_venta_item } = Utils.getFields<AjeBodyFields>(product);
+
+      subtotal = subtotal + this.toNumber(valor_venta_item);
+    }
+
+    if (subtotal === valor_total_factura) {
+      valor_total_factura.confidence = 1;
+      for (const product of products) {
+        const { valor_venta_item } = Utils.getFields<AjeBodyFields>(product);
+        valor_venta_item.confidence = 1;
+      }
     }
   }
 
