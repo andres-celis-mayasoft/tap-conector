@@ -31,6 +31,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
         const valorField = product.find(
           (field) => field.type === CokeBodyFields.VALOR_VENTA_ITEM,
         );
+        descriptionField.text = descriptionField.text.toUpperCase();
         if (valorField)
           valorField.text = String(this.toNumber(valorField) * -1);
         continue;
