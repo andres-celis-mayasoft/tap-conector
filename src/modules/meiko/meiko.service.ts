@@ -152,6 +152,8 @@ export class MeikoService {
   async createFields(data: PrismaMeiko.ResultCreateInput) {
     try {
       this.logger.log(`Creating MeikoResult entry`);
+      this.logger.log("Row :", data.rowNumber)
+      this.logger.log("idFactura :", data.invoice.connect?.id)
 
       const result = await this.prismaMeiko.result.create({
         data,

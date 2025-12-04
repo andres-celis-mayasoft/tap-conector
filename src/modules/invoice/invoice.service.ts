@@ -902,7 +902,7 @@ export class InvoiceService {
       const fechaFactura = DateTime.fromFormat(
         headers.find((f: any) => f.type === 'fecha_factura')?.text,
         'dd/MM/yyyy',
-      ).toString();
+      );
       const razonSocial = headers.find(
         (f: any) => f.type === 'razon_social',
       )?.text;
@@ -944,11 +944,12 @@ export class InvoiceService {
           (f: any) => f.type === 'item_descripcion_producto',
         )?.row;
 
+
         await this.meikoService.createFields({
           invoice: { connect: { id: document.documentId } },
           surveyRecordId: Number(document.surveyId),
           invoiceNumber: numeroFactura,
-          invoiceDate: fechaFactura ? fechaFactura : null,
+          invoiceDate: fechaFactura.isValid ? fechaFactura.toString() : null,
           businessName: razonSocial,
           productCode: codigoProducto,
           description: descripcion,

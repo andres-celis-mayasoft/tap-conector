@@ -312,7 +312,7 @@ export class ExtractionService {
                 const fechaFactura = DateTime.fromFormat(
                   headers.find((f: any) => f.type === 'fecha_factura')?.text,
                   'dd/MM/yyyy',
-                ).toString();
+                )
                 const razonSocial = headers.find(
                   (f: any) => f.type === 'razon_social',
                 )?.text;
@@ -358,7 +358,7 @@ export class ExtractionService {
                     invoice: { connect: { id: doc.documentId } },
                     surveyRecordId: Number(doc.surveyId),
                     invoiceNumber: numeroFactura,
-                    invoiceDate: fechaFactura ? fechaFactura : null,
+                    invoiceDate: fechaFactura.isValid ? fechaFactura.toString() : null,
                     businessName: razonSocial,
                     productCode: codigoProducto,
                     description: descripcion,
