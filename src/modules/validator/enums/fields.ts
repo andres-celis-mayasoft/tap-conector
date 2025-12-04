@@ -22,6 +22,5 @@ export enum Fields {
 }
 
 export const RAZON_SOCIAL = {
-  'Coca-Cola': 'COCA COLA',
-  'POSTOBON S.A.': 'POSTOBON'
+  'Coca-Cola': 'COCA COLA'
 };

@@ -183,9 +183,11 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
       const unidadesItem =
         this.toNumber(unidades_embalaje) / this.toNumber(unidades_vendidas);
       const valorItem = this.toNumber(valor_unitario_item) / unidadesItem;
-      const valorVentaCalculado = valorItem - this.toNumber(valor_ibua_y_otros);
+      const valorVentaCalculado = valorItem
+
+      const difference = Math.abs(valorVentaCalculado - this.toNumber(valor_venta_item) )
   
-      if (valorVentaCalculado === this.toNumber(valor_venta_item)) {
+      if (difference <= 1) {
         unidades_embalaje.confidence = 1;
         unidades_vendidas.confidence = 1;
         valor_unitario_item.confidence = 1;

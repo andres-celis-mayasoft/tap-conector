@@ -178,10 +178,10 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     let suma_entera = 0;
     let suma_decimal = 0;
     for (const product of products) {
-      const { item_descripcion_producto: descripcion, tipo_embalaje } =
+      const { packs_vendidos } =
         Utils.getFields<TiquetePosPostobonBodyFields>(product);
 
-      const texto = descripcion.text ?? '0';
+      const texto = packs_vendidos.text ?? '0';
 
       let ent = '0';
       let dec = '0';
@@ -199,7 +199,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     }
 
     const totalInfered = Number(`${suma_entera}.${suma_decimal}`);
-    if (totalInfered === total_articulos) {
+    if (totalInfered === this.toNumber(total_articulos)) {
       for (const product of products) {
         const { packs_vendidos } =
           Utils.getFields<TiquetePosPostobonBodyFields>(product);
@@ -260,7 +260,11 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
       subtotal = subtotal + this.toNumber(valor_subtotal_item);
     }
 
-    if (subtotal === total_factura_sin_iva) {
+    const difference = Math.abs(
+      subtotal - this.toNumber(total_factura_sin_iva),
+    );
+
+    if (difference <= 5) {
       total_factura_sin_iva.confidence = 1;
     }
 
@@ -273,16 +277,18 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
 
     const products = Utils.groupFields(this.data.detalles);
 
-    let subtotal = 0;
+    let total = 0;
 
     for (const product of products) {
       const { valor_venta_item_total_nc } =
         Utils.getFields<TiquetePosPostobonBodyFields>(product);
 
-      subtotal = subtotal + this.toNumber(valor_venta_item_total_nc);
+      total = total + this.toNumber(valor_venta_item_total_nc);
     }
 
-    if (subtotal === valor_total_factura) {
+    const difference = Math.abs(total - this.toNumber(valor_total_factura));
+
+    if (difference <= 1) {
       valor_total_factura.confidence = 1;
       for (const product of products) {
         const { valor_venta_item_total_nc } =

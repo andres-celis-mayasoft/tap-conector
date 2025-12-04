@@ -25,7 +25,7 @@ export const POS_POSTOBON_THRESOLDS = {
   [TiquetePosPostobonHeaderFields.RAZON_SOCIAL]: 0.55,
   [TiquetePosPostobonHeaderFields.TOTAL_ARTICULOS]: 0.98,
   [TiquetePosPostobonBodyFields.TIPO_EMBALAJE]: 0.98,
-  [TiquetePosPostobonBodyFields.UNIDADES_EMBALAJE]: 0.97,
+  [TiquetePosPostobonBodyFields.UNIDADES_EMBALAJE]: 0.90,
   [TiquetePosPostobonBodyFields.PACKS_VENDIDOS]: 0.97,
   [TiquetePosPostobonBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.89,
   [TiquetePosPostobonBodyFields.VALOR_VENTA_ITEM_TOTAL_NC]: 0.82,

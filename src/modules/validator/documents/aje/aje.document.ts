@@ -271,7 +271,7 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
       subtotal = subtotal + this.toNumber(precio_antes_iva);
     }
 
-    if (subtotal === total_factura_sin_iva) {
+    if (subtotal === this.toNumber(total_factura_sin_iva)) {
       total_factura_sin_iva.confidence = 1;
     }
 
@@ -293,7 +293,7 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
       subtotal = subtotal + this.toNumber(valor_venta_item);
     }
 
-    if (subtotal === valor_total_factura) {
+    if (subtotal === this.toNumber(valor_total_factura)) {
       valor_total_factura.confidence = 1;
       for (const product of products) {
         const { valor_venta_item } = Utils.getFields<AjeBodyFields>(product);

@@ -155,7 +155,6 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
     }
   }
 
-
   private inferTotal() {
     const { valor_total_factura } = Utils.getFields<InfocargueHeaderFields>(
       this.data.encabezado,
@@ -166,15 +165,19 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
     let subtotal = 0;
 
     for (const product of products) {
-      const { valor_venta_item } = Utils.getFields<InfocargueBodyFields>(product);
+      const { valor_venta_item } =
+        Utils.getFields<InfocargueBodyFields>(product);
 
       subtotal = subtotal + this.toNumber(valor_venta_item);
     }
 
-    if (subtotal === valor_total_factura) {
+    const difference = Math.abs(subtotal - this.toNumber(valor_total_factura));
+
+    if (difference <= 1) {
       valor_total_factura.confidence = 1;
       for (const product of products) {
-        const { valor_venta_item } = Utils.getFields<InfocargueBodyFields>(product);
+        const { valor_venta_item } =
+          Utils.getFields<InfocargueBodyFields>(product);
         valor_venta_item.confidence = 1;
       }
     }

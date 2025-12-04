@@ -30,7 +30,7 @@ export const POSTOBON_THRESOLDS = {
   [PostobonHeaderFields.TOTAL_FACTURA_SIN_IVA]: 0.97,
   [PostobonHeaderFields.VALOR_TOTAL_FACTURA]: 0.93,
   [PostobonBodyFields.CODIGO_PRODUCTO]: 0.96,
-  [PostobonBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.95,
+  [PostobonBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.90,
   [PostobonBodyFields.TIPO_EMBALAJE]: 0.99,
   [PostobonBodyFields.PACKS_VENDIDOS]: 0.99,
   [PostobonBodyFields.VALOR_VENTA_ITEM]: 0.94,
