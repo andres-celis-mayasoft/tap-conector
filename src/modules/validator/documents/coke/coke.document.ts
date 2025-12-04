@@ -1,4 +1,8 @@
-import { COKE_THRESOLDS, CokeBodyFields, CokeHeaderFields } from './coke.fields';
+import {
+  COKE_THRESOLDS,
+  CokeBodyFields,
+  CokeHeaderFields,
+} from './coke.fields';
 import { CokeInvoiceSchema } from './coke.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
@@ -31,6 +35,11 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
         const valorField = product.find(
           (field) => field.type === CokeBodyFields.VALOR_VENTA_ITEM,
         );
+        const valorIBUA = product.find(
+          (field) => field.type == CokeBodyFields.VALOR_IBUA_Y_OTROS,
+        );
+        if(valorIBUA) valorIBUA.text = '';
+        
         if (valorField)
           valorField.text = String(this.toNumber(valorField) * -1);
         continue;
