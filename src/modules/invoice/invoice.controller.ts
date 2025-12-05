@@ -101,13 +101,13 @@ export class InvoiceController {
   async saveInvoice(
     @CurrentUser('id') userId: number,
     @Body() saveInvoiceDto: SaveInvoiceDto,
-  ): Promise<SaveInvoiceResponseDto> {
+  ) {
     this.logger.log(
       `💾 User ${userId} saving invoice ${saveInvoiceDto.invoiceId}`,
     );
 
     try {
-      const result = await this.invoiceService.saveCorrectedInvoice({
+      await this.invoiceService.saveCorrectedInvoice({
         ...saveInvoiceDto,
         userId,
       });
@@ -116,7 +116,7 @@ export class InvoiceController {
         `✅ Invoice ${saveInvoiceDto.invoiceId} saved successfully. `,
       );
 
-      return result;
+      return { success: true}
     } catch (error) {
       this.logger.error(
         `❌ Error saving invoice ${saveInvoiceDto.invoiceId}: ${error.message}`,
