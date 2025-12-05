@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Logger, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Logger,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import {
   GetInvoiceToFillDto,
@@ -86,8 +94,24 @@ export class InvoiceController {
         testInvoice,
       );
 
-
       return result;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error testing invoice  ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+  @Public()
+  @Get('report')
+  async report() {
+    try {
+      const delivered = await this.invoiceService.reportByStatus();
+      const users = await this.invoiceService.reportDeliveredByUser();
+      const active = await this.invoiceService.getActiveUsers();
+
+      return { users, delivered , active };
     } catch (error) {
       this.logger.error(
         `❌ Error testing invoice  ${error.message}`,

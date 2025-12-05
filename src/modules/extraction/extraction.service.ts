@@ -184,7 +184,7 @@ export class ExtractionService {
             }
 
             let finalType: string;
-            const photoTypeOcr = ocrResult.data.data?.photoTypeOcr;
+            const photoTypeOcr = ocrResult.data.response.tipoFacturaOcr;
 
             const photoType = doc.photoType;
 
