@@ -48,7 +48,9 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
 
   async infer(): Promise<this> {
     this.inferEncabezado();
-    this.inferTotalFactura();
+    this.inferSubtotal();
+    this.inferTotal();
+    this.inferIBUA();
     await this.inferDetalles();
     this.guessConfidence();
     return this;
@@ -80,6 +82,12 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
   prune() {
     this.data.detalles = Utils.removeFields(this.data.detalles, [
       'valor_unitario_item',
+      FemsaBodyFields.VALOR_DESCUENTO,
+      FemsaBodyFields.CANTIDAD,
+    ]);
+    this.data.encabezado = Utils.removeFields(this.data.encabezado, [
+      FemsaHeaderFields.IBUA,
+      FemsaHeaderFields.IVA_TARIFA_GENERAL,
     ]);
   }
 
@@ -120,13 +128,13 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
       } = Utils.getFields<FemsaBodyFields>(product);
 
       let productDB;
-        
+
       productDB = await this.meikoService.findByDescription(
         razon_social?.text || '',
         descripcion?.text.slice(1) || '',
       );
-      
-      if(!productDB) {
+
+      if (!productDB) {
         productDB = await this.meikoService.findByDescription(
           razon_social?.text || '',
           descripcion?.text || '',
@@ -154,79 +162,103 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
       if (productDB?.saleValue === valor_unitario_item.text) {
         valor_unitario_item.confidence = 1;
       }
-      
-      this.inferProductByCalculation(product);
 
+      this.inferProductByCalculation(product);
     }
   }
 
-    private inferProductByCalculation(product: any): void {
-      const {
-        valor_venta_item,
-        valor_unitario_item,
-        valor_ibua_y_otros,
-        unidades_embalaje,
-        unidades_vendidas,
-      } = Utils.getFields<FemsaBodyFields>(product);
-  
-      if (
-        !valor_venta_item ||
-        !valor_unitario_item ||
-        !valor_ibua_y_otros ||
-        !unidades_embalaje ||
-        !unidades_vendidas
-      ) {
-        valor_venta_item.error = 'Missing fields for calculation inference';
-        return;
-      }
-  
-      const unidadesItem =
-        this.toNumber(unidades_embalaje) / this.toNumber(unidades_vendidas);
-      const valorItem = this.toNumber(valor_unitario_item) / unidadesItem;
-      const valorVentaCalculado = valorItem
+  private inferProductByCalculation(product: any): void {
+    const { valor_unitario_item, valor_venta_item, cantidad } =
+      Utils.getFields<FemsaBodyFields>(product);
 
-      const difference = Math.abs(valorVentaCalculado - this.toNumber(valor_venta_item) )
-  
-      if (difference <= 1) {
-        unidades_embalaje.confidence = 1;
-        unidades_vendidas.confidence = 1;
-        valor_unitario_item.confidence = 1;
-        valor_ibua_y_otros.confidence = 1;
+    const valorVentaCalculado =
+      this.toNumber(valor_unitario_item) * this.toNumber(cantidad);
+
+    const difference = Math.abs(
+      valorVentaCalculado - this.toNumber(valor_venta_item),
+    );
+
+    if (difference <= 5) {
+      valor_venta_item.confidence = 1;
+    } else
+      valor_venta_item.error = `Valor venta no coincide, expected: ${this.toNumber(valor_venta_item)} calculated : ${valorVentaCalculado}`;
+  }
+
+  private inferSubtotal() {
+    const { total_factura_sin_iva } = Utils.getFields<FemsaHeaderFields>(
+      this.data.encabezado,
+    );
+    const products = Utils.groupFields(this.data.detalles);
+
+    let calculatedSubtotal = 0;
+
+    for (const product of products) {
+      const { valor_venta_item, valor_descuento } =
+        Utils.getFields<FemsaBodyFields>(product);
+      calculatedSubtotal =
+        calculatedSubtotal +
+        this.toNumber(valor_venta_item) -
+        this.toNumber(valor_descuento);
+    }
+
+    const difference = Math.abs(
+      calculatedSubtotal - this.toNumber(total_factura_sin_iva),
+    );
+
+    if (difference <= 5) {
+      for (const product of products) {
+        const { valor_venta_item } = Utils.getFields<FemsaBodyFields>(product);
         valor_venta_item.confidence = 1;
-      } else {
-        valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
-        valor_ibua_y_otros.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
-        valor_unitario_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
-        unidades_vendidas.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
-        unidades_embalaje.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
       }
     }
-  
-    /**
-     * Infiere el total de factura sumando todos los valores de venta + IBUA
-     */
-    private inferTotalFactura(): void {
-      const products = Utils.groupFields(this.data.detalles);
-      const headers = Utils.getFields<FemsaHeaderFields>(this.data.encabezado);
-  
-      const calculatedTotal = products.reduce((acc, product) => {
-        const fields = Utils.getFields<FemsaHeaderFields>(product);
-        const valorVenta = this.toNumber(fields[FemsaBodyFields.VALOR_VENTA_ITEM]);
-        const valorIbua = this.toNumber(
-          fields[FemsaBodyFields.VALOR_IBUA_Y_OTROS],
-        );
-        return acc + valorVenta + valorIbua;
-      }, 0);
-  
-      const valorTotalFactura = headers[FemsaHeaderFields.VALOR_TOTAL_FACTURA];
-      if (
-        valorTotalFactura &&
-        calculatedTotal === this.toNumber(valorTotalFactura)
-      ) {
-        valorTotalFactura.confidence = 1;
-      } else
-        valorTotalFactura.error = `Total factura no coincide. Calculado: ${calculatedTotal}, Esperado: ${this.toNumber(valorTotalFactura)} `;
+  }
+  private inferTotal() {
+    const {
+      total_factura_sin_iva,
+      valor_total_factura,
+      ibua,
+      iva_tarifa_general,
+    } = Utils.getFields<FemsaHeaderFields>(this.data.encabezado);
+
+    const calculated =
+      this.toNumber(total_factura_sin_iva) +
+      this.toNumber(ibua) +
+      this.toNumber(iva_tarifa_general);
+
+    const difference = Math.abs(
+      calculated - this.toNumber(valor_total_factura),
+    );
+
+    if (difference <= 5) {
+      total_factura_sin_iva.confidence = 1;
+      valor_total_factura.confidence = 1;
     }
+  }
+
+  private inferIBUA() {
+    const { ibua } = Utils.getFields<FemsaHeaderFields>(this.data.encabezado);
+    const products = Utils.groupFields(this.data.detalles);
+
+    let calculatedValorIBUA = 0;
+
+    for (const product of products) {
+      const { valor_ibua_y_otros } = Utils.getFields<FemsaBodyFields>(product);
+      calculatedValorIBUA =
+        calculatedValorIBUA + this.toNumber(valor_ibua_y_otros);
+    }
+
+    const difference = Math.abs(calculatedValorIBUA - this.toNumber(ibua));
+
+    if (difference <= 5) {
+      for (const product of products) {
+        const { valor_ibua_y_otros } =
+          Utils.getFields<FemsaBodyFields>(product);
+        valor_ibua_y_otros.confidence = 1;
+      }
+    }
+  }
+
+
 
   private guessConfidence(): void {
     Utils.guessConfidence(this.data.encabezado, FEMSA_THRESOLDS);
