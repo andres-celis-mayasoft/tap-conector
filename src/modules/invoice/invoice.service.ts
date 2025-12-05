@@ -438,6 +438,9 @@ export class InvoiceService {
       for (const [rowNumber, rowFields] of Object.entries(detailsByRow)) {
         const fields = rowFields as any;
 
+        if(fields.total_factura_sin_iva?.text === "[ILEGIBLE]") {
+          fields.total_factura_sin_iva.text = '-0.1'
+        }
         const resultData = {
           meikoInvoiceId: meikoInvoice.id,
           surveyRecordId: Number(meikoInvoiceData.surveyRecordId || 0),
@@ -1055,6 +1058,173 @@ export class InvoiceService {
       return {
         error: error.message,
       };
+    }
+  }
+
+  async reportDeliveredByUser() {
+    try {
+      this.logger.log('📊 Generating report: Delivered documents by user');
+
+      const result = await this.prisma.document.groupBy({
+        by: ['assignedUserId'],
+        where: {
+          status: 'DELIVERED',
+          assignedUserId: {
+            not: null,
+          },
+        },
+        _count: {
+          assignedUserId: true,
+        },
+      });
+
+      // Get user names
+      const reportWithUserNames = await Promise.all(
+        result.map(async (item) => {
+          if (!item.assignedUserId) {
+            return {
+              total: item._count.assignedUserId,
+              name: 'Unknown',
+            };
+          }
+
+          const user = await this.prisma.user.findUnique({
+            where: { id: item.assignedUserId },
+            select: { name: true },
+          });
+
+          return {
+            total: item._count.assignedUserId,
+            name: user?.name || 'Unknown',
+          };
+        }),
+      );
+
+      this.logger.log(
+        `✅ Report generated: ${reportWithUserNames.length} users with delivered documents`,
+      );
+
+      return reportWithUserNames;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error generating delivered by user report: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  async reportByStatus() {
+    try {
+      this.logger.log('📊 Generating report: Documents by status');
+
+      const pendingValidation = await this.prisma.document.count({
+        where: {
+          status: 'PENDING_VALIDATION',
+        },
+      });
+
+      const inCapture = await this.prisma.document.count({
+        where: {
+          status: 'IN_CAPTURE',
+        },
+      });
+
+      const report = {
+        PENDING_VALIDATION: pendingValidation,
+        IN_CAPTURE: inCapture,
+      };
+
+      this.logger.log(
+        `✅ Report generated: ${pendingValidation} pending validation, ${inCapture} in capture`,
+      );
+
+      return report;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error generating status report: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  async getActiveUsers() {
+    try {
+      this.logger.log('📊 Getting active users with assigned documents');
+
+      // Find all documents that are currently assigned (IN_CAPTURE or PENDING_VALIDATION with assigned user)
+      const activeDocuments = await this.prisma.document.findMany({
+        where: {
+          assignedUserId: {
+            not: null,
+          },
+          status: {
+            in: ['IN_CAPTURE', 'PENDING_VALIDATION'],
+          },
+          completedAt: null,
+        },
+        select: {
+          assignedUserId: true,
+          assignedAt: true,
+          status: true,
+          documentId: true,
+        },
+        distinct: ['assignedUserId'],
+      });
+
+      // Get user details for each active user
+      const activeUsers = await Promise.all(
+        activeDocuments.map(async (doc) => {
+          if (!doc.assignedUserId) return null;
+
+          const user = await this.prisma.user.findUnique({
+            where: { id: doc.assignedUserId },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          });
+
+          if (!user) return null;
+
+          // Count total documents assigned to this user
+          const assignedCount = await this.prisma.document.count({
+            where: {
+              assignedUserId: doc.assignedUserId,
+              status: {
+                in: ['IN_CAPTURE', 'PENDING_VALIDATION'],
+              },
+              completedAt: null,
+            },
+          });
+
+          return {
+            userId: user.id,
+            name: user.name,
+            email: user.email,
+            assignedDocumentsCount: assignedCount,
+            lastAssignedAt: doc.assignedAt,
+            currentStatus: doc.status,
+          };
+        }),
+      );
+
+      // Filter out nulls
+      const filteredUsers = activeUsers.filter((user) => user !== null);
+
+      this.logger.log(
+        `✅ Found ${filteredUsers.length} active users with assigned documents`,
+      );
+
+      return filteredUsers;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error getting active users: ${error.message}`,
+        error.stack,
+      );
+      throw error;
     }
   }
 }
