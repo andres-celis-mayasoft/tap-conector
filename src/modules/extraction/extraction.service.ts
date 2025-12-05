@@ -326,10 +326,13 @@ export class ExtractionService {
                 const totalFactura = headers.find(
                   (f: any) => f.type === 'valor_total_factura',
                 )?.text;
-                const totalFacturaSinIva = headers.find(
+                let totalFacturaSinIva = headers.find(
                   (f: any) => f.type === 'total_factura_sin_iva',
                 )?.text;
 
+                if (totalFacturaSinIva === '[ILEGIBLE]') {
+                  totalFacturaSinIva = '-0.1';
+                }
                 const products = Utils.groupFields(processedData.detalles);
 
                 for (const product of products) {
