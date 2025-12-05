@@ -145,7 +145,7 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
       }
 
       const result = await this.meikoService.find({
-        where: { productCode: codigo_producto.text },
+        where: { productCode: codigo_producto?.text },
         select: { productCode: true },
       });
 
