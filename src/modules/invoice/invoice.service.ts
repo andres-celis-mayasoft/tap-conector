@@ -698,7 +698,7 @@ export class InvoiceService {
         throw new Error(`Invoice ${invoiceId} not found`);
       }
 
-      await this.prisma.estadoDigitalizacionFactura.create({
+      await this.prismaMeikoService.estadoDigitalizacionFactura.create({
         data: {
           invoiceId,
           digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO, 
