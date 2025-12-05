@@ -10,11 +10,7 @@ import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
 import pLimit from 'p-limit';
 import { Cron, CronExpression } from '@nestjs/schedule';
-
-const ids = [
-  4306318, 4306314, 4306292, 4306283, 4306224, 4306082, 4306005, 4304154,
-  4304152, 4303752, 4306230, 4305356, 4305121,
-];
+import { InvoiceUtils } from '../invoice/utils/Invoice.utils';
 
 /**
  * Extraction Service
@@ -202,9 +198,18 @@ export class ExtractionService {
               return;
             }
 
-            // 7.3. Create document and process (normalize, validate, infer)
-            const photoTypeOcr =
-              ocrResult.data.data?.photoTypeOcr || doc.photoType;
+            let finalType: string;
+            const photoTypeOcr = ocrResult.data.data?.photoTypeOcr;
+
+            const photoType = doc.photoType;
+
+            if (
+              photoType === 'Factura Postobon' &&
+              photoTypeOcr === 'Factura Tiquete POS Postobon'
+            ) {
+              finalType = photoTypeOcr;
+            } else finalType = photoType;
+
             this.logger.log(
               `📋 Invoice ${doc.id} - Document type: ${photoTypeOcr}`,
             );
@@ -212,19 +217,19 @@ export class ExtractionService {
             let document: any;
             try {
               document = DocumentFactory.create(
-                photoTypeOcr,
+                finalType,
                 ocrResult.data.response,
                 this.meikoService,
                 this.invoiceService,
               );
             } catch (error: any) {
               this.logger.error(
-                `❌ Invoice ${doc.id} - Unsupported document type: ${photoTypeOcr}`,
+                `❌ Invoice ${doc.id} - Unsupported document type: ${finalType}`,
               );
               await this.invoiceService.updateDocument({
                 id: doc.id,
                 path: imagePath,
-                errors: `UNEXPECTED ERROR: ${photoTypeOcr}`,
+                errors: `UNEXPECTED ERROR: ${finalType}`,
                 extracted: false,
                 validated: false,
                 status: 'ERROR',
@@ -247,6 +252,7 @@ export class ExtractionService {
                 errors: 'FECHA OBSOLETA',
                 extracted: false,
                 validated: false,
+                mayaDocumentJSON: JSON.stringify(ocrResult.data),
                 status: 'DELIVERED',
               });
               return;
@@ -262,6 +268,7 @@ export class ExtractionService {
                 errors: 'TODOS LOS PRODUCTOS FUERON EXCLUIDOS',
                 extracted: false,
                 validated: false,
+                mayaDocumentJSON: JSON.stringify(ocrResult.data),
                 status: 'DELIVERED',
               });
               return;
@@ -421,12 +428,13 @@ export class ExtractionService {
                   `VALIDATION_ERRORS: ${JSON.stringify(errors)}`,
                 );
               }
+              const allErrors = InvoiceUtils.getErrors(processedData);
 
               await this.invoiceService.updateDocument({
                 id: doc.id,
                 status: 'PENDING_VALIDATION',
                 validated: false,
-                errors: errorMessages.join(' | '),
+                errors: allErrors.join(' | '),
               });
               validationRequiredCount++;
               this.logger.log(

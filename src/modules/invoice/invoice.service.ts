@@ -14,6 +14,7 @@ import { Utils } from '../validator/documents/utils';
 import { MeikoService } from '../meiko/meiko.service';
 import { DocumentFactory } from '../validator/documents/base/document.factory';
 import { PrismaMeikoService } from 'src/database/services/prisma-meiko.service';
+import { InvoiceUtils } from './utils/Invoice.utils';
 
 @Injectable()
 export class InvoiceService {
@@ -1019,12 +1020,24 @@ export class InvoiceService {
   }
 
   async testInvoice(
-    tipFoto: any,
+    tipoFoto: any,
     testInvoice: { encabezado; detalles; tipoFacturaOcr },
   ) {
     try {
+      let finalType: string;
+      const photoTypeOcr = testInvoice.tipoFacturaOcr;
+
+      const photoType = tipoFoto;
+
+      if (
+        photoType === 'Factura Postobon' &&
+        photoTypeOcr === 'Factura Tiquete POS Postobon'
+      ) {
+        finalType = photoTypeOcr;
+      } else finalType = photoType;
+
       const document = DocumentFactory.create(
-        tipFoto,
+        finalType,
         { encabezado: testInvoice.encabezado, detalles: testInvoice.detalles },
         this.meikoService,
         this,
@@ -1033,30 +1046,7 @@ export class InvoiceService {
 
       const { data, isValid } = document.get();
 
-      data.encabezado = data.encabezado.filter(
-        (field) => field.confidence < 1,
-      ) as any;
-      // si no tiene error, fue el
-      data.detalles = data.detalles.filter(
-        (field) => field.confidence < 1,
-      ) as any;
-
-      this.logger.log(`💾 Testing invoice with photo type ${tipFoto}`);
-      return [
-        ...data.encabezado.map((field) =>  'Field: ' +
-            field.type +
-            ' Error: ' +
-            field.error,),
-        ...data.detalles.map(
-          (field) =>
-            'Field: ' +
-            field.type +
-            ' Row: ' +
-            field.row +
-            ' Error: ' +
-            field.error,
-        ),
-      ];
+      return InvoiceUtils.getErrors(data)
     } catch (error) {
       this.logger.error(
         `❌ Error testing invoice: ${error.message}`,

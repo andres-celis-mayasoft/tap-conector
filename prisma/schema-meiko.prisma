@@ -18,7 +18,7 @@ model Invoice {
   stickerQR            String?    @db.VarChar(50)
   responseReceived     String?    @db.VarChar(100)
   variableName         String?    @map("nombre_variable") @db.VarChar(255)
-  photoType            String?    @map("tipo_foto") @db.VarChar(255)
+  photoType            String    @map("tipo_foto") @db.VarChar(255)
   link                 String?    @db.Text
   flagDigitalization   Int?       @map("flag_digitalizacion") @db.SmallInt
   digitalizationDate   DateTime?  @map("fecha_digitalizacion")

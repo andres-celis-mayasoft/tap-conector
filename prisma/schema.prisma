@@ -15,7 +15,7 @@ model Document {
   id                Int       @id @default(autoincrement())
   documentId       Int       @unique @map("document_id")
   surveyId           String?   @map("survey_id")
-  photoType        String?   @map("photo_type")
+  photoType        String   @map("photo_type")
   photoTypeOCR    String?   @map("photo_type_ocr")
   errors            String?   @map("errors")
   extracted         Boolean   @default(false) @map("extracted")
