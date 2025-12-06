@@ -43,14 +43,12 @@ export class InvoiceService {
       data: data,
     });
   }
-  
 
   getDocument(id: number) {
     return this.prisma.document.findUnique({
       where: { id },
     });
   }
-
 
   async getMaxId(): Promise<number> {
     try {
@@ -137,7 +135,6 @@ export class InvoiceService {
     });
   }
 
-
   async downloadAndValidate(
     invoice: any,
     targetDir: string,
@@ -195,7 +192,7 @@ export class InvoiceService {
       throw new Error('Downloaded file is empty');
     }
     return response.data;
-  } 
+  }
 
   async saveTempFile(tempFile: string, data: Buffer): Promise<void> {
     await fs.writeFile(tempFile, data);
@@ -438,8 +435,8 @@ export class InvoiceService {
       for (const [rowNumber, rowFields] of Object.entries(detailsByRow)) {
         const fields = rowFields as any;
 
-        if(fields.total_factura_sin_iva?.text === "[ILEGIBLE]") {
-          fields.total_factura_sin_iva.text = '-0.1'
+        if (fields.total_factura_sin_iva?.text === '[ILEGIBLE]') {
+          fields.total_factura_sin_iva.text = '-0.1';
         }
         const resultData = {
           meikoInvoiceId: meikoInvoice.id,
@@ -689,7 +686,7 @@ export class InvoiceService {
     }
   }
 
-   async markAsNotApplyStudy(invoiceId: number): Promise<any> {
+  async markAsNotApplyStudy(invoiceId: number): Promise<any> {
     try {
       this.logger.log(`🔄 Marking invoice ${invoiceId} as not apply study`);
 
@@ -705,7 +702,7 @@ export class InvoiceService {
       await this.prismaMeikoService.estadoDigitalizacionFactura.create({
         data: {
           invoiceId,
-          digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO, 
+          digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO,
         },
       });
 
@@ -734,7 +731,7 @@ export class InvoiceService {
     }
   }
 
-   async omitDocument(documentId: number) {
+  async omitDocument(documentId: number) {
     try {
       this.logger.log(`🔄 Marking invoice ${documentId} as omitted`);
 
@@ -904,7 +901,6 @@ export class InvoiceService {
     }
   }
 
-
   /**
    * Save corrected invoice data from manual validation
    * Updates field values without overwriting the original OCR data
@@ -949,15 +945,17 @@ export class InvoiceService {
       const totalFactura = headers.find(
         (f: any) => f.type === 'valor_total_factura',
       )?.text;
-      const totalFacturaSinIva = headers.find(
+      let totalFacturaSinIva = headers.find(
         (f: any) => f.type === 'total_factura_sin_iva',
       )?.text;
 
-
+      if (totalFacturaSinIva === '[ILEGIBLE]') {
+        totalFacturaSinIva = '-0.1';
+      }
 
       const products = Utils.groupFields(detalles);
 
-      let counter= 1;
+      let counter = 1;
       for (const product of products) {
         const codigoProducto = product.find(
           (f: any) => f.type === 'codigo_producto',
@@ -986,7 +984,6 @@ export class InvoiceService {
         const row = product.find(
           (f: any) => f.type === 'item_descripcion_producto',
         )?.row;
-
 
         await this.meikoService.createFields({
           invoice: { connect: { id: document.documentId } },
@@ -1087,7 +1084,7 @@ export class InvoiceService {
 
       const { data, isValid } = document.get();
 
-      return InvoiceUtils.getErrors(data)
+      return InvoiceUtils.getErrors(data);
     } catch (error) {
       this.logger.error(
         `❌ Error testing invoice: ${error.message}`,
