@@ -734,6 +734,42 @@ export class InvoiceService {
     }
   }
 
+   async omitDocument(documentId: number) {
+    try {
+      this.logger.log(`🔄 Marking invoice ${documentId} as omitted`);
+
+      const document = await this.prisma.document.findUnique({
+        where: { documentId },
+      });
+
+      if (!document) {
+        throw new Error(`Document ${documentId} not found`);
+      }
+
+      await this.prisma.document.update({
+        where: { id: document.id },
+        data: {
+          status: 'ISSUE',
+          completedAt: new Date(),
+        },
+      });
+
+      this.logger.log(`✅ Document ${documentId} marked as omitted`);
+
+      return {
+        success: true,
+        message: 'Document omitted',
+        invoiceId: documentId,
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Error omitting document ${documentId} Error: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
   /**
    * Mark invoice as illegible and update its status
    * Inserts record in EstadoDigitalizacionFactura and updates Document status to DELIVERED
@@ -916,6 +952,8 @@ export class InvoiceService {
       const totalFacturaSinIva = headers.find(
         (f: any) => f.type === 'total_factura_sin_iva',
       )?.text;
+
+
 
       const products = Utils.groupFields(detalles);
 

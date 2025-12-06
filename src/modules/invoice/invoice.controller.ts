@@ -212,6 +212,34 @@ export class InvoiceController {
       throw error;
     }
   }
+  
+  @Post('omit')
+  async omit(
+    @CurrentUser('id') userId: number,
+    @Body() markStatusDto: MarkInvoiceStatusDto,
+  ): Promise<MarkInvoiceStatusResponseDto> {
+    this.logger.log(
+      `🔄 User ${userId} marking invoice ${markStatusDto.invoiceId} as omitted`,
+    );
+
+    try {
+      const result = await this.invoiceService.omitDocument(
+        markStatusDto.invoiceId,
+      );
+
+      this.logger.log(
+        `✅ Invoice ${markStatusDto.invoiceId} marked as omitted successfully`,
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error marking invoice ${markStatusDto.invoiceId} as omitted: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 
   /**
    * Mark invoice as illegible
