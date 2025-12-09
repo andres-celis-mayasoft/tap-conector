@@ -324,7 +324,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
         output.push({
                 invoiceId: this.data.facturaId,
                 rowNumber: index + 1,
-                surveyRecordId: this.data.surveyRecordId,
+                surveyRecordId: Number(this.data.surveyRecordId),
                 businessName: isNullOrIllegible(razon_social.text) ? NULL_STRING : razon_social.text ,
                 description: isNullOrIllegible(item_descripcion_producto.text) ? NULL_STRING : item_descripcion_producto.text,
                 invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : toISO8601(fecha_factura.text) ,
