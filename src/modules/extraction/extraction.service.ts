@@ -217,7 +217,7 @@ export class ExtractionService {
 
             const document = DocumentFactory.create(
               finalType,
-              { ...ocrResult.data.response, surveyRecordId: doc.surveyId },
+              { ...ocrResult.data.response, surveyRecordId: doc.surveyId, facturaId: doc.documentId },
               this.meikoService,
               this.invoiceService,
             );
