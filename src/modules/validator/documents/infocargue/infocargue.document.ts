@@ -272,7 +272,7 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
           saleValue: isNullOrIllegible(valor_venta_item.text) ?  NULL_NUMBER : valor_venta_item.text,
           totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
           totalInvoiceWithoutVAT:   NULL_NUMBER ,
-          valueIbuaAndOthers: null,
+          valueIbuaAndOthers: 0,
         });
       });
   

@@ -388,7 +388,7 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
         saleValue: isNullOrIllegible(valor_venta_item.text) ?  NULL_NUMBER : valor_venta_item.text,
         totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
         totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva.text) ?  NULL_NUMBER : total_factura_sin_iva.text,
-        valueIbuaAndOthers: null,
+        valueIbuaAndOthers: 0,
       });
     });
 

@@ -316,7 +316,7 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
                 saleValue: isNullOrIllegible(valor_venta_item.text) ?  NULL_NUMBER : valor_venta_item.text,
                 totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
                 totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva.text) ?  NULL_NUMBER : total_factura_sin_iva.text,
-                valueIbuaAndOthers: isNullOrIllegible(valor_ibua_y_otros.text) ?  null : Number(valor_ibua_y_otros.text),
+                valueIbuaAndOthers: isNullOrIllegible(valor_ibua_y_otros.text) ?  0 : Number(valor_ibua_y_otros.text),
               });
             });
     
