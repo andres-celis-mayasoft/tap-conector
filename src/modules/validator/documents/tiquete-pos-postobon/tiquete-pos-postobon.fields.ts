@@ -1,10 +1,12 @@
+import { Fields } from "../../enums/fields";
+
 export enum TiquetePosPostobonHeaderFields {
-  FECHA_FACTURA = 'fecha_factura',
-  NUMERO_FACTURA = 'numero_factura',
-  VALOR_TOTAL_FACTURA = 'valor_total_factura',
-  TOTAL_FACTURA_SIN_IVA = 'total_factura_sin_iva',
-  RAZON_SOCIAL = 'razon_social',
-  TOTAL_ARTICULOS = 'total_articulos',
+  FECHA_FACTURA = Fields.FECHA_FACTURA,
+  NUMERO_FACTURA = Fields.NUMERO_FACTURA,
+  VALOR_TOTAL_FACTURA = Fields.VALOR_TOTAL_FACTURA,
+  TOTAL_FACTURA_SIN_IVA = Fields.TOTAL_FACTURA_SIN_IVA,
+  RAZON_SOCIAL = Fields.RAZON_SOCIAL,
+  TOTAL_ARTICULOS = Fields.TOTAL_ARTICULOS,
 }
 
 export enum TiquetePosPostobonBodyFields {

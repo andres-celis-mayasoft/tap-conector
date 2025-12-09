@@ -1,9 +1,11 @@
+import { Fields } from "../../enums/fields";
+
 export enum QualaHeaderFields {
-  FECHA_FACTURA = 'fecha_factura',
-  NUMERO_FACTURA = 'numero_factura',
-  RAZON_SOCIAL = 'razon_social',
-  VALOR_TOTAL_FACTURA = 'valor_total_factura',
-  TOTAL_FACTURA_SIN_IVA = 'total_factura_sin_iva',
+  FECHA_FACTURA = Fields.FECHA_FACTURA,
+  NUMERO_FACTURA = Fields.NUMERO_FACTURA,
+  RAZON_SOCIAL = Fields.RAZON_SOCIAL,
+  VALOR_TOTAL_FACTURA = Fields.VALOR_TOTAL_FACTURA,
+  TOTAL_FACTURA_SIN_IVA = Fields.TOTAL_FACTURA_SIN_IVA,
 }
 
 export enum QualaBodyFields {

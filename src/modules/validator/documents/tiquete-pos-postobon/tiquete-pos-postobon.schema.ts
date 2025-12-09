@@ -1,21 +1,25 @@
-import { TiquetePosPostobonBodyFields, TiquetePosPostobonHeaderFields } from './tiquete-pos-postobon.fields';
+import { OCR_Field } from '../common';
+import {
+  TiquetePosPostobonBodyFields,
+  TiquetePosPostobonHeaderFields,
+} from './tiquete-pos-postobon.fields';
+type Encabezado = OCR_Field<TiquetePosPostobonHeaderFields> & {
+  error?: string;
+  row: number;
+  id?: number;
+};
+type Detalles = OCR_Field<TiquetePosPostobonBodyFields> & {
+  error?: string;
+  row: number;
+  id?: number;
+};
 
 export type TiquetePosPostobonInvoiceSchema = {
-  encabezado: {
-    type: TiquetePosPostobonHeaderFields;
-    text?: string;
-    confidence: number;
-    error?: string;
-  }[];
-  detalles: {
-    type: TiquetePosPostobonBodyFields;
-    text?: string;
-    confidence: number;
-    row?: number;
-    error?: string;
-  }[];
+  encabezado: Encabezado[];
+  detalles: Detalles[];
   tipoFacturaOcr?: string;
   urlFactura?: string;
   id?: number;
-  facturaId?: number;
+  surveyRecordId: number;
+  facturaId: number;
 };

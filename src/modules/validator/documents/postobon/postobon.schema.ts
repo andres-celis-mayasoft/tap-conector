@@ -1,21 +1,23 @@
+import { OCR_Field } from '../common';
 import { PostobonBodyFields, PostobonHeaderFields } from './postobon.fields';
 
+type Encabezado = OCR_Field<PostobonHeaderFields> & {
+  error?: string;
+  row: number;
+  id?: number;
+};
+type Detalles = OCR_Field<PostobonHeaderFields> & {
+  error?: string;
+  row: number;
+  id?: number;
+};
+
 export type PostobonInvoiceSchema = {
-  encabezado: {
-    type: PostobonHeaderFields;
-    text?: string;
-    confidence: number;
-    error?: string;
-  }[];
-  detalles: {
-    type: PostobonBodyFields;
-    text?: string;
-    confidence: number;
-    row?: number;
-    error?: string;
-  }[];
+  encabezado: Encabezado[];
+  detalles: Detalles[];
   tipoFacturaOcr?: string;
   urlFactura?: string;
+  surveyRecordId: number;
   id?: number;
-  facturaId?: number;
+  facturaId: number;
 };

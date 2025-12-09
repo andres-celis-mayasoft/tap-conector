@@ -11,6 +11,7 @@ import { Utils } from '../validator/documents/utils';
 import pLimit from 'p-limit';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InvoiceUtils } from '../invoice/utils/Invoice.utils';
+import { Prisma } from '@generated/client-meiko';
 
 /**
  * Extraction Service
@@ -214,32 +215,21 @@ export class ExtractionService {
               `📋 Invoice ${doc.id} - Document type: ${photoTypeOcr}`,
             );
 
-            let document: any;
-            try {
-              document = DocumentFactory.create(
-                finalType,
-                ocrResult.data.response,
-                this.meikoService,
-                this.invoiceService,
-              );
-            } catch (error: any) {
-              this.logger.error(
-                `❌ Invoice ${doc.id} - Unsupported document type: ${finalType}`,
-              );
-              await this.invoiceService.updateDocument({
-                id: doc.id,
-                path: imagePath,
-                errors: `UNEXPECTED ERROR: ${finalType}`,
-                extracted: false,
-                validated: false,
-                status: 'ERROR',
-              });
-              errorCount++;
-              return;
-            }
+            const document = DocumentFactory.create(
+              finalType,
+              { ...ocrResult.data.response, surveyRecordId: doc.surveyId },
+              this.meikoService,
+              this.invoiceService,
+            );
 
             await document.process();
-            const { data: processedData, errors, isValid } = document.get();
+
+            const {
+              data: processedData,
+              errors,
+              isValid,
+              result,
+            } = document.get();
 
             if (!isValid) {
               await this.meikoService.createStatus({
@@ -311,84 +301,9 @@ export class ExtractionService {
               );
 
               try {
-                const headers = processedData.encabezado;
-
-                const numeroFactura = headers.find(
-                  (f: any) => f.type === 'numero_factura',
-                )?.text;
-                const fechaFactura = DateTime.fromFormat(
-                  headers.find((f: any) => f.type === 'fecha_factura')?.text,
-                  'dd/MM/yyyy',
-                )
-                const razonSocial = headers.find(
-                  (f: any) => f.type === 'razon_social',
-                )?.text;
-                const totalFactura = headers.find(
-                  (f: any) => f.type === 'valor_total_factura',
-                )?.text;
-                let totalFacturaSinIva = headers.find(
-                  (f: any) => f.type === 'total_factura_sin_iva',
-                )?.text;
-
-                if (totalFacturaSinIva === '[ILEGIBLE]') {
-                  totalFacturaSinIva = '-0.1';
-                }
-                const products = Utils.groupFields(processedData.detalles);
-
-                for (const product of products) {
-                  const codigoProducto = product.find(
-                    (f: any) => f.type === 'codigo_producto',
-                  )?.text;
-                  const descripcion = product.find(
-                    (f: any) => f.type === 'item_descripcion_producto',
-                  )?.text;
-                  const tipoEmbalaje = product.find(
-                    (f: any) => f.type === 'tipo_embalaje',
-                  )?.text;
-                  const unidadEmbalaje = product.find(
-                    (f: any) => f.type === 'unidades_embalaje',
-                  )?.text;
-                  const packVendidos = product.find(
-                    (f: any) => f.type === 'packs_vendidos',
-                  )?.text;
-                  const valorVenta = product.find(
-                    (f: any) => f.type === 'valor_venta_item',
-                  )?.text;
-                  const unidadesVendidas = product.find(
-                    (f: any) => f.type === 'unidades_vendidas',
-                  )?.text;
-                  const valorIbua = product.find(
-                    (f: any) => f.type === 'valor_ibua_y_otros',
-                  )?.text;
-                  const row = product.find(
-                    (f: any) => f.type === 'item_descripcion_producto',
-                  )?.row;
-
-                  await this.meikoService.createFields({
-                    invoice: { connect: { id: doc.documentId } },
-                    surveyRecordId: Number(doc.surveyId),
-                    invoiceNumber: numeroFactura,
-                    invoiceDate: fechaFactura.isValid ? fechaFactura.toString() : null,
-                    businessName: razonSocial,
-                    productCode: codigoProducto,
-                    description: descripcion,
-                    packagingType: tipoEmbalaje,
-                    packagingUnit: unidadEmbalaje
-                      ? parseFloat(unidadEmbalaje)
-                      : null,
-                    packsSold: packVendidos ? parseFloat(packVendidos) : null,
-                    saleValue: valorVenta ? parseInt(valorVenta) : null,
-                    unitsSold: unidadesVendidas
-                      ? parseFloat(unidadesVendidas)
-                      : null,
-                    totalInvoice: totalFactura
-                      ? parseFloat(totalFactura)
-                      : null,
-                    rowNumber: row,
-                    totalInvoiceWithoutVAT: totalFacturaSinIva || null,
-                    valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
-                  });
-                }
+                await this.meikoService.createManyFields(
+                  result as Prisma.ResultCreateManyInput[],
+                );
 
                 await this.meikoService.createStatus({
                   digitalizationStatusId: InvoiceStatus.PROCESADO,

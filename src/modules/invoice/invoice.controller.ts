@@ -50,6 +50,7 @@ export class InvoiceController {
 
       const response: InvoiceToFillResponseDto = {
         invoiceId: invoice.documentId,
+        surveyId: invoice.surveyId || undefined,
         invoiceUrl: invoice.documentUrl || '',
         photoType: invoice.photoType || '',
         photoTypeOcr: invoice.photoTypeOCR || '',
@@ -133,7 +134,7 @@ export class InvoiceController {
     try {
       await this.invoiceService.saveCorrectedInvoice({
         ...saveInvoiceDto,
-        userId,
+        userId
       });
 
       this.logger.log(

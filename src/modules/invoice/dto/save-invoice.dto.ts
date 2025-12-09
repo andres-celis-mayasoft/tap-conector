@@ -45,6 +45,9 @@ export class SaveInvoiceDto {
   @ValidateNested({ each: true })
   @Type(() => FieldUpdateDto)
   detalles: FieldUpdateDto[];
+
+  @IsString()
+  tipoFactura: string;
 }
 
 export class SaveInvoiceResponseDto {

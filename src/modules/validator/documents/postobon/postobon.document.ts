@@ -6,17 +6,11 @@ import {
 import { PostobonInvoiceSchema } from './postobon.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
-import {
-  EMBALAJES,
-  EMBALAJES_POSTOBON_CAJA,
-} from '../../utils/validator.utils';
-import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { InvoiceService } from 'src/modules/invoice/invoice.service';
-
-type HeaderField = PostobonInvoiceSchema['encabezado'][number];
-type BodyField = PostobonInvoiceSchema['detalles'][number];
+import { EMBALAJES, EMBALAJES_POSTOBON_CAJA, isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_NUMBER, NULL_STRING, OCR_Field } from '../common';
+import { Prisma } from '@generated/client-meiko';
 
 export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
   constructor(
@@ -191,7 +185,7 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
 
       if (EMBALAJES_POSTOBON_CAJA.includes(embalaje)) {
         if (unidades_vendidas) {
-          unidades_vendidas.text = undefined;
+          unidades_vendidas.text = '';
           unidades_vendidas.confidence = 1;
         }
         if (packs_vendidos) {
@@ -199,7 +193,7 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
         }
       } else {
         if (packs_vendidos) {
-          packs_vendidos.text = undefined;
+          packs_vendidos.text = '';
           packs_vendidos.confidence = 1;
         }
         if (unidades_vendidas) {
@@ -349,7 +343,55 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     return /^-?\d+$/.test(value);
   }
 
-  private toNumber(field: BodyField | HeaderField | undefined): number {
+  private toNumber(field: OCR_Field<any>): number {
     return Number(field?.text || 0);
+  }
+
+  format(): Prisma.ResultCreateManyInput[] {
+    const output: Prisma.ResultCreateManyInput[] = [];
+
+    const {
+      fecha_factura,
+      numero_factura,
+      razon_social,
+      valor_total_factura,
+      total_factura_sin_iva,
+    } = Utils.getFields<PostobonHeaderFields>(this.data.encabezado);
+
+    const products = Utils.groupFields(this.data.detalles);
+
+    products.forEach((product, index) => {
+      const {
+        item_descripcion_producto,
+        codigo_producto,
+        tipo_embalaje,
+        unidades_embalaje,
+        packs_vendidos,
+        valor_venta_item,
+        unidades_vendidas,
+      } = Utils.getFields<PostobonBodyFields>(product);
+      
+
+      output.push({
+        invoiceId: this.data.facturaId,
+        rowNumber: index + 1,
+        surveyRecordId: this.data.surveyRecordId,
+        businessName: isNullOrIllegible(razon_social.text) ? NULL_STRING : razon_social.text ,
+        description: isNullOrIllegible(item_descripcion_producto.text) ? NULL_STRING : item_descripcion_producto.text,
+        invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : fecha_factura.text ,
+        invoiceNumber: isNullOrIllegible(numero_factura.text) ? NULL_STRING : numero_factura.text,
+        packagingType: isNullOrIllegible(tipo_embalaje.text) ? NULL_STRING : tipo_embalaje.text ,
+        packagingUnit: isNullOrIllegible(unidades_embalaje.text) ?  NULL_FLOAT : unidades_embalaje.text,
+        packsSold: isNullOrIllegible(packs_vendidos.text) ?  NULL_FLOAT : packs_vendidos.text,
+        unitsSold: isNullOrIllegible(unidades_vendidas.text) ?  NULL_FLOAT : unidades_vendidas.text,
+        productCode: isNullOrIllegible(codigo_producto.text) ? NULL_STRING : codigo_producto.text ,
+        saleValue: isNullOrIllegible(valor_venta_item.text) ?  NULL_NUMBER : valor_venta_item.text,
+        totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
+        totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva.text) ?  NULL_NUMBER : total_factura_sin_iva.text,
+        valueIbuaAndOthers: null,
+      });
+    });
+
+    return output;
   }
 }

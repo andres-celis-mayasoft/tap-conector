@@ -169,6 +169,23 @@ export class MeikoService {
       throw error;
     }
   }
+  
+  async createManyFields(data: PrismaMeiko.ResultCreateManyInput[]) {
+    try {
+      const result = await this.prismaMeiko.result.createMany({
+        data,
+      });
+
+      this.logger.log(`MeikoResult created successfully : ${result.count} rows`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Error creating MeikoResult: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 
   /**
    * Create an EstadoDigitalizacionFactura entry in the main database

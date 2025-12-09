@@ -1,10 +1,11 @@
 import { DateTime } from 'luxon';
+import { OCR_Field as OCR_Field } from './common';
 
 export class Utils {
   static getFields<T extends string | number | symbol>(
-    fields: { type: T; text?: string; confidence: number }[],
+    fields: { type: T; text: string; confidence: number, row: number }[],
   ) {
-    const output: Record<T, any> = {} as Record<T, any>;
+    const output: Record<T, OCR_Field<T>> = {} as Record<T, OCR_Field<T>>;
 
     for (const field of fields) {
       output[field.type] = field ;

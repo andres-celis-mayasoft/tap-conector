@@ -1,5 +1,3 @@
-import { InvoiceEntry } from '../interfaces/invoice.interface';
-
 export enum Fields {
   FECHA_FACTURA = 'fecha_factura',
   NUMERO_FACTURA = 'numero_factura',
@@ -19,8 +17,26 @@ export enum Fields {
   ES_DEVOLUCION = 'es_devolucion',
   VALOR_DESCUENTO_ITEM = 'valor_descuento_item',
   APLICA_IVA_ITEM = 'aplica_iva_item',
+  TOTAL_UNIDADES = 'total_unidades',
+  TOTAL_PACAS = 'total_pacas',
+  PRECIO_ANTES_IVA = 'precio_antes_iva',
+  VALOR_IVA = 'valor_iva',
+  IVA_TARIFA_GENERAL = 'iva_tarifa_general',
+  IBUA = 'ibua',
+  CANTIDAD = 'cantidad',
+  VALOR_DESCUENTO = 'valor_descuento',
+  PACKS_CON_UNIDADES = 'packs_con_unidades',
+  VALOR_TOTAL_UNITARIO_ITEM = 'valor_total_unitario_item',
+  TOTAL_ICO = 'total_ico',
+  PORCENTAJE_ICUI = 'porcentaje_icui',
+  TOTAL_IBUA = 'total_ibua',
+  TOTAL_ARTICULOS = 'total_articulos',
+  VALOR_SUBTOTAL_ITEM = 'valor_subtotal_item',
 }
+
 
 export const RAZON_SOCIAL = {
   'Coca-Cola': 'COCA COLA'
 };
+
+

@@ -1,21 +1,23 @@
+import { OCR_Field } from '../common';
 import { AjeBodyFields, AjeHeaderFields } from './aje.fields';
 
+type Encabezado = OCR_Field<AjeHeaderFields> & {
+  id?: number;
+  error?: string;
+  row: number;
+};
+type Detalles = OCR_Field<AjeBodyFields> & {
+  id?: number;
+  error?: string;
+  row: number;
+};
+
 export type AjeInvoiceSchema = {
-  encabezado: {
-    type: AjeHeaderFields;
-    text?: string;
-    confidence: number;
-    error?: string;
-  }[];
-  detalles: {
-    type: AjeBodyFields;
-    text?: string;
-    confidence: number;
-    row?: number;
-    error?: string;
-  }[];
+  encabezado: Encabezado[];
+  detalles: Detalles[];
   tipoFacturaOcr?: string;
   urlFactura?: string;
   id?: number;
-  facturaId?: number;
+  facturaId: number;
+  surveyRecordId: number;
 };

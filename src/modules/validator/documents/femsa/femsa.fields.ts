@@ -1,24 +1,26 @@
+import { Fields } from "../../enums/fields";
+
 export enum FemsaHeaderFields {
-  FECHA_FACTURA = 'fecha_factura',
-  NUMERO_FACTURA = 'numero_factura',
-  VALOR_TOTAL_FACTURA = 'valor_total_factura',
-  RAZON_SOCIAL = 'razon_social',
-  TOTAL_FACTURA_SIN_IVA = 'total_factura_sin_iva',
-  IVA_TARIFA_GENERAL = 'iva_tarifa_general',
-  IBUA = 'ibua',
+  FECHA_FACTURA = Fields.FECHA_FACTURA,
+  NUMERO_FACTURA = Fields.NUMERO_FACTURA,
+  VALOR_TOTAL_FACTURA = Fields.VALOR_TOTAL_FACTURA,
+  RAZON_SOCIAL = Fields.RAZON_SOCIAL,
+  TOTAL_FACTURA_SIN_IVA = Fields.TOTAL_FACTURA_SIN_IVA,
+  IVA_TARIFA_GENERAL = Fields.IVA_TARIFA_GENERAL,
+  IBUA = Fields.IBUA,
 }
 
 export enum FemsaBodyFields {
-  CODIGO_PRODUCTO = 'codigo_producto',
-  ITEM_DESCRIPCION_PRODUCTO = 'item_descripcion_producto',
-  TIPO_EMBALAJE = 'tipo_embalaje',
-  UNIDADES_VENDIDAS = 'unidades_vendidas',
-  VALOR_UNITARIO_ITEM = 'valor_unitario_item',
-  VALOR_VENTA_ITEM = 'valor_venta_item',
-  VALOR_IBUA_Y_OTROS = 'valor_ibua_y_otros',
-  UNIDADES_EMBALAJE = 'unidades_embalaje',
-  CANTIDAD = 'cantidad',
-  VALOR_DESCUENTO = 'valor_descuento',
+  CODIGO_PRODUCTO = Fields.CODIGO_PRODUCTO,
+  ITEM_DESCRIPCION_PRODUCTO = Fields.ITEM_DESCRIPCION_PRODUCTO,
+  TIPO_EMBALAJE = Fields.TIPO_EMBALAJE,
+  UNIDADES_VENDIDAS = Fields.UNIDADES_VENDIDAS,
+  VALOR_UNITARIO_ITEM = Fields.VALOR_UNITARIO_ITEM,
+  VALOR_VENTA_ITEM = Fields.VALOR_VENTA_ITEM,
+  VALOR_IBUA_Y_OTROS = Fields.VALOR_IBUA_Y_OTROS,
+  UNIDADES_EMBALAJE = Fields.UNIDADES_EMBALAJE,
+  CANTIDAD = Fields.CANTIDAD,
+  VALOR_DESCUENTO = Fields.VALOR_DESCUENTO,
 }
 
 export const FEMSA_THRESOLDS = {

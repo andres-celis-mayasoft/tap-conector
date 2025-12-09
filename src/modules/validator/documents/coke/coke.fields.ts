@@ -1,19 +1,21 @@
+import { Fields } from "../../enums/fields";
+
 export enum CokeHeaderFields {
-  FECHA_FACTURA = 'fecha_factura',
-  NUMERO_FACTURA = 'numero_factura',
-  RAZON_SOCIAL = 'razon_social',
-  VALOR_TOTAL_FACTURA = 'valor_total_factura',
+  FECHA_FACTURA = Fields.FECHA_FACTURA,
+  NUMERO_FACTURA = Fields.NUMERO_FACTURA,
+  RAZON_SOCIAL = Fields.RAZON_SOCIAL,
+  VALOR_TOTAL_FACTURA = Fields.VALOR_TOTAL_FACTURA,
 }
 
 export enum CokeBodyFields {
-  CODIGO_PRODUCTO = 'codigo_producto',
-  ITEM_DESCRIPCION_PRODUCTO = 'item_descripcion_producto',
-  TIPO_EMBALAJE = 'tipo_embalaje',
-  UNIDADES_VENDIDAS = 'unidades_vendidas',
-  VALOR_VENTA_ITEM = 'valor_venta_item',
-  VALOR_IBUA_Y_OTROS = 'valor_ibua_y_otros',
-  UNIDADES_EMBALAJE = 'unidades_embalaje',
-  VALOR_UNITARIO_ITEM = 'valor_unitario_item',
+  CODIGO_PRODUCTO = Fields.CODIGO_PRODUCTO,
+  ITEM_DESCRIPCION_PRODUCTO = Fields.ITEM_DESCRIPCION_PRODUCTO,
+  TIPO_EMBALAJE = Fields.TIPO_EMBALAJE,
+  UNIDADES_VENDIDAS = Fields.UNIDADES_VENDIDAS,
+  VALOR_VENTA_ITEM = Fields.VALOR_VENTA_ITEM,
+  VALOR_IBUA_Y_OTROS = Fields.VALOR_IBUA_Y_OTROS,
+  UNIDADES_EMBALAJE = Fields.UNIDADES_EMBALAJE,
+  VALOR_UNITARIO_ITEM = Fields.VALOR_UNITARIO_ITEM,
 }
 
 export const COKE_THRESOLDS = {

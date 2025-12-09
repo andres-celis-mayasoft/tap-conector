@@ -1,7 +1,9 @@
+import { Fields } from "../../enums/fields";
+
 export enum InfocargueHeaderFields {
-  FECHA_FACTURA = 'fecha_factura',
-  VALOR_TOTAL_FACTURA = 'valor_total_factura',
-  RAZON_SOCIAL = 'razon_social',
+  FECHA_FACTURA = Fields.FECHA_FACTURA,
+  VALOR_TOTAL_FACTURA = Fields.VALOR_TOTAL_FACTURA,
+  RAZON_SOCIAL = Fields.RAZON_SOCIAL,
 }
 
 export enum InfocargueBodyFields {

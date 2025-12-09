@@ -2,6 +2,7 @@ import { IsInt, IsOptional } from 'class-validator';
 
 export class InvoiceToFillResponseDto {
   invoiceId: number;
+  surveyId?: string;
   invoiceUrl: string;
   photoType: string;
   photoTypeOcr: string;

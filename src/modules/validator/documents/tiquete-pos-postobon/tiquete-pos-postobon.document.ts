@@ -6,11 +6,12 @@ import {
 import { TiquetePosPostobonInvoiceSchema } from './tiquete-pos-postobon.schema';
 import { Utils } from '../utils';
 import { DateTime } from 'luxon';
-import { EMBALAJES } from '../../utils/validator.utils';
 import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { InvoiceService } from 'src/modules/invoice/invoice.service';
+import { EMBALAJES, isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_NUMBER, NULL_STRING } from '../common';
+import { Prisma } from '@generated/client-meiko';
 
 type HeaderField = TiquetePosPostobonInvoiceSchema['encabezado'][number];
 type BodyField = TiquetePosPostobonInvoiceSchema['detalles'][number];
@@ -297,4 +298,49 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
       }
     }
   }
+
+    format(): Prisma.ResultCreateManyInput[] {
+      const output: Prisma.ResultCreateManyInput[] = [];
+  
+      const {
+        fecha_factura,
+        numero_factura,
+        razon_social,
+        valor_total_factura,
+        total_factura_sin_iva,
+      } = Utils.getFields<TiquetePosPostobonHeaderFields>(this.data.encabezado);
+  
+      const products = Utils.groupFields(this.data.detalles);
+  
+      products.forEach((product, index) => {
+        const {
+          item_descripcion_producto,
+          unidades_embalaje,
+          packs_vendidos,
+          tipo_embalaje,
+          valor_venta_item_total_nc
+        } = Utils.getFields<TiquetePosPostobonBodyFields>(product);
+  
+        output.push({
+                invoiceId: this.data.facturaId,
+                rowNumber: index + 1,
+                surveyRecordId: this.data.surveyRecordId,
+                businessName: isNullOrIllegible(razon_social.text) ? NULL_STRING : razon_social.text ,
+                description: isNullOrIllegible(item_descripcion_producto.text) ? NULL_STRING : item_descripcion_producto.text,
+                invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : fecha_factura.text ,
+                invoiceNumber: isNullOrIllegible(numero_factura.text) ? NULL_STRING : numero_factura.text,
+                packagingType: isNullOrIllegible(tipo_embalaje.text) ? NULL_STRING : tipo_embalaje.text ,
+                packagingUnit: isNullOrIllegible(unidades_embalaje.text) ?  NULL_FLOAT : unidades_embalaje.text,
+                packsSold: isNullOrIllegible(packs_vendidos.text) ?  NULL_FLOAT : packs_vendidos.text,
+                unitsSold: NULL_FLOAT,
+                productCode:  NULL_STRING,
+                saleValue: isNullOrIllegible(valor_venta_item_total_nc.text) ?  NULL_NUMBER : valor_venta_item_total_nc.text,
+                totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
+                totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva.text) ?  NULL_NUMBER : total_factura_sin_iva.text,
+                valueIbuaAndOthers: null,
+              });
+      });
+  
+      return output;
+    }
 }

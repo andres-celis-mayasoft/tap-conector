@@ -3,14 +3,14 @@ export abstract class Document<TSchema> {
   protected errors = {} as Record<string, string>;
   protected isValid = true;
 
-  constructor(protected data: TSchema) {
-  }
+  constructor(protected data: TSchema) {}
 
   abstract normalize(): this;
   abstract validate(): void;
   abstract infer(): Promise<this>;
   abstract exclude(): Promise<this>;
   abstract prune(): void;
+  abstract format(): unknown;
 
   async process(): Promise<this> {
     this.normalize();
@@ -22,6 +22,11 @@ export abstract class Document<TSchema> {
   }
 
   get() {
-    return { data: this.data, errors: this.errors, isValid: this.isValid };
+    return {
+      data: this.data,
+      errors: this.errors,
+      isValid: this.isValid,
+      result: this.format(),
+    };
   }
 }

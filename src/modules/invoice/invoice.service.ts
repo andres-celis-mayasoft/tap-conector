@@ -12,9 +12,14 @@ import { InvoiceStatus } from '../meiko/enums/status.enum';
 import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
 import { MeikoService } from '../meiko/meiko.service';
-import { DocumentFactory } from '../validator/documents/base/document.factory';
+import {
+  DocumentFactory,
+  ProcessedDataSchema,
+  SupportedInvoiceType,
+} from '../validator/documents/base/document.factory';
 import { PrismaMeikoService } from 'src/database/services/prisma-meiko.service';
 import { InvoiceUtils } from './utils/Invoice.utils';
+import { Fields } from '../validator/enums/fields';
 
 @Injectable()
 export class InvoiceService {
@@ -252,20 +257,7 @@ export class InvoiceService {
    */
   async saveInvoiceWithFields(
     invoiceData: Prisma.DocumentUpdateInput & { id: number },
-    mayaInvoiceJson: {
-      encabezado: Array<{
-        type: string;
-        text: string;
-        confidence: number;
-      }>;
-      detalles: Array<{
-        type: string;
-        text: string;
-        confidence: number;
-        row: number;
-      }>;
-      tipoFacturaOcr?: string;
-    },
+    mayaInvoiceJson: ProcessedDataSchema,
     mayaInvoiceJsonRaw: {
       encabezado: Array<{
         type: string;
@@ -569,7 +561,7 @@ export class InvoiceService {
    * @param userId - User ID to assign invoice to
    * @returns Assigned invoice or null if none available
    */
-  async assignInvoiceToUser(userId: number): Promise<any> {
+  async assignInvoiceToUser(userId: number) {
     try {
       this.logger.log(`🔍 Looking for invoice to assign to user ${userId}`);
 
@@ -908,15 +900,19 @@ export class InvoiceService {
    * @param saveInvoiceDto - Invoice data with corrections
    * @returns Result with delivery status
    */
-  async saveCorrectedInvoice(saveInvoiceDto: any): Promise<any> {
+  async saveCorrectedInvoice(saveInvoiceDto: {
+    userId: number;
+    invoiceId: number;
+    encabezado: any;
+    detalles: any;
+    tipoFactura: string;
+  }): Promise<any> {
     try {
       const { userId, invoiceId, encabezado, detalles } = saveInvoiceDto;
 
       this.logger.log(
         `💾 Saving corrected invoice ${invoiceId} by user ${userId}`,
       );
-
-      // Verify the invoice is assigned to this user
       const document = await this.prisma.document.findFirst({
         where: {
           documentId: invoiceId,
@@ -924,88 +920,31 @@ export class InvoiceService {
         },
       });
 
+      if (!document?.surveyId) {
+        throw new Error(`Invoice ${invoiceId} has no surveyId`);
+      }
       if (!document) {
         throw new Error(
           `Invoice ${invoiceId} is not assigned to user ${userId}`,
         );
       }
 
+      const result = DocumentFactory.format(
+        saveInvoiceDto.tipoFactura || 'Not supported',
+        {
+          detalles,
+          encabezado,
+          facturaId: invoiceId,
+          surveyRecordId: Number(document.surveyId),
+        },
+        this.meikoService,
+        this,
+      );
+
       const headers = encabezado;
 
-      const numeroFactura = headers.find(
-        (f: any) => f.type === 'numero_factura',
-      )?.text;
-      const fechaFactura = DateTime.fromFormat(
-        headers.find((f: any) => f.type === 'fecha_factura')?.text,
-        'dd/MM/yyyy',
-      );
-      const razonSocial = headers.find(
-        (f: any) => f.type === 'razon_social',
-      )?.text;
-      const totalFactura = headers.find(
-        (f: any) => f.type === 'valor_total_factura',
-      )?.text;
-      let totalFacturaSinIva = headers.find(
-        (f: any) => f.type === 'total_factura_sin_iva',
-      )?.text;
+      await this.meikoService.createManyFields(result);
 
-      if (totalFacturaSinIva === '[ILEGIBLE]') {
-        totalFacturaSinIva = '-0.1';
-      }
-
-      const products = Utils.groupFields(detalles);
-
-      let counter = 1;
-      for (const product of products) {
-        const codigoProducto = product.find(
-          (f: any) => f.type === 'codigo_producto',
-        )?.text;
-        const descripcion = product.find(
-          (f: any) => f.type === 'item_descripcion_producto',
-        )?.text;
-        const tipoEmbalaje = product.find(
-          (f: any) => f.type === 'tipo_embalaje',
-        )?.text;
-        const unidadEmbalaje = product.find(
-          (f: any) => f.type === 'unidades_embalaje',
-        )?.text;
-        const packVendidos = product.find(
-          (f: any) => f.type === 'packs_vendidos',
-        )?.text;
-        const valorVenta = product.find(
-          (f: any) => f.type === 'valor_venta_item',
-        )?.text;
-        const unidadesVendidas = product.find(
-          (f: any) => f.type === 'unidades_vendidas',
-        )?.text;
-        const valorIbua = product.find(
-          (f: any) => f.type === 'valor_ibua_y_otros',
-        )?.text;
-        const row = product.find(
-          (f: any) => f.type === 'item_descripcion_producto',
-        )?.row;
-
-        await this.meikoService.createFields({
-          invoice: { connect: { id: document.documentId } },
-          surveyRecordId: Number(document.surveyId),
-          invoiceNumber: numeroFactura,
-          invoiceDate: fechaFactura.isValid ? fechaFactura.toString() : null,
-          businessName: razonSocial,
-          productCode: codigoProducto,
-          description: descripcion,
-          packagingType: tipoEmbalaje,
-          packagingUnit: unidadEmbalaje ? parseFloat(unidadEmbalaje) : null,
-          packsSold: packVendidos ? parseFloat(packVendidos) : null,
-          saleValue: valorVenta ? parseInt(valorVenta) : null,
-          unitsSold: unidadesVendidas ? parseFloat(unidadesVendidas) : null,
-          totalInvoice: totalFactura ? parseFloat(totalFactura) : null,
-          rowNumber: counter,
-          totalInvoiceWithoutVAT: totalFacturaSinIva || null,
-          valueIbuaAndOthers: valorIbua ? parseInt(valorIbua) : null,
-        });
-
-        counter++;
-      }
       const fields = [...headers, ...detalles];
 
       // Process field updates and creations
@@ -1076,7 +1015,12 @@ export class InvoiceService {
 
       const document = DocumentFactory.create(
         finalType,
-        { encabezado: testInvoice.encabezado, detalles: testInvoice.detalles },
+        {
+          encabezado: testInvoice.encabezado,
+          detalles: testInvoice.detalles,
+          surveyRecordId: 9999999,
+          facturaId: 999999,
+        },
         this.meikoService,
         this,
       );
