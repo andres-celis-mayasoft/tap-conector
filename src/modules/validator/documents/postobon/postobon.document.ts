@@ -9,7 +9,7 @@ import { DateTime } from 'luxon';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { InvoiceService } from 'src/modules/invoice/invoice.service';
-import { EMBALAJES, EMBALAJES_POSTOBON_CAJA, isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_NUMBER, NULL_STRING, OCR_Field } from '../common';
+import { EMBALAJES, EMBALAJES_POSTOBON_CAJA, isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_NUMBER, NULL_STRING, OCR_Field, toISO8601 } from '../common';
 import { Prisma } from '@generated/client-meiko';
 
 export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
@@ -378,7 +378,7 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
         surveyRecordId: this.data.surveyRecordId,
         businessName: isNullOrIllegible(razon_social.text) ? NULL_STRING : razon_social.text ,
         description: isNullOrIllegible(item_descripcion_producto.text) ? NULL_STRING : item_descripcion_producto.text,
-        invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : fecha_factura.text ,
+        invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : toISO8601(fecha_factura.text) ,
         invoiceNumber: isNullOrIllegible(numero_factura.text) ? NULL_STRING : numero_factura.text,
         packagingType: isNullOrIllegible(tipo_embalaje.text) ? NULL_STRING : tipo_embalaje.text ,
         packagingUnit: isNullOrIllegible(unidades_embalaje.text) ?  NULL_FLOAT : unidades_embalaje.text,
