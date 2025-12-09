@@ -12,6 +12,7 @@ import {
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { CokeInvoiceSchema } from '../coke/coke.schema';
 import { Prisma } from '@generated/client-meiko';
+import { GeneralInvoice, GeneralInvoiceSchema } from '../general';
 
 const documentMap = {
   'Factura Coke': CokeInvoice,
@@ -30,7 +31,8 @@ export type ProcessedDataSchema =
   | TiquetePosPostobonInvoiceSchema
   | FemsaInvoiceSchema
   | AjeInvoiceSchema
-  | QualaInvoiceSchema;
+  | QualaInvoiceSchema
+  | GeneralInvoiceSchema
 
 export type SupportedInvoiceType = InstanceType<
   (typeof documentMap)[keyof typeof documentMap]
@@ -155,7 +157,12 @@ export class DocumentFactory {
         ).format();
 
       default:
-        throw new Error(`Documento no soportado: ${type}`);
+        return new GeneralInvoice(
+          ocrResponse as GeneralInvoiceSchema,
+          meikoService,
+          invoiceService,
+        ).format();
+        
     }
   }
 }

@@ -1,0 +1,36 @@
+import { Fields } from "../../enums/fields";
+
+export enum GeneralHeaderFields {
+  FECHA_FACTURA = Fields.FECHA_FACTURA,
+  NUMERO_FACTURA = Fields.NUMERO_FACTURA,
+  RAZON_SOCIAL = Fields.RAZON_SOCIAL,
+  VALOR_TOTAL_FACTURA = Fields.VALOR_TOTAL_FACTURA,
+  TOTAL_FACTURA_SIN_IVA = Fields.TOTAL_FACTURA_SIN_IVA,
+}
+
+export enum GeneralBodyFields {
+  CODIGO_PRODUCTO = Fields.CODIGO_PRODUCTO,
+  ITEM_DESCRIPCION_PRODUCTO = Fields.ITEM_DESCRIPCION_PRODUCTO,
+  TIPO_EMBALAJE = Fields.TIPO_EMBALAJE,
+  UNIDADES_VENDIDAS = Fields.UNIDADES_VENDIDAS,
+  VALOR_VENTA_ITEM = Fields.VALOR_VENTA_ITEM,
+  VALOR_IBUA_Y_OTROS = Fields.VALOR_IBUA_Y_OTROS,
+  UNIDADES_EMBALAJE = Fields.UNIDADES_EMBALAJE,
+  VALOR_UNITARIO_ITEM = Fields.VALOR_UNITARIO_ITEM,
+  PACKS_VENDIDOS = Fields.PACKS_VENDIDOS,
+
+}
+
+export const GENERAL_THRESOLDS = {
+  [GeneralHeaderFields.FECHA_FACTURA]: 0.96,
+  [GeneralHeaderFields.NUMERO_FACTURA]: 0.94,
+  [GeneralHeaderFields.RAZON_SOCIAL]: 0.99,
+  [GeneralHeaderFields.VALOR_TOTAL_FACTURA]: 0.93,
+  [GeneralBodyFields.CODIGO_PRODUCTO]: 0.46,
+  [GeneralBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.8,
+  [GeneralBodyFields.TIPO_EMBALAJE]: 0.44,
+  [GeneralBodyFields.UNIDADES_VENDIDAS]: 0.41,
+  [GeneralBodyFields.VALOR_VENTA_ITEM]: 0.87,
+  [GeneralBodyFields.VALOR_IBUA_Y_OTROS]: 0.43,
+  [GeneralBodyFields.UNIDADES_EMBALAJE]: 0.45,
+};
