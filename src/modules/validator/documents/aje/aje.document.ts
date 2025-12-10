@@ -351,7 +351,7 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
                 invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : toISO8601(fecha_factura.text) ,
                 invoiceNumber: isNullOrIllegible(numero_factura.text) ? NULL_STRING : numero_factura.text,
                 packagingType: isNullOrIllegible(tipo_embalaje.text) ? NULL_STRING : tipo_embalaje.text ,
-                packagingUnit: isNullOrIllegible(unidades_embalaje.text) ?  NULL_FLOAT : unidades_embalaje.text,
+                packagingUnit: isNullOrIllegible(unidades_embalaje?.text) ?  NULL_FLOAT : unidades_embalaje.text,
                 packsSold: isNullOrIllegible(packs_vendidos.text) ?  NULL_FLOAT : packs_vendidos.text,
                 unitsSold: isNullOrIllegible(unidades_vendidas.text) ?  NULL_FLOAT : unidades_vendidas.text,
                 productCode: isNullOrIllegible(codigo_producto.text) ? NULL_STRING : codigo_producto.text ,
