@@ -3,12 +3,12 @@ import { OCR_Field as OCR_Field } from './common';
 
 export class Utils {
   static getFields<T extends string | number | symbol>(
-    fields: { type: T; text: string; confidence: number, row: number }[],
+    fields: { type: T; text: string; confidence: number; row: number }[],
   ) {
     const output: Record<T, OCR_Field<T>> = {} as Record<T, OCR_Field<T>>;
 
     for (const field of fields) {
-      output[field.type] = field ;
+      output[field.type] = field;
     }
 
     return output;
@@ -32,7 +32,7 @@ export class Utils {
       }
     }
 
-    return output.filter( r => r);
+    return output.filter((r) => r);
   }
 
   static guessConfidence(fields, thresholds: Record<string, number>) {
@@ -62,7 +62,7 @@ export class Utils {
     return true;
   }
 
-  static async asyncFilter<T>( arr, predicate) {
+  static async asyncFilter<T>(arr, predicate) {
     const results = await Promise.all(arr.map(predicate));
     return arr.filter((_v, index) => results[index]);
   }
@@ -76,11 +76,11 @@ export class Utils {
       );
     }
 
-    const now = DateTime.now();
-    const currentMonth = now.startOf('month');
-    const previousMonth = currentMonth.minus({ months: 1 });
-    const dateStartOfMonth = parsedDate.startOf('month');
+    const parsedMonth = parsedDate.month;
+    const currentMonth = DateTime.now().month;
 
-    return dateStartOfMonth >= previousMonth && dateStartOfMonth <= currentMonth;
+    let diff = Math.abs(currentMonth - parsedMonth);
+
+    return diff < 2;
   }
 }
