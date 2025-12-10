@@ -279,4 +279,64 @@ export class MeikoService {
       throw error;
     }
   }
+
+  /**
+   * Get invoices by date range without digitization status
+   * Fetches invoices that:
+   * - Have extraction date between startDate and endDate
+   * - Do NOT have a digitization status (LEFT JOIN returns NULL)
+   * - Have specific photo types (Factura Coke, Postobon, etc.)
+   * - Limited to 50,000 results
+   *
+   * @param startDate Start date in format YYYY-MM-DD or YYYY/MM/DD
+   * @param endDate End date in format YYYY-MM-DD or YYYY/MM/DD
+   * @returns Array of invoices with id_factura, idRegistroEncuesta, nombre_variable
+   */
+  async getInvoicesByDateRange(startDate: string, endDate: string) {
+    try {
+      this.logger.log(
+        `Counting invoices between ${startDate} and ${endDate} without digitization status`,
+      );
+
+      const result = await this.prismaMeiko.$queryRaw<
+        Array<{
+          'count(f.id_factura)': bigint;
+        }>
+      >`
+        SELECT
+          count(f.id_factura)
+        FROM
+          factura f
+        LEFT JOIN
+          estado_digitalizacion_factura edf
+            ON f.id_factura = edf.id_factura
+        WHERE
+          f.fechaExtraccion BETWEEN ${startDate} AND ${endDate}
+          AND edf.id IS NULL
+          AND f.tipo_foto IN (
+            'Factura Coke',
+            'Factura Postobon',
+            'Infocargue Postobon',
+            'Factura Tiquete POS Postobon',
+            'Factura Femsa',
+            'Factura Aje',
+            'Factura Quala'
+          )
+      `;
+
+      const count = Number(result[0]['count(f.id_factura)']);
+
+      this.logger.log(
+        `Found ${count} invoices without digitization status`,
+      );
+
+      return { count, startDate, endDate };
+    } catch (error) {
+      this.logger.error(
+        `Error counting invoices by date range: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 }

@@ -106,13 +106,17 @@ export class InvoiceController {
   }
   @Public()
   @Get('report')
-  async report() {
+  async report(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
     try {
-      const delivered = await this.invoiceService.reportByStatus();
+      const status = await this.invoiceService.reportByStatus();
       const users = await this.invoiceService.reportDeliveredByUser();
       const active = await this.invoiceService.getActiveUsers();
+      const missing = await this.invoiceService.getMissing(startDate, endDate);
 
-      return { users, delivered , active };
+      return { users, status , active, missing };
     } catch (error) {
       this.logger.error(
         `❌ Error testing invoice  ${error.message}`,

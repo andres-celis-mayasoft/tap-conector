@@ -1097,28 +1097,39 @@ export class InvoiceService {
     try {
       this.logger.log('📊 Generating report: Documents by status');
 
-      const pendingValidation = await this.prisma.document.count({
-        where: {
-          status: 'PENDING_VALIDATION',
-        },
+      const result = await this.prisma.document.groupBy({
+        by: ['status'],
+        _count: { status: true },
       });
 
-      const inCapture = await this.prisma.document.count({
-        where: {
-          status: 'IN_CAPTURE',
+      const report = result.reduce(
+        (acc, row) => {
+          acc[row.status] = row._count.status;
+          return acc;
         },
-      });
-
-      const report = {
-        PENDING_VALIDATION: pendingValidation,
-        IN_CAPTURE: inCapture,
-      };
-
-      this.logger.log(
-        `✅ Report generated: ${pendingValidation} pending validation, ${inCapture} in capture`,
+        {} as Record<string, number>,
       );
 
+      this.logger.log(`✅ Report generated successfully`);
       return report;
+
+      return report;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error generating status report: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  async getMissing(startDate: string, endDate: string) {
+    try {
+      const missing = await this.meikoService.getInvoicesByDateRange(
+        startDate,
+        endDate,
+      );
+      return missing;
     } catch (error) {
       this.logger.error(
         `❌ Error generating status report: ${error.message}`,

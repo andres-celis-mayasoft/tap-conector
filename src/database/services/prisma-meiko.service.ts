@@ -36,6 +36,10 @@ export class PrismaMeikoService implements OnModuleInit, OnModuleDestroy {
     return this.prisma.$queryRaw;
   }
 
+  get $queryRawUnsafe() {
+    return this.prisma.$queryRawUnsafe.bind(this.prisma);
+  }
+
   // Expose models
   get invoice() {
     return this.prisma.invoice;

@@ -39,4 +39,16 @@ export class MeikoController {
   async getInvoiceById(@Param('id', ParseIntPipe) id: number) {
     return this.meikoService.getInvoiceById(id);
   }
+
+  /**
+   * Get invoices by date range without digitization status
+   * GET /meiko/invoices/by-date-range?startDate=2025-12-05&endDate=2025-12-10
+   */
+  @Get('invoices/by-date-range')
+  async getInvoicesByDateRange(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.meikoService.getInvoicesByDateRange(startDate, endDate);
+  }
 }
