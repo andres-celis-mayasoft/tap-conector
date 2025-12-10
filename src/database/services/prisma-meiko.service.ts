@@ -33,7 +33,7 @@ export class PrismaMeikoService implements OnModuleInit, OnModuleDestroy {
   }
 
   get $queryRaw() {
-    return this.prisma.$queryRaw;
+    return this.prisma.$queryRaw.bind(this.prisma);
   }
 
   get $queryRawUnsafe() {
