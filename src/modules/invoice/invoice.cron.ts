@@ -9,7 +9,7 @@ export class InvoiceCronService {
   constructor(private readonly invoiceService: InvoiceService) {}
 
   /**
-   * Release invoices that have been in IN_CAPTURE status for more than 30 minutes
+   * Release invoices that have been in IN_CAPTURE status for more than 20 minutes
    * Runs every minute
    */
   @Cron(CronExpression.EVERY_MINUTE)
@@ -18,7 +18,7 @@ export class InvoiceCronService {
       const releasedCount = await this.invoiceService.releaseUnresolvedInvoices();
 
       if (releasedCount > 0) {
-        this.logger.log(`✅ Released ${releasedCount} invoices that exceeded 30 minutes without resolution`);
+        this.logger.log(`✅ Released ${releasedCount} invoices that exceeded 20 minutes without resolution`);
       }
     } catch (error) {
       this.logger.error(

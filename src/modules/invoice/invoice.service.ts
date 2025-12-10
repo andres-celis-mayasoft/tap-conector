@@ -834,16 +834,16 @@ export class InvoiceService {
   }
 
   /**
-   * Release invoices that have been in IN_CAPTURE status for more than 30 minutes
+   * Release invoices that have been in IN_CAPTURE status for more than 20 minutes
    * Changes their status back to PENDING_VALIDATION and clears the assignment
    *
    * @returns Number of invoices released
    */
   async releaseUnresolvedInvoices(): Promise<number> {
     try {
-      const thirtyMinutesAgo = DateTime.now().minus({ minutes: 30 }).toJSDate();
+      const thirtyMinutesAgo = DateTime.now().minus({ minutes: 20 }).toJSDate();
 
-      // Find invoices in IN_CAPTURE status that were assigned more than 30 minutes ago
+      // Find invoices in IN_CAPTURE status that were assigned more than 20 minutes ago
       const unresolvedInvoices = await this.prisma.document.findMany({
         where: {
           status: 'IN_CAPTURE',
@@ -880,7 +880,7 @@ export class InvoiceService {
       });
 
       this.logger.log(
-        `✅ Released ${result.count} invoices that exceeded 30 minutes without resolution`,
+        `✅ Released ${result.count} invoices that exceeded 20 minutes without resolution`,
       );
 
       return result.count;
