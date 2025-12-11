@@ -197,12 +197,20 @@ export class MeikoService {
     try {
       this.logger.log(`Creating EstadoDigitalizacionFactura entry`);
 
-      const estado = await this.prismaMeiko.estadoDigitalizacionFactura.create({
-        data,
+      const estado = await this.prismaMeiko.estadoDigitalizacionFactura.upsert({
+        where: {
+          invoiceId: data.invoiceId
+        },
+        create: {
+          ...data
+        },
+        update: {
+          digitalizationStatusId: data.digitalizationStatusId
+        },
       });
 
       this.logger.log(
-        `EstadoDigitalizacionFactura created successfully with id: ${estado.id}`,
+        `EstadoDigitalizacionFactura created/updated successfully with id: ${estado.id}`,
       );
       return estado;
     } catch (error) {

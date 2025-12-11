@@ -90,6 +90,9 @@ export class ExtractionService {
 
       // 5. Get new invoices from Meiko
       const documents = await this.meikoService.getInvoices(maxId);
+      const documentsReprocess = await this.invoiceService.getDocuments({
+        where: { status: 'REPROCESS' },
+      });
       // const documents = await this.meikoService.getInvoicesTest(ids);
       // const document = await this.meikoService.getInvoiceById(4276816);
       // if (!document) {
@@ -135,7 +138,7 @@ export class ExtractionService {
         `⚙️ Processing invoices with ${THREAD_COUNT} concurrent threads`,
       );
 
-      const processingTasks = docs.map((doc) =>
+      const processingTasks = docs.concat(documentsReprocess).map((doc) =>
         limit(async () => {
           try {
             this.logger.log(`\n🔄 Processing invoice ${doc.id}...`);

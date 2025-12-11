@@ -55,6 +55,10 @@ export class InvoiceService {
     });
   }
 
+  getDocuments(args : Prisma.DocumentFindManyArgs) {
+    return this.prisma.document.findMany(args);
+  }
+
   async getMaxId(): Promise<number> {
     try {
       const result = await this.prisma.document.findFirst({
