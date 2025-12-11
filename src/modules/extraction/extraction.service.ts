@@ -102,7 +102,7 @@ export class ExtractionService {
       // const documents = [document];
       this.logger.log(`📄 Found ${documents.length} new invoices to process`);
 
-      if (documents.length === 0) {
+      if (documents.length === 0 && documentsReprocess.length === 0) {
         this.logger.log('ℹ️ No new invoices to process');
         return;
       }
