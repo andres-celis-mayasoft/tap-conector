@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { OCR_Field as OCR_Field } from './common';
+import { isNullOrIllegible, NULL_FLOAT, OCR_Field as OCR_Field } from './common';
 
 export class Utils {
   static getFields<T extends string | number | symbol>(
@@ -12,6 +12,29 @@ export class Utils {
     }
 
     return output;
+  }
+
+  static parsePackConUnidades(value: string | null | undefined) {
+    if (!value || !value.includes('/') || isNullOrIllegible(value)) {
+      return {
+        packsSold: NULL_FLOAT,
+        unitsSold: NULL_FLOAT,
+      };
+    }
+
+    const [packs, units] = value.split('/');
+
+    const packsParsed = isNaN(parseFloat(packs))
+      ? NULL_FLOAT
+      : parseFloat(packs);
+    const unitsParsed = isNaN(parseFloat(units))
+      ? NULL_FLOAT
+      : parseFloat(units);
+
+    return {
+      packsSold: packsParsed,
+      unitsSold: unitsParsed,
+    };
   }
 
   static groupFields(rows: any[]): any[][] {

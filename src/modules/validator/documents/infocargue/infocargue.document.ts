@@ -254,7 +254,8 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
           valor_venta_item,
           packs_con_unidades,
         } = Utils.getFields<InfocargueBodyFields>(product);
-        
+
+        const { packsSold , unitsSold } = Utils.parsePackConUnidades(packs_con_unidades.text)
   
         output.push({
           invoiceId: this.data.facturaId,
@@ -266,8 +267,8 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
           invoiceNumber: NULL_STRING,
           packagingType: NULL_STRING ,
           packagingUnit: isNullOrIllegible(unidades_embalaje.text) ?  NULL_FLOAT : unidades_embalaje.text,
-          packsSold: isNullOrIllegible(packs_con_unidades.text) ?  NULL_FLOAT : packs_con_unidades.text,
-          unitsSold: NULL_FLOAT,
+          packsSold: packsSold,
+          unitsSold: unitsSold,
           productCode:  NULL_STRING  ,
           saleValue: isNullOrIllegible(valor_venta_item.text) ?  NULL_NUMBER : valor_venta_item.text,
           totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
