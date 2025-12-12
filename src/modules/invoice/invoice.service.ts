@@ -856,22 +856,15 @@ export class InvoiceService {
     });
   }
 
-  /**
-   * Release invoices that have been in IN_CAPTURE status for more than 20 minutes
-   * Changes their status back to PENDING_VALIDATION and clears the assignment
-   *
-   * @returns Number of invoices released
-   */
   async releaseUnresolvedInvoices(): Promise<number> {
     try {
-      const thirtyMinutesAgo = DateTime.now().minus({ minutes: 20 }).toJSDate();
+      const fortyMinutesAgo = DateTime.now().minus({ minutes: 40 }).toJSDate();
 
-      // Find invoices in IN_CAPTURE status that were assigned more than 20 minutes ago
       const unresolvedInvoices = await this.prisma.document.findMany({
         where: {
           status: 'IN_CAPTURE',
           assignedAt: {
-            lt: thirtyMinutesAgo,
+            lt: fortyMinutesAgo,
           },
           completedAt: null,
         },
@@ -890,7 +883,7 @@ export class InvoiceService {
         where: {
           status: 'IN_CAPTURE',
           assignedAt: {
-            lt: thirtyMinutesAgo,
+            lt: fortyMinutesAgo,
           },
           completedAt: null,
         },
@@ -903,7 +896,7 @@ export class InvoiceService {
       });
 
       this.logger.log(
-        `✅ Released ${result.count} invoices that exceeded 20 minutes without resolution`,
+        `✅ Released ${result.count} invoices that exceeded 40 minutes without resolution`,
       );
 
       return result.count;
@@ -943,13 +936,14 @@ export class InvoiceService {
         },
       });
 
-      if (!document?.surveyId) {
-        throw new Error(`Invoice ${invoiceId} has no surveyId`);
-      }
       if (!document) {
         throw new Error(
           `Invoice ${invoiceId} is not assigned to user ${userId}`,
         );
+      }
+
+      if (!document?.surveyId) {
+        throw new Error(`Invoice ${invoiceId} has no surveyId`);
       }
 
       const result = DocumentFactory.format(
