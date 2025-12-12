@@ -650,8 +650,14 @@ export class InvoiceService {
       }
 
       // Insert into EstadoDigitalizacionFactura (status 1 = outdated)
-      await this.prismaMeikoService.estadoDigitalizacionFactura.create({
-        data: {
+      await this.prismaMeikoService.estadoDigitalizacionFactura.upsert({
+        where: {
+          invoiceId
+        },
+        update: {
+          digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA,
+        },
+        create: {
           invoiceId,
           digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA, // Status for outdated
         },
@@ -695,10 +701,16 @@ export class InvoiceService {
         throw new Error(`Invoice ${invoiceId} not found`);
       }
 
-      await this.prismaMeikoService.estadoDigitalizacionFactura.create({
-        data: {
-          invoiceId,
+      await this.prismaMeikoService.estadoDigitalizacionFactura.upsert({
+        where: {
+          invoiceId
+        },
+        update: {
           digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO,
+        },
+        create: {
+          invoiceId,
+          digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO, // Status for outdated
         },
       });
 
@@ -783,13 +795,20 @@ export class InvoiceService {
         throw new Error(`Invoice ${invoiceId} not found`);
       }
 
-      // Insert into EstadoDigitalizacionFactura (status 2 = illegible)
-      await this.prismaMeikoService.estadoDigitalizacionFactura.create({
-        data: {
+      
+      await this.prismaMeikoService.estadoDigitalizacionFactura.upsert({
+        where: {
+          invoiceId
+        },
+        update: {
+          digitalizationStatusId: InvoiceStatus.NO_PROCESABLE,
+        },
+        create: {
           invoiceId,
-          digitalizationStatusId: InvoiceStatus.NO_PROCESABLE, // Status for illegible
+          digitalizationStatusId: InvoiceStatus.NO_PROCESABLE, // Status for outdated
         },
       });
+
 
       // Update Document status to DELIVERED
       await this.prisma.document.update({

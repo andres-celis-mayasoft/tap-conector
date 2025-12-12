@@ -35,14 +35,14 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     const { fecha_factura } = Utils.getFields<TiquetePosPostobonHeaderFields>(
       this.data.encabezado,
     );
-    const isValidDate = Utils.isValidDate(fecha_factura.text);
+    const isValidDate = Utils.isValidDate(fecha_factura?.text);
 
     if (!isValidDate) {
       this.errors.fecha_factura = 'Fecha inválida (formato)';
       return;
     }
 
-    const isValid = Utils.hasMonthsPassed(fecha_factura.text);
+    const isValid = Utils.hasMonthsPassed(fecha_factura?.text);
     this.isValid = isValid;
     if (!isValid) {
       fecha_factura.error = 'Fecha obsoleta';
@@ -140,7 +140,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
         );
       }
 
-      if (productDB?.description === descripcion.text?.toUpperCase()) {
+      if (productDB?.description === descripcion?.text?.toUpperCase()) {
         descripcion.confidence = 1;
       }
 
@@ -182,7 +182,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
       const { packs_vendidos } =
         Utils.getFields<TiquetePosPostobonBodyFields>(product);
 
-      const texto = packs_vendidos.text ?? '0';
+      const texto = packs_vendidos?.text ?? '0';
 
       let ent = '0';
       let dec = '0';
@@ -217,7 +217,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
 
     if (!unidades_embalaje) return;
 
-    const valor = unidades_embalaje.text || '';
+    const valor = unidades_embalaje?.text || '';
     const confianza = unidades_embalaje.confidence || 0;
 
     const pattern = /.*[xX]\s*(\d+)/;
@@ -325,18 +325,18 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
                 invoiceId: this.data.facturaId,
                 rowNumber: index + 1,
                 surveyRecordId: Number(this.data.surveyRecordId),
-                businessName: isNullOrIllegible(razon_social.text) ? NULL_STRING : razon_social.text ,
-                description: isNullOrIllegible(item_descripcion_producto.text) ? NULL_STRING : item_descripcion_producto.text,
-                invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : toISO8601(fecha_factura.text) ,
-                invoiceNumber: isNullOrIllegible(numero_factura.text) ? NULL_STRING : numero_factura.text,
-                packagingType: isNullOrIllegible(tipo_embalaje.text) ? NULL_STRING : tipo_embalaje.text ,
-                packagingUnit: isNullOrIllegible(unidades_embalaje.text) ?  NULL_FLOAT : unidades_embalaje.text,
-                packsSold: isNullOrIllegible(packs_vendidos.text) ?  NULL_FLOAT : packs_vendidos.text,
+                businessName: isNullOrIllegible(razon_social?.text) ? NULL_STRING : razon_social.text ,
+                description: isNullOrIllegible(item_descripcion_producto?.text) ? NULL_STRING : item_descripcion_producto?.text,
+                invoiceDate: isNullOrIllegible(fecha_factura?.text) ?  NULL_DATE : toISO8601(fecha_factura.text) ,
+                invoiceNumber: isNullOrIllegible(numero_factura?.text) ? NULL_STRING : numero_factura.text,
+                packagingType: isNullOrIllegible(tipo_embalaje?.text) ? NULL_STRING : tipo_embalaje.text ,
+                packagingUnit: isNullOrIllegible(unidades_embalaje?.text) ?  NULL_FLOAT : unidades_embalaje?.text,
+                packsSold: isNullOrIllegible(packs_vendidos?.text) ?  NULL_FLOAT : packs_vendidos?.text,
                 unitsSold: NULL_FLOAT,
                 productCode:  NULL_STRING,
-                saleValue: isNullOrIllegible(valor_venta_item_total_nc.text) ?  NULL_NUMBER : valor_venta_item_total_nc.text,
-                totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
-                totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva.text) ?  NULL_NUMBER : total_factura_sin_iva.text,
+                saleValue: isNullOrIllegible(valor_venta_item_total_nc?.text) ?  NULL_NUMBER : valor_venta_item_total_nc?.text,
+                totalInvoice: isNullOrIllegible(valor_total_factura?.text) ?  NULL_NUMBER : valor_total_factura?.text,
+                totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva?.text) ?  NULL_NUMBER : total_factura_sin_iva?.text,
                 valueIbuaAndOthers: 0,
               });
       });
