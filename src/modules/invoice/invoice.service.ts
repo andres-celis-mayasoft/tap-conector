@@ -55,7 +55,7 @@ export class InvoiceService {
     });
   }
 
-  getDocuments(args : Prisma.DocumentFindManyArgs) {
+  getDocuments(args: Prisma.DocumentFindManyArgs) {
     return this.prisma.document.findMany(args);
   }
 
@@ -652,7 +652,7 @@ export class InvoiceService {
       // Insert into EstadoDigitalizacionFactura (status 1 = outdated)
       await this.prismaMeikoService.estadoDigitalizacionFactura.upsert({
         where: {
-          invoiceId
+          invoiceId,
         },
         update: {
           digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA,
@@ -703,7 +703,7 @@ export class InvoiceService {
 
       await this.prismaMeikoService.estadoDigitalizacionFactura.upsert({
         where: {
-          invoiceId
+          invoiceId,
         },
         update: {
           digitalizationStatusId: InvoiceStatus.NO_APLICA_PARA_EL_ESTUDIO,
@@ -795,10 +795,9 @@ export class InvoiceService {
         throw new Error(`Invoice ${invoiceId} not found`);
       }
 
-      
       await this.prismaMeikoService.estadoDigitalizacionFactura.upsert({
         where: {
-          invoiceId
+          invoiceId,
         },
         update: {
           digitalizationStatusId: InvoiceStatus.NO_PROCESABLE,
@@ -808,7 +807,6 @@ export class InvoiceService {
           digitalizationStatusId: InvoiceStatus.NO_PROCESABLE, // Status for outdated
         },
       });
-
 
       // Update Document status to DELIVERED
       await this.prisma.document.update({
@@ -1005,10 +1003,29 @@ export class InvoiceService {
         captureEndDate: new Date(),
         completedAt: new Date(),
       });
-    } catch (e) {
+    } catch (deliveryError) {
+      const { userId, invoiceId } = saveInvoiceDto;
+
+      const document = await this.prisma.document.findFirst({
+        where: {
+          documentId: invoiceId,
+          assignedUserId: userId,
+        },
+      });
+
+      if (!document) return;
+
+      await this.updateDocument({
+        id: document.id,
+        status: 'ISSUE',
+        errors: `DELIVERY_ERROR: ${deliveryError.message}`,
+        captureEndDate: new Date(),
+        completedAt: new Date(),
+      });
+
       this.logger.error(
-        `❌ Error saving corrected invoice ${saveInvoiceDto.invoiceId}: ${e.message}`,
-        e.stack,
+        `❌ Error saving corrected invoice ${saveInvoiceDto.invoiceId}: ${deliveryError.message}`,
+        deliveryError.stack,
       );
     }
   }
