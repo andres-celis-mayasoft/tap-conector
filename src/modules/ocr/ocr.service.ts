@@ -59,10 +59,7 @@ export class OcrService {
     }
 
     if (!request.filePath) {
-      throw new HttpException(
-        'File path is required',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('File path is required', HttpStatus.BAD_REQUEST);
     }
 
     if (!request.typeOfInvoice) {
@@ -109,8 +106,23 @@ export class OcrService {
         error.stack,
       );
 
+      if (
+        error.response.data.detail.includes("Tipo de factura 'Factura Otros Proveedores'")
+      ) {
+        this.logger.log('Tipo de factura no soportada, omitiendo error');
+        return {
+          success: true,
+          data: {
+            response: {
+              tipoFacturaOcr: 'Factura Otros Proveedores',
+            }
+          },
+        };
+      }
+
       if (axios.isAxiosError(error)) {
-        const statusCode = error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
+        const statusCode =
+          error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
         const errorMessage = error.response?.data?.message || error.message;
 
         throw new HttpException(
@@ -131,9 +143,7 @@ export class OcrService {
    * @param requests Array of invoice OCR requests
    * @returns Array of OCR responses
    */
-  async processInvoices(
-    requests: InvoiceOcrRequest[],
-  ): Promise<OcrResponse[]> {
+  async processInvoices(requests: InvoiceOcrRequest[]): Promise<OcrResponse[]> {
     this.logger.log(`Processing ${requests.length} invoices with OCR`);
 
     const results: OcrResponse[] = [];
