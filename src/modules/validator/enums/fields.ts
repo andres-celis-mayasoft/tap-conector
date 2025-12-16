@@ -32,6 +32,9 @@ export enum Fields {
   TOTAL_IBUA = 'total_ibua',
   TOTAL_ARTICULOS = 'total_articulos',
   VALOR_SUBTOTAL_ITEM = 'valor_subtotal_item',
+  CAJAS = 'cajas',
+  UNIDADES = 'unidades',
+  DESCUENTO = 'descuento'
 }
 
 

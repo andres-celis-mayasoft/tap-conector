@@ -25,6 +25,7 @@ const PROCESABLES = [
   'Factura Femsa',
   'Factura Aje',
   'Factura Quala',
+  'Factura Otros Proveedores'
 ];
 @Injectable()
 export class ExtractionService {
@@ -43,9 +44,9 @@ export class ExtractionService {
    * Current schedule: Every day at 2:00 AM
    * Modify the cron expression as needed
    */
-  @Cron(CronExpression.EVERY_10_MINUTES, {
-    name: 'extraction',
-  })
+  // @Cron(CronExpression.EVERY_10_MINUTES, {
+  //   name: 'extraction',
+  // })
 
   // idea, que sea una función recursiva, si no encuentra datos, hace un await de 1 minuto
   async handleExtractionCron() {
@@ -143,12 +144,16 @@ export class ExtractionService {
           try {
             this.logger.log(`\n🔄 Processing invoice ${doc.id}...`);
             if (!PROCESABLES.some((item) => item === doc.photoType)) {
-              await this.invoiceService.updateDocument({
-                id: doc.id,
-                status: 'PENDING_VALIDATION',
-                validated: false,
-                extracted: false,
-              });
+              await this.invoiceService.createFactura({
+                data: {
+                  surveyRecordId: Number(doc.surveyId),
+                  digitalizationDate: new Date(),
+                  extractionDate: new Date(),
+                  photoType: doc.photoType,
+                  link: doc.documentUrl,
+                  id: doc.documentId,
+                }
+              })
               return;
             }
 
@@ -217,6 +222,22 @@ export class ExtractionService {
             this.logger.log(
               `📋 Invoice ${doc.id} - Document type: ${photoTypeOcr}`,
             );
+
+            if(photoType === 'Factura Otros Proveedores' && photoTypeOcr !== 'Factura Tolima'){
+              await this.invoiceService.createFactura({
+                data: {
+                  surveyRecordId: Number(doc.surveyId),
+                  digitalizationDate: new Date(),
+                  extractionDate: new Date(),
+                  photoType: doc.photoType,
+                  link: doc.documentUrl,
+                  id: doc.documentId,
+                }
+              })
+              return;
+            }
+
+            if(photoTypeOcr === 'Factura Tolima') finalType = 'Factura Tolima'; 
 
             const document = DocumentFactory.create(
               finalType,

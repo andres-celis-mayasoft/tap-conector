@@ -13,6 +13,8 @@ import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { CokeInvoiceSchema } from '../coke/coke.schema';
 import { Prisma } from '@generated/client-meiko';
 import { GeneralInvoice, GeneralInvoiceSchema } from '../general';
+import { TolimaInvoiceSchema } from '../tolima/tolima.schema';
+import { TolimaInvoice } from '../tolima/tolima.document';
 
 const documentMap = {
   'Factura Coke': CokeInvoice,
@@ -22,6 +24,7 @@ const documentMap = {
   'Factura Femsa': FemsaInvoice,
   'Factura Aje': AjeInvoice,
   'Factura Quala': QualaInvoice,
+  'Factura Tolima': TolimaInvoice,
 };
 
 export type ProcessedDataSchema =
@@ -33,6 +36,7 @@ export type ProcessedDataSchema =
   | AjeInvoiceSchema
   | QualaInvoiceSchema
   | GeneralInvoiceSchema
+  | TolimaInvoiceSchema;
 
 export type SupportedInvoiceType = InstanceType<
   (typeof documentMap)[keyof typeof documentMap]
@@ -91,6 +95,13 @@ export class DocumentFactory {
       case 'Factura Quala':
         return new QualaInvoice(
           ocrResponse as QualaInvoiceSchema,
+          meikoService,
+          invoiceService,
+        );
+
+      case 'Factura Tolima':
+        return new TolimaInvoice(
+          ocrResponse as TolimaInvoiceSchema,
           meikoService,
           invoiceService,
         );
@@ -156,13 +167,19 @@ export class DocumentFactory {
           invoiceService,
         ).format();
 
+      case 'Factura Tolima':
+        return new TolimaInvoice(
+          ocrResponse as TolimaInvoiceSchema,
+          meikoService,
+          invoiceService,
+        ).format();
+
       default:
         return new GeneralInvoice(
           ocrResponse as GeneralInvoiceSchema,
           meikoService,
           invoiceService,
         ).format();
-        
     }
   }
 }

@@ -31,6 +31,10 @@ export class InvoiceService {
     private readonly meikoService: MeikoService,
   ) {}
 
+  createFactura(doc : Prisma.MeikoDocumentCreateArgs){
+    return this.prisma.meikoDocument.create(doc)
+  }
+
   isExcluded(description: string) {
     return this.prisma.excludedProducts.findFirst({
       where: {

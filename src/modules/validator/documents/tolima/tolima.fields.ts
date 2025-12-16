@@ -1,0 +1,32 @@
+import { Fields } from '../../enums/fields';
+
+export enum TolimaHeaderFields {
+  FECHA_FACTURA = Fields.FECHA_FACTURA,
+  NUMERO_FACTURA = Fields.NUMERO_FACTURA,
+  RAZON_SOCIAL = Fields.RAZON_SOCIAL,
+  VALOR_TOTAL_FACTURA = Fields.VALOR_TOTAL_FACTURA,
+}
+
+export enum TolimaBodyFields {
+  CODIGO_PRODUCTO = Fields.CODIGO_PRODUCTO,
+  ITEM_DESCRIPCION_PRODUCTO = Fields.ITEM_DESCRIPCION_PRODUCTO,
+  CAJAS = Fields.CAJAS,
+  UNIDADES = Fields.UNIDADES,
+  UNIDADES_VENDIDAS = Fields.UNIDADES_VENDIDAS,
+  DESCUENTO = Fields.DESCUENTO,
+  VALOR_VENTA_ITEM = Fields.VALOR_VENTA_ITEM,
+  UNIDADES_EMBALAJE = Fields.UNIDADES_EMBALAJE,
+  VALOR_UNITARIO_ITEM = Fields.VALOR_UNITARIO_ITEM,
+}
+
+export const TOLIMA_THRESOLDS = {
+  [TolimaHeaderFields.FECHA_FACTURA]: 0.95,
+  [TolimaHeaderFields.NUMERO_FACTURA]: 0.95,
+  [TolimaHeaderFields.RAZON_SOCIAL]: 0.95,
+  [TolimaHeaderFields.VALOR_TOTAL_FACTURA]: 0.95,
+  [TolimaBodyFields.CODIGO_PRODUCTO]: 0.95,
+  [TolimaBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.95,
+  [TolimaBodyFields.UNIDADES_VENDIDAS]: 0.95,
+  [TolimaBodyFields.VALOR_VENTA_ITEM]: 0.95,
+  [TolimaBodyFields.UNIDADES_EMBALAJE]: 0.95,
+};
