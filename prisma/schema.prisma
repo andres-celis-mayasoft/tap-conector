@@ -94,7 +94,7 @@ model MeikoDocument {
   id                     Int           @id @default(autoincrement()) @map("id_factura")
   surveyRecordId       BigInt        @map("idRegistroEncuesta")
   responseId            BigInt?       @map("responseId")
-  stickerQr             String?       @db.VarChar(50) @map("sticketQR")
+  stickerQr             String?       @db.VarChar(50) @map("stickerQR")
   responseReceived      String?       @db.VarChar(100) @map("responseReceived")
   variableName          String?       @db.VarChar(255) @map("nombre_variable")
   photoType             String?       @db.VarChar(255) @map("tipo_foto")

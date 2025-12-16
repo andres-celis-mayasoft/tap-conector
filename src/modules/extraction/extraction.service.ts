@@ -143,10 +143,15 @@ export class ExtractionService {
         limit(async () => {
           try {
             this.logger.log(`\n🔄 Processing invoice ${doc.id}...`);
+            const factura = await this.meikoService.getInvoiceById(doc.documentId);
             if (!PROCESABLES.some((item) => item === doc.photoType)) {
               await this.invoiceService.createFactura({
                 data: {
                   surveyRecordId: Number(doc.surveyId),
+                  responseId: factura?.responseId,
+                  responseReceived: factura?.responseReceived,
+                  stickerQr: factura?.stickerQR,
+                  variableName: factura?.variableName,
                   digitalizationDate: new Date(),
                   extractionDate: new Date(),
                   photoType: doc.photoType,
@@ -226,6 +231,10 @@ export class ExtractionService {
             if(photoType === 'Factura Otros Proveedores' && photoTypeOcr !== 'Factura Tolima'){
               await this.invoiceService.createFactura({
                 data: {
+                  responseId: factura?.responseId,
+                  responseReceived: factura?.responseReceived,
+                  stickerQr: factura?.stickerQR,
+                  variableName: factura?.variableName,
                   surveyRecordId: Number(doc.surveyId),
                   digitalizationDate: new Date(),
                   extractionDate: new Date(),
