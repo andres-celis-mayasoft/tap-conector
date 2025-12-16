@@ -111,7 +111,7 @@ export class ExtractionService {
       // 6. Create invoice records in our DB with initial PROCESSING status
       const docs = await this.invoiceService.createInvoices(
         documents.map((invoice) => ({
-          status: 'PROCESSING',
+          status: !PROCESABLES.some((item) => item === invoice.photoType) ? 'FLUJO_TAP' : 'PROCESSING',
           documentId: invoice.id,
           surveyId: invoice.surveyRecordId.toString(),
           photoType: invoice.photoType,
@@ -234,6 +234,11 @@ export class ExtractionService {
                   id: doc.documentId,
                 }
               })
+              await this.invoiceService.updateDocument({
+                id: doc.id,
+                mayaDocumentJSON: JSON.stringify(ocrResult.data),
+                status: 'FLUJO_TAP',
+              });
               return;
             }
 
