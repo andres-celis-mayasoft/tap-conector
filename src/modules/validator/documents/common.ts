@@ -33,6 +33,7 @@ export const NULL_DATE = DateTime.fromObject({ year: 1900, month: 1, day: 1 }).t
 export const NULL_FLOAT = parseFloat('-0.01')
 export const NULL_NUMBER = -1
 export const NULL_STRING = "[ILEGIBLE]"
+export const NULL_IBUA = 0;
 
 export const isNullOrIllegible = (text?: string) => {
     if(!text) return true;

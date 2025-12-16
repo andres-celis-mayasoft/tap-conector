@@ -10,7 +10,7 @@ import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { InvoiceService } from 'src/modules/invoice/invoice.service';
-import { EMBALAJES, isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_NUMBER, NULL_STRING, toISO8601 } from '../common';
+import { EMBALAJES, isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_IBUA, NULL_NUMBER, NULL_STRING, toISO8601 } from '../common';
 import { Prisma } from '@generated/client-meiko';
 
 type HeaderField = TiquetePosPostobonInvoiceSchema['encabezado'][number];
@@ -337,7 +337,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
                 saleValue: isNullOrIllegible(valor_venta_item_total_nc?.text) ?  NULL_NUMBER : valor_venta_item_total_nc?.text,
                 totalInvoice: isNullOrIllegible(valor_total_factura?.text) ?  NULL_NUMBER : valor_total_factura?.text,
                 totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva?.text) ?  NULL_NUMBER : total_factura_sin_iva?.text,
-                valueIbuaAndOthers: 0,
+                valueIbuaAndOthers: NULL_IBUA,
               });
       });
   

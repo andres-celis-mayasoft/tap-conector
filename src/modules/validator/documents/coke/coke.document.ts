@@ -10,7 +10,7 @@ import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { InvoiceService } from 'src/modules/invoice/invoice.service';
-import { EMBALAJES, isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_NUMBER, NULL_STRING, toISO8601 } from '../common';
+import { EMBALAJES, isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_IBUA, NULL_NUMBER, NULL_STRING, toISO8601 } from '../common';
 import { Prisma } from '@generated/client-meiko';
 
 type HeaderField = CokeInvoiceSchema['encabezado'][number];
@@ -318,7 +318,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
                   saleValue: isNullOrIllegible(valor_venta_item.text) ?  NULL_NUMBER : valor_venta_item.text,
                   totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
                   totalInvoiceWithoutVAT: NULL_NUMBER,
-                  valueIbuaAndOthers: isNullOrIllegible(valor_ibua_y_otros.text) ?  0 : Number(valor_ibua_y_otros.text),
+                  valueIbuaAndOthers: isNullOrIllegible(valor_ibua_y_otros.text) ?  NULL_IBUA : Number(valor_ibua_y_otros.text),
                 });
               });
       
