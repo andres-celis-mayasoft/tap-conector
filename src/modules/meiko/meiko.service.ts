@@ -301,33 +301,27 @@ export class MeikoService {
         }>
       >`
         SELECT
-          count(f.id_factura)
-        FROM
-          factura f
-        LEFT JOIN
-          estado_digitalizacion_factura edf
-            ON f.id_factura = edf.id_factura
-        WHERE
-          f.fechaExtraccion BETWEEN ${startDate} AND ${endDate}
-          AND edf.id IS NULL
-          AND f.tipo_foto IN (
-            'Factura Coke',
-            'Factura Postobon',
-            'Infocargue Postobon',
-            'Factura Tiquete POS Postobon',
-            'Factura Femsa',
-            'Factura Aje',
-            'Factura Quala'
-          )
+          DATE(f.fechaExtraccion) AS dia,
+          COUNT(*) AS total_facturas,
+          COUNT(CASE WHEN ed.estado_digitalizacion = 'Procesado' THEN 1 END) AS procesado,
+          COUNT(CASE WHEN ed.estado_digitalizacion = 'No Aplica para el estudio' THEN 1 END) AS no_aplica,
+          COUNT(CASE WHEN ed.estado_digitalizacion = 'No Procesable' THEN 1 END) AS no_procesable,
+          COUNT(CASE WHEN ed.estado_digitalizacion = 'Generacion Plantilla' THEN 1 END) AS generacion_plantilla,
+          COUNT(CASE WHEN ed.estado_digitalizacion = 'Error de descarga' THEN 1 END) AS error_descarga,
+          COUNT(CASE WHEN ed.estado_digitalizacion = 'Fecha no valida' THEN 1 END) AS fecha_no_valida,
+          COUNT(CASE WHEN ed.estado_digitalizacion IS NULL THEN 1 END) AS pendientes
+        FROM factura f
+        LEFT JOIN estado_digitalizacion_factura edf 
+               ON f.id_factura = edf.id_factura
+        LEFT JOIN estado_digitalizacion ed 
+               ON ed.id = edf.estado_digitalizacion_id
+        WHERE f.fechaExtraccion >= ${startDate}
+          AND f.fechaExtraccion <  ${endDate}
+        GROUP BY DATE(f.fechaExtraccion)
+        ORDER BY dia;
       `;
 
-      const count = Number(result[0]['count(f.id_factura)']);
-
-      this.logger.log(
-        `Found ${count} invoices without digitization status`,
-      );
-
-      return { count, startDate, endDate };
+      return result;
     } catch (error) {
       this.logger.error(
         `Error counting invoices by date range: ${error.message}`,
