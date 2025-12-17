@@ -143,12 +143,12 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
         unidades_vendidas.confidence = 1;
       }
     } else {
-      total_factura_sin_iva.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(total_factura_sin_iva)} `;
+      total_factura_sin_iva.error = `Total calculation do not match: Calculated: ${total}. Expected : ${this.toNumber(total_factura_sin_iva)} `;
       for (const product of products) {
         const { valor_unitario_item, unidades_vendidas } =
           Utils.getFields<QualaBodyFields>(product);
-        valor_unitario_item.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(total_factura_sin_iva)} `;
-        unidades_vendidas.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(total_factura_sin_iva)} `;
+        valor_unitario_item.error = `Total calculation do not match: Calculated: ${total}. Expected : ${this.toNumber(total_factura_sin_iva)} `;
+        unidades_vendidas.error = `Total calculation do not match: Calculated: ${total}. Expected : ${this.toNumber(total_factura_sin_iva)} `;
       }
     }
   }
@@ -266,8 +266,8 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
         valor_venta_item.confidence = 1;
         unidades_vendidas.confidence = 1;
       } else {
-        valor_venta_item.error = `Value do not match expected: ${this.toNumber(valor_venta_item)}, Calculated: ${totalByProduct}`;
-        unidades_vendidas.error = `Value do not match expected: ${this.toNumber(valor_venta_item)}, Calculated: ${totalByProduct}`;
+        valor_venta_item.error = `Value do not match expected: ${this.toNumber(valor_venta_item)}. Calculated: ${totalByProduct}`;
+        unidades_vendidas.error = `Value do not match expected: ${this.toNumber(valor_venta_item)}. Calculated: ${totalByProduct}`;
       }
     }
 
@@ -283,7 +283,7 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
         unidades_vendidas.confidence = 1;
       }
     } else {
-      valor_total_factura.error = `Total calculation do not match: Calculated: ${total}, Expected : ${this.toNumber(valor_total_factura)}`;
+      valor_total_factura.error = `Total calculation do not match: Calculated: ${total}. Expected : ${this.toNumber(valor_total_factura)}`;
     }
   }
 
@@ -374,8 +374,8 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
       if (unidades_vendidas) unidades_vendidas.confidence = 1;
       if (valor_venta_item) valor_venta_item.confidence = 1;
     } else {
-      unidades_vendidas.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
-      valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      unidades_vendidas.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}. Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}. Expected : ${this.toNumber(valor_venta_item)} `;
     }
   }
 

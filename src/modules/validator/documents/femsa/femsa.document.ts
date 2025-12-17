@@ -182,7 +182,7 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
     if (difference <= 5) {
       valor_venta_item.confidence = 1;
     } else
-      valor_venta_item.error = `Valor venta no coincide, expected: ${this.toNumber(valor_venta_item)} calculated : ${valorVentaCalculado}`;
+      valor_venta_item.error = `Valor venta no coincide. expected: ${this.toNumber(valor_venta_item)} calculated : ${valorVentaCalculado}`;
   }
 
   private inferSubtotal() {

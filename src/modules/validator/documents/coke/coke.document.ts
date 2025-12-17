@@ -229,11 +229,11 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
       valor_ibua_y_otros.confidence = 1;
       valor_venta_item.confidence = 1;
     } else {
-      valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
-      valor_ibua_y_otros.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
-      valor_unitario_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
-      unidades_vendidas.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
-      unidades_embalaje.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado} Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_ibua_y_otros.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado} Expected : ${this.toNumber(valor_venta_item)} `;
+      valor_unitario_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado} Expected : ${this.toNumber(valor_venta_item)} `;
+      unidades_vendidas.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado} Expected : ${this.toNumber(valor_venta_item)} `;
+      unidades_embalaje.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado} Expected : ${this.toNumber(valor_venta_item)} `;
     }
   }
 
@@ -260,7 +260,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
     ) {
       valorTotalFactura.confidence = 1;
     } else
-      valorTotalFactura.error = `Total factura no coincide. Calculado: ${calculatedTotal}, Esperado: ${this.toNumber(valorTotalFactura)} `;
+      valorTotalFactura.error = `Total factura no coincide. Calculado: ${calculatedTotal} Esperado: ${this.toNumber(valorTotalFactura)} `;
   }
 
   private guessConfidence(): void {

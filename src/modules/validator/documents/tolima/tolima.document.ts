@@ -113,7 +113,7 @@ export class TolimaInvoice extends Document<TolimaInvoiceSchema> {
         valor_venta_item.confidence = 1;
       }
     }else {
-      valor_total_factura.error = `Valor total factura no coincide : Expected: ${valor_total_factura.text}, Calculated : ${total}`
+      valor_total_factura.error = `Valor total factura no coincide : Expected: ${valor_total_factura.text}. Calculated : ${total}`
     }
   }
 
@@ -153,8 +153,8 @@ export class TolimaInvoice extends Document<TolimaInvoiceSchema> {
         valor_venta_item.confidence = 1;
         unidades_vendidas.confidence = 1;
       } else {
-        valor_venta_item.error = `Cálculo producto no coincide, Expected ${valor_venta_item.text}, Calculated: ${valorVentaCalculado}`;
-        unidades_vendidas.error = `Cálculo producto no coincide, Expected ${valor_venta_item.text}, Calculated: ${valorVentaCalculado}`;
+        valor_venta_item.error = `Cálculo producto no coincide: Expected ${valor_venta_item.text}. Calculated: ${valorVentaCalculado}`;
+        unidades_vendidas.error = `Cálculo producto no coincide: Expected ${valor_venta_item.text}. Calculated: ${valorVentaCalculado}`;
       }
     }
   }

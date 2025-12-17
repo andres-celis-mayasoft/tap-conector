@@ -204,16 +204,16 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
       if (valor_venta_item) valor_venta_item.confidence = 1;
     } else {
       if (precio_antes_iva)
-        precio_antes_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+        precio_antes_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado} Expected : ${this.toNumber(valor_venta_item)} `;
 
       if (valor_descuento)
-        valor_descuento.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+        valor_descuento.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado} Expected : ${this.toNumber(valor_venta_item)} `;
 
       if (valor_iva)
-        valor_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+        valor_iva.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado} Expected : ${this.toNumber(valor_venta_item)} `;
 
       if (valor_venta_item)
-        valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado}, Expected : ${this.toNumber(valor_venta_item)} `;
+        valor_venta_item.error = `Product total calculation do not match: Calculated: ${valorVentaCalculado} Expected : ${this.toNumber(valor_venta_item)} `;
     }
   }
 

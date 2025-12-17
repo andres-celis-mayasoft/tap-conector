@@ -239,7 +239,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
         if (valorExistente === numeroDescripcion) {
           unidades_embalaje.confidence = 1;
         } else
-          unidades_embalaje.error = `Unidades embalaje do not match description: Found ${numeroDescripcion}, Expected ${valorExistente}`;
+          unidades_embalaje.error = `Unidades embalaje do not match description: Found ${numeroDescripcion}. Expected ${valorExistente}`;
       } catch (e) {
         // Valor no numérico, se ignora
       }
