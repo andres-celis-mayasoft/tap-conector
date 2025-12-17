@@ -25,7 +25,7 @@ export class MeikoService {
    * @param maxId Minimum invoice ID (exclusive)
    * @returns Array of invoices matching the criteria
    */
-  async getInvoices(maxId: number) {
+  async getInvoicesByMaxId(maxId: number) {
     try {
       this.logger.log(`Fetching invoices with id_factura > ${maxId}`);
 
@@ -141,8 +141,8 @@ export class MeikoService {
   async createFields(data: PrismaMeiko.ResultCreateInput) {
     try {
       this.logger.log(`Creating MeikoResult entry`);
-      this.logger.log("Row :", data.rowNumber)
-      this.logger.log("idFactura :", data.invoice.connect?.id)
+      this.logger.log('Row :', data.rowNumber);
+      this.logger.log('idFactura :', data.invoice.connect?.id);
 
       const result = await this.prismaMeiko.result.create({
         data,
@@ -158,14 +158,16 @@ export class MeikoService {
       throw error;
     }
   }
-  
+
   async createManyFields(data: PrismaMeiko.ResultCreateManyInput[]) {
     try {
       const result = await this.prismaMeiko.result.createMany({
         data,
       });
 
-      this.logger.log(`MeikoResult created successfully : ${result.count} rows`);
+      this.logger.log(
+        `MeikoResult created successfully : ${result.count} rows`,
+      );
       return result;
     } catch (error) {
       this.logger.error(
@@ -188,13 +190,13 @@ export class MeikoService {
 
       const estado = await this.prismaMeiko.estadoDigitalizacionFactura.upsert({
         where: {
-          invoiceId: data.invoiceId
+          invoiceId: data.invoiceId,
         },
         create: {
-          ...data
+          ...data,
         },
         update: {
-          digitalizationStatusId: data.digitalizationStatusId
+          digitalizationStatusId: data.digitalizationStatusId,
         },
       });
 
@@ -203,7 +205,7 @@ export class MeikoService {
       );
       return estado;
     } catch (error) {
-      this.logger.log('Issue creating')
+      this.logger.log('Issue creating');
     }
   }
 
@@ -276,6 +278,18 @@ export class MeikoService {
       throw error;
     }
   }
+  async getInvoices(params: PrismaMeiko.InvoiceFindManyArgs) {
+    try {
+      const invoices = await this.prismaMeiko.invoice.findMany(params);
+      return invoices;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching invoice by ID from Meiko database: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 
   /**
    * Get invoices by date range without digitization status
@@ -320,8 +334,11 @@ export class MeikoService {
         GROUP BY DATE(f.fechaExtraccion)
         ORDER BY dia;
       `;
-
-      return result;
+      return JSON.parse(
+        JSON.stringify(result, (_, v) =>
+          typeof v === 'bigint' ? v.toString() : v,
+        ),
+      );
     } catch (error) {
       this.logger.error(
         `Error counting invoices by date range: ${error.message}`,

@@ -15,7 +15,7 @@ export class MeikoController {
    */
   @Get('invoices')
   async getInvoices(@Query('maxId', ParseIntPipe) maxId: number) {
-    return this.meikoService.getInvoices(maxId);
+    return this.meikoService.getInvoicesByMaxId(maxId);
   }
 
   /**

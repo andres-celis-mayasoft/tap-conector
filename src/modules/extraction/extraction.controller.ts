@@ -1,4 +1,4 @@
-import { Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, HttpCode, HttpStatus, Body } from '@nestjs/common';
 import { ExtractionService } from './extraction.service';
 
 /**
@@ -15,8 +15,9 @@ export class ExtractionController {
    */
   @Post('trigger')
   @HttpCode(HttpStatus.OK)
-  async triggerExtraction() {
-    await this.extractionService.triggerManualExtraction();
+  async triggerExtraction(@Body() request: { ids?: number[] }) {
+    
+    await this.extractionService.triggerManualExtraction(request.ids);
     return {
       message: 'Extraction process triggered successfully',
       timestamp: new Date().toISOString(),

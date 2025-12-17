@@ -25,7 +25,7 @@ const PROCESABLES = [
   'Factura Femsa',
   'Factura Aje',
   'Factura Quala',
-  'Factura Otros Proveedores'
+  'Factura Otros Proveedores',
 ];
 @Injectable()
 export class ExtractionService {
@@ -49,7 +49,7 @@ export class ExtractionService {
   })
 
   // idea, que sea una función recursiva, si no encuentra datos, hace un await de 1 minuto
-  async handleExtractionCron() {
+  async handleExtractionCron(ids?: number[]) {
     this.logger.log('🚀 Starting extraction cron job');
 
     try {
@@ -90,7 +90,12 @@ export class ExtractionService {
       this.logger.log(`📊 Max invoice ID in our DB: ${maxId}`);
 
       // 5. Get new invoices from Meiko
-      const documents = await this.meikoService.getInvoices(maxId);
+      // let documents : any;
+
+      const documents = ids
+        ? await this.meikoService.getInvoices({ where: { id: { in: ids } } })
+        : await this.meikoService.getInvoicesByMaxId(maxId);
+
       const documentsReprocess = await this.invoiceService.getDocuments({
         where: { status: 'REPROCESS' },
       });
@@ -111,7 +116,9 @@ export class ExtractionService {
       // 6. Create invoice records in our DB with initial PROCESSING status
       const docs = await this.invoiceService.createInvoices(
         documents.map((invoice) => ({
-          status: !PROCESABLES.some((item) => item === invoice.photoType) ? 'FLUJO_TAP' : 'PROCESSING',
+          status: !PROCESABLES.some((item) => item === invoice.photoType)
+            ? 'FLUJO_TAP'
+            : 'PROCESSING',
           documentId: invoice.id,
           surveyId: invoice.surveyRecordId.toString(),
           photoType: invoice.photoType,
@@ -143,7 +150,9 @@ export class ExtractionService {
         limit(async () => {
           try {
             this.logger.log(`\n🔄 Processing invoice ${doc.id}...`);
-            const factura = await this.meikoService.getInvoiceById(doc.documentId);
+            const factura = await this.meikoService.getInvoiceById(
+              doc.documentId,
+            );
             if (!PROCESABLES.some((item) => item === doc.photoType)) {
               await this.invoiceService.createFactura({
                 data: {
@@ -157,8 +166,8 @@ export class ExtractionService {
                   photoType: doc.photoType,
                   link: doc.documentUrl,
                   id: doc.documentId,
-                }
-              })
+                },
+              });
               return;
             }
 
@@ -228,7 +237,10 @@ export class ExtractionService {
               `📋 Invoice ${doc.id} - Document type: ${photoTypeOcr}`,
             );
 
-            if(photoType === 'Factura Otros Proveedores' && photoTypeOcr !== 'Factura Tolima'){
+            if (
+              photoType === 'Factura Otros Proveedores' &&
+              photoTypeOcr !== 'Factura Tolima'
+            ) {
               await this.invoiceService.createFactura({
                 data: {
                   responseId: factura?.responseId,
@@ -241,8 +253,8 @@ export class ExtractionService {
                   photoType: doc.photoType,
                   link: doc.documentUrl,
                   id: doc.documentId,
-                }
-              })
+                },
+              });
               await this.invoiceService.updateDocument({
                 id: doc.id,
                 mayaDocumentJSON: JSON.stringify(ocrResult.data),
@@ -251,11 +263,15 @@ export class ExtractionService {
               return;
             }
 
-            if(photoTypeOcr === 'Factura Tolima') finalType = 'Factura Tolima'; 
+            if (photoTypeOcr === 'Factura Tolima') finalType = 'Factura Tolima';
 
             const document = DocumentFactory.create(
               finalType,
-              { ...ocrResult.data.response, surveyRecordId: doc.surveyId, facturaId: doc.documentId },
+              {
+                ...ocrResult.data.response,
+                surveyRecordId: doc.surveyId,
+                facturaId: doc.documentId,
+              },
               this.meikoService,
               this.invoiceService,
             );
@@ -487,8 +503,8 @@ export class ExtractionService {
    * Trigger extraction manually (for testing)
    * This can be called via an endpoint if needed
    */
-  async triggerManualExtraction() {
+  async triggerManualExtraction(ids?: number[]) {
     this.logger.log('🔧 Manual extraction triggered');
-    await this.handleExtractionCron();
+    await this.handleExtractionCron(ids);
   }
 }
