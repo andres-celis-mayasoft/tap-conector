@@ -20,13 +20,13 @@ export enum TolimaBodyFields {
 }
 
 export const TOLIMA_THRESOLDS = {
-  [TolimaHeaderFields.FECHA_FACTURA]: 0.95,
-  [TolimaHeaderFields.NUMERO_FACTURA]: 0.95,
+  [TolimaHeaderFields.FECHA_FACTURA]: 0.97,
+  [TolimaHeaderFields.NUMERO_FACTURA]: 0.98,
   [TolimaHeaderFields.RAZON_SOCIAL]: 0.95,
-  [TolimaHeaderFields.VALOR_TOTAL_FACTURA]: 0.95,
-  [TolimaBodyFields.CODIGO_PRODUCTO]: 0.95,
-  [TolimaBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.95,
-  [TolimaBodyFields.UNIDADES_VENDIDAS]: 0.95,
-  [TolimaBodyFields.VALOR_VENTA_ITEM]: 0.95,
+  [TolimaHeaderFields.VALOR_TOTAL_FACTURA]: 0.94,
+  [TolimaBodyFields.CODIGO_PRODUCTO]: 0.91,
+  [TolimaBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.89,
+  [TolimaBodyFields.UNIDADES_VENDIDAS]: 0.93,
+  [TolimaBodyFields.VALOR_VENTA_ITEM]: 0.94,
   [TolimaBodyFields.UNIDADES_EMBALAJE]: 0.95,
 };

@@ -132,6 +132,7 @@ export class TolimaInvoice extends Document<TolimaInvoiceSchema> {
       } = Utils.getFields<TolimaBodyFields>(product);
       let valorVentaCalculado = 0;
       if (cajas.text === '0') {
+        if(unidades_embalaje.text === "") continue;
         unidadesCalculadas =
           this.toNumber(unidades_embalaje) / this.toNumber(unidades_vendidas);
 
