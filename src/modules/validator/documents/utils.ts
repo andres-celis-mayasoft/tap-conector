@@ -92,11 +92,9 @@ export class Utils {
 
   static hasMonthsPassed(date: string): boolean {
     const parsedDate = DateTime.fromFormat(date, 'dd/MM/yyyy');
-
+    //Si la fecha no es válida la asumimos la fecha como válida para no bloquear el proceso por este error
     if (!parsedDate.isValid) {
-      throw new Error(
-        `Invalid date format: ${date}. Expected format: dd/MM/yyyy`,
-      );
+      return true;
     }
 
     const parsedMonth = parsedDate.month;
