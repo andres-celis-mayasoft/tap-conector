@@ -34,7 +34,9 @@ export enum Fields {
   VALOR_SUBTOTAL_ITEM = 'valor_subtotal_item',
   CAJAS = 'cajas',
   UNIDADES = 'unidades',
-  DESCUENTO = 'descuento'
+  DESCUENTO = 'descuento',
+  PRECIO_BRUTO_ITEM = 'precio_bruto_item',
+  FECHA_VENCIMIENTO = 'fecha_vencimiento'
 }
 
 

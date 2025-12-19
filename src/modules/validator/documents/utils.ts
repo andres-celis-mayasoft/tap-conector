@@ -1,5 +1,14 @@
 import { DateTime } from 'luxon';
-import { isNullOrIllegible, NULL_FLOAT, OCR_Field as OCR_Field } from './common';
+import {
+  isNullOrIllegible,
+  NULL_FLOAT,
+  OCR_Field as OCR_Field,
+} from './common';
+
+type InferResult = {
+  date1: DateTime;
+  date2: DateTime;
+};
 
 export class Utils {
   static getFields<T extends string | number | symbol>(
@@ -85,6 +94,70 @@ export class Utils {
     return true;
   }
 
+  static swapDayMonth(dt: DateTime): DateTime {
+    return DateTime.fromObject({
+      year: dt.year,
+      month: dt.day,
+      day: dt.month,
+    });
+  }
+
+  static inferDate(fechaFactura: string, fechaVencimiento: string): InferResult {
+
+    const partsFechaFactura = fechaFactura.split('/');
+    const first = partsFechaFactura[0];
+    const second = partsFechaFactura[1];
+    
+    const partsVencimiento = fechaFactura.split('/');
+    
+    if(Number(first) > 12 && Number(second) <=12){
+      // no hacer nada porque ya viene en el formato esperado
+    }
+    if(Number(second) > 12 && Number(first) <=12){
+      // hacer swap porque viene en formato MM/dd/yyyy
+      fechaFactura = `${second}/${first}/${partsFechaFactura[2]}`;
+      fechaVencimiento = `${partsVencimiento[1]}/${partsVencimiento[0]}/${partsVencimiento[2]}`;
+    }
+
+    let d1 = DateTime.fromFormat(fechaFactura, 'dd/MM/yyyy');
+    const d2 = DateTime.fromFormat(fechaVencimiento, 'dd/MM/yyyy');
+
+
+    const sameDay = d1.day === d2.day;
+    const sameMonth = d1.month === d2.month;
+
+    // Si coinciden en el día → ese valor es realmente el mes
+    if (sameDay && !sameMonth) {
+      d1 = this.swapDayMonth(d1);
+    }
+
+    // Si coinciden en el mes → ese valor es realmente el día
+    if (sameMonth && !sameDay) {
+      // d1 = this.swapDayMonth(d1);
+    }
+
+    return {
+      date1: d1,
+      date2: d2,
+    };
+  }
+
+  static parseFlexibleDate(dateStr: string): DateTime {
+    // Primero intenta dd/MM/yyyy
+    let dt = DateTime.fromFormat(dateStr, 'dd/MM/yyyy');
+
+    if (dt.isValid) return dt;
+
+    // Si falla, asume MM/dd/yyyy
+    dt = DateTime.fromFormat(dateStr, 'MM/dd/yyyy');
+
+    if (!dt.isValid) {
+      throw new Error(`Invalid date format: ${dateStr}`);
+    }
+
+    return dt;
+  }
+
   static async asyncFilter<T>(arr, predicate) {
     const results = await Promise.all(arr.map(predicate));
     return arr.filter((_v, index) => results[index]);
@@ -102,6 +175,13 @@ export class Utils {
 
     let diff = Math.abs(currentMonth - parsedMonth);
 
+    return diff < 2;
+  }
+
+  static isMonthValid(month: number): boolean {
+    const currentMonth = DateTime.now().month;
+
+    let diff = Math.abs(currentMonth - month);
     return diff < 2;
   }
 }

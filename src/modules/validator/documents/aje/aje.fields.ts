@@ -8,6 +8,7 @@ export enum AjeHeaderFields {
   RAZON_SOCIAL = Fields.RAZON_SOCIAL,
   TOTAL_UNIDADES = Fields.TOTAL_UNIDADES,
   TOTAL_PACAS = Fields.TOTAL_PACAS,
+  FECHA_VENCIMIENTO = Fields.FECHA_VENCIMIENTO,
 }
 
 export enum AjeBodyFields {

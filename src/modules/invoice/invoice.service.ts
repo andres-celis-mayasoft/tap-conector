@@ -599,7 +599,7 @@ export class InvoiceService {
           assignedUserId: null,
         },
         orderBy: {
-          id: 'asc', // Oldest first
+          documentId: 'asc', // Oldest first
         },
       });
 
