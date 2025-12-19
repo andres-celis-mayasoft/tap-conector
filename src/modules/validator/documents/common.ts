@@ -45,7 +45,7 @@ export function toISO8601(dateStr: string): string {
   const dt = DateTime.fromFormat(dateStr, "dd/MM/yyyy", { zone: "utc" });
 
   if (!dt.isValid) {
-    throw new Error(`Invalid date format: ${dateStr}`);
+    return NULL_DATE;
   }
 
   return dt.toISO(); // o dt.toISODate() si solo aceptas fecha
