@@ -30,6 +30,7 @@ export const AJE_THRESOLDS = {
   [AjeHeaderFields.TOTAL_FACTURA_SIN_IVA]: 0.95,
   [AjeHeaderFields.VALOR_TOTAL_FACTURA]: 0.95,
   [AjeHeaderFields.RAZON_SOCIAL]: 0.95,
+  [AjeHeaderFields.FECHA_VENCIMIENTO]: 0,
   [AjeBodyFields.CODIGO_PRODUCTO]: 0.9,
   [AjeBodyFields.ITEM_DESCRIPCION_PRODUCTO]: 0.9,
   [AjeBodyFields.TIPO_EMBALAJE]: 0.95,

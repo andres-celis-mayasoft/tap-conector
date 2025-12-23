@@ -22,6 +22,7 @@ model Document {
   validated         Boolean   @default(false) @map("validated")
   createdAt        DateTime  @default(now()) @map("created_at")
   status            String    @map("status")
+  deliveryStatus    String?    @map("delivery_status")
   captureStartDate DateTime? @map("capture_start_date")
   captureEndDate  DateTime? @map("capture_end_date")
   documentUrl      String?   @map("document_url")

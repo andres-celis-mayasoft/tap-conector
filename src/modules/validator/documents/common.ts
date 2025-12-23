@@ -25,6 +25,8 @@ export const EMBALAJES = [
   'SXP',
   'PAQ',
   'SIX',
+  'PA',
+  'BO',
 ];
 
 export const EMBALAJES_POSTOBON_CAJA = ['CAJA'];

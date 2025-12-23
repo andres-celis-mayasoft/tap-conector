@@ -8,7 +8,7 @@ import { PrismaService } from 'src/database/services/prisma.service';
 import { Prisma } from '@generated/client';
 
 import { IMAGE_DPI } from 'src/constants/business';
-import { InvoiceStatus } from '../meiko/enums/status.enum';
+import { DeliveryStatus, InvoiceStatus } from '../meiko/enums/status.enum';
 import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
 import { MeikoService } from '../meiko/meiko.service';
@@ -31,8 +31,8 @@ export class InvoiceService {
     private readonly meikoService: MeikoService,
   ) {}
 
-  createFactura(doc : Prisma.MeikoDocumentCreateArgs){
-    return this.prisma.meikoDocument.create(doc)
+  createFactura(doc: Prisma.MeikoDocumentCreateArgs) {
+    return this.prisma.meikoDocument.create(doc);
   }
 
   isExcluded(description: string) {
@@ -671,6 +671,7 @@ export class InvoiceService {
       await this.prisma.document.update({
         where: { id: document.id },
         data: {
+          deliveryStatus: DeliveryStatus.FECHA_NO_VALIDA,
           status: 'DELIVERED',
           completedAt: new Date(),
         },
@@ -723,6 +724,7 @@ export class InvoiceService {
         where: { id: document.id },
         data: {
           status: 'DELIVERED',
+          deliveryStatus: DeliveryStatus.NO_APLICA_PARA_EL_ESTUDIO,
           completedAt: new Date(),
         },
       });
@@ -817,6 +819,7 @@ export class InvoiceService {
         where: { id: document.id },
         data: {
           status: 'DELIVERED',
+          deliveryStatus: DeliveryStatus.NO_PROCESABLE,
           completedAt: new Date(),
         },
       });
@@ -1003,6 +1006,7 @@ export class InvoiceService {
       await this.updateDocument({
         id: document.id,
         status: 'DELIVERED',
+        deliveryStatus: DeliveryStatus.PROCESADO,
         validated: true,
         captureEndDate: new Date(),
         completedAt: new Date(),

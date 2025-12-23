@@ -5,7 +5,7 @@ import { DateUtils } from '../../utils/date';
 import * as path from 'path';
 import { OcrService } from '../ocr/ocr.service';
 import { DocumentFactory } from '../validator/documents/base/document.factory';
-import { InvoiceStatus } from '../meiko/enums/status.enum';
+import { DeliveryStatus, InvoiceStatus } from '../meiko/enums/status.enum';
 import { DateTime } from 'luxon';
 import { Utils } from '../validator/documents/utils';
 import pLimit from 'p-limit';
@@ -190,6 +190,7 @@ export class ExtractionService {
                 id: doc.id,
                 path: imagePath,
                 errors: 'NO DESCARGABLE O VISUALIZABLE',
+                deliveryStatus: DeliveryStatus.ERROR_DE_DESCARGA,
                 extracted: false,
                 validated: false,
                 status: 'DELIVERED',
@@ -294,6 +295,7 @@ export class ExtractionService {
                 id: doc.id,
                 path: imagePath,
                 errors: 'FECHA OBSOLETA',
+                deliveryStatus: DeliveryStatus.FECHA_NO_VALIDA,
                 extracted: false,
                 validated: false,
                 mayaDocumentJSON: JSON.stringify(ocrResult.data),
@@ -310,6 +312,7 @@ export class ExtractionService {
               await this.invoiceService.updateDocument({
                 id: doc.id,
                 errors: 'TODOS LOS PRODUCTOS FUERON EXCLUIDOS',
+                deliveryStatus: DeliveryStatus.NO_APLICA_PARA_EL_ESTUDIO,
                 extracted: false,
                 validated: false,
                 mayaDocumentJSON: JSON.stringify(ocrResult.data),
@@ -366,6 +369,7 @@ export class ExtractionService {
                 await this.invoiceService.updateDocument({
                   id: doc.id,
                   status: 'DELIVERED',
+                  deliveryStatus: DeliveryStatus.PROCESADO,
                   validated: true,
                 });
                 deliveredCount++;
@@ -499,10 +503,6 @@ export class ExtractionService {
     };
   }
 
-  /**
-   * Trigger extraction manually (for testing)
-   * This can be called via an endpoint if needed
-   */
   async triggerManualExtraction(ids?: number[]) {
     this.logger.log('🔧 Manual extraction triggered');
     await this.handleExtractionCron(ids);
