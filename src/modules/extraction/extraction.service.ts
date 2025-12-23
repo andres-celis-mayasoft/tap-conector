@@ -222,6 +222,11 @@ export class ExtractionService {
               return;
             }
 
+            await this.invoiceService.updateDocument({
+              id: doc.id,
+              mayaDocumentJSON: JSON.stringify(ocrResult.data),
+            });
+
             let finalType: string;
             const photoTypeOcr = ocrResult.data.response.tipoFacturaOcr;
 
