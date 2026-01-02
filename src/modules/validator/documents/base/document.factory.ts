@@ -15,6 +15,9 @@ import { Prisma } from '@generated/client-meiko';
 import { GeneralInvoice, GeneralInvoiceSchema } from '../general';
 import { TolimaInvoiceSchema } from '../tolima/tolima.schema';
 import { TolimaInvoice } from '../tolima/tolima.document';
+import { KoppsInvoice, KoppsInvoiceSchema } from '../kopps';
+import { ExcludedService } from 'src/modules/excluded/excluded.service';
+import { ProductService } from 'src/modules/product/product.service';
 
 const documentMap = {
   'Factura Coke': CokeInvoice,
@@ -25,6 +28,7 @@ const documentMap = {
   'Factura Aje': AjeInvoice,
   'Factura Quala': QualaInvoice,
   'Factura Tolima': TolimaInvoice,
+  'Factura Kopps': KoppsInvoice,
 };
 
 export type ProcessedDataSchema =
@@ -36,7 +40,8 @@ export type ProcessedDataSchema =
   | AjeInvoiceSchema
   | QualaInvoiceSchema
   | GeneralInvoiceSchema
-  | TolimaInvoiceSchema;
+  | TolimaInvoiceSchema
+  | KoppsInvoiceSchema;
 
 export type SupportedInvoiceType = InstanceType<
   (typeof documentMap)[keyof typeof documentMap]
@@ -48,6 +53,8 @@ export class DocumentFactory {
     ocrResponse: ProcessedDataSchema,
     meikoService: MeikoService,
     invoiceService: InvoiceService,
+    excludedService: ExcludedService,
+    productService: ProductService,
   ): SupportedInvoiceType {
     switch (type) {
       case 'Factura Coke':
@@ -104,6 +111,13 @@ export class DocumentFactory {
           ocrResponse as TolimaInvoiceSchema,
           meikoService,
           invoiceService,
+        );
+
+      case 'Factura Kopps':
+        return new KoppsInvoice(
+          ocrResponse as KoppsInvoiceSchema,
+          excludedService,
+          productService
         );
 
       default:

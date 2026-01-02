@@ -33,6 +33,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prisma.user;
   }
 
+  get excluded() {
+    return this.prisma.excluded;
+  }
+
   get document() {
     return this.prisma.document;
   }
@@ -45,12 +49,24 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prisma.excludedProducts;
   }
 
+  get product() {
+    return this.prisma.product;
+  }
+
   get meikoDocument() {
     return this.prisma.meikoDocument;
   }
 
   get meikoResult() {
     return this.prisma.meikoResult;
+  }
+
+  get $queryRaw() {
+    return this.prisma.$queryRaw.bind(this.prisma);
+  }
+
+  get $queryRawUnsafe() {
+    return this.prisma.$queryRawUnsafe.bind(this.prisma);
   }
 
   get estadoDigitalizacionFactura() {

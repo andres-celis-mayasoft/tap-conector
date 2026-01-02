@@ -12,6 +12,8 @@ import { ValidatorModule } from './modules/validator/validator.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { ExcludedModule } from './modules/excluded/excluded.module';
+import { ProductModule } from './modules/product/product.module';
 
 @Module({
   imports: [
@@ -26,7 +28,9 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     InvoiceModule,
     ExtractionModule,
     OcrModule,
-    ValidatorModule
+    ValidatorModule,
+    ExcludedModule,
+    ProductModule
   ],
   controllers: [AppController],
   providers: [

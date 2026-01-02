@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import sharp from 'sharp'; // 🧠 Used to validate image integrity
 import { PrismaService } from 'src/database/services/prisma.service';
-import { Prisma } from '@generated/client';
+import { Prisma, Product } from '@generated/client';
 
 import { IMAGE_DPI } from 'src/constants/business';
 import { DeliveryStatus, InvoiceStatus } from '../meiko/enums/status.enum';
@@ -20,6 +20,8 @@ import {
 import { PrismaMeikoService } from 'src/database/services/prisma-meiko.service';
 import { InvoiceUtils } from './utils/Invoice.utils';
 import { Fields } from '../validator/enums/fields';
+import { ExcludedService } from '../excluded/excluded.service';
+import { ProductService } from '../product/product.service';
 
 @Injectable()
 export class InvoiceService {
@@ -29,6 +31,8 @@ export class InvoiceService {
     private readonly prisma: PrismaService,
     private readonly prismaMeikoService: PrismaMeikoService,
     private readonly meikoService: MeikoService,
+    private readonly excludedService: ExcludedService,
+    private readonly productService: ProductService,
   ) {}
 
   createFactura(doc: Prisma.MeikoDocumentCreateArgs) {
@@ -50,6 +54,27 @@ export class InvoiceService {
     return this.prisma.document.updateMany({
       where: { id },
       data: data,
+    });
+  }
+
+  async getProductByFuzzyDescription(
+    description: string,
+  ): Promise<Product | null> {
+    const threshold = 3;
+
+    const products = await this.prisma.$queryRaw<Product[]>`
+      SELECT * FROM "product"
+      WHERE levenshtein("description", ${description}) <= ${threshold}
+      ORDER BY levenshtein("description", ${description}) ASC
+      LIMIT 1;
+  `;
+
+    return products[0] || null;
+  }
+
+  getProduct(data: Prisma.ProductWhereInput): Promise<Product | null> {
+    return this.prisma.product.findFirst({
+      where: data,
     });
   }
 
@@ -1065,6 +1090,8 @@ export class InvoiceService {
         },
         this.meikoService,
         this,
+        this.excludedService,
+        this.productService
       );
       await document.process();
 

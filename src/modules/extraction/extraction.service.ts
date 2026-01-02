@@ -12,6 +12,8 @@ import pLimit from 'p-limit';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InvoiceUtils } from '../invoice/utils/Invoice.utils';
 import { Prisma } from '@generated/client-meiko';
+import { ExcludedService } from '../excluded/excluded.service';
+import { ProductService } from '../product/product.service';
 
 /**
  * Extraction Service
@@ -35,6 +37,8 @@ export class ExtractionService {
     private readonly meikoService: MeikoService,
     private readonly invoiceService: InvoiceService,
     private readonly ocrService: OcrService,
+    private readonly excludedService: ExcludedService,
+    private readonly productService: ProductService,
   ) {}
 
   /**
@@ -280,6 +284,8 @@ export class ExtractionService {
               },
               this.meikoService,
               this.invoiceService,
+              this.excludedService,
+              this.productService
             );
 
             await document.process();
