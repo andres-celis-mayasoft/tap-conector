@@ -249,7 +249,7 @@ export class ExtractionService {
 
             if (
               photoType === 'Factura Otros Proveedores' &&
-              photoTypeOcr !== 'Factura Tolima'
+              photoTypeOcr == 'Factura Otros Proveedores'
             ) {
               await this.invoiceService.createFactura({
                 data: {
