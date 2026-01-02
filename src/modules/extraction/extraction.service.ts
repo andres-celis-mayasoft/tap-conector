@@ -274,6 +274,7 @@ export class ExtractionService {
             }
 
             if (photoTypeOcr === 'Factura Tolima') finalType = 'Factura Tolima';
+            if (photoTypeOcr === 'Factura Kopps') finalType = 'Factura Kopps';
 
             const document = DocumentFactory.create(
               finalType,

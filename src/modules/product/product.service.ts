@@ -16,7 +16,7 @@ export class ProductService {
     const products = await this.prisma.$queryRaw<Product[]>`
             SELECT * FROM "product"
             WHERE levenshtein("description", ${description}) <= ${threshold}
-            AND "companyId" = ${companyId}
+            AND "company_id" = ${companyId}
             ORDER BY levenshtein("description", ${description}) ASC
             LIMIT 1;
         `;

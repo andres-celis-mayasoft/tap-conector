@@ -117,7 +117,7 @@ export class DocumentFactory {
         return new KoppsInvoice(
           ocrResponse as KoppsInvoiceSchema,
           excludedService,
-          productService
+          productService,
         );
 
       default:
@@ -130,6 +130,8 @@ export class DocumentFactory {
     ocrResponse: ProcessedDataSchema,
     meikoService: MeikoService,
     invoiceService: InvoiceService,
+    excludedService: ExcludedService,
+    productService: ProductService,
   ): Prisma.ResultCreateManyInput[] {
     switch (type) {
       case 'Factura Coke':
@@ -186,6 +188,13 @@ export class DocumentFactory {
           ocrResponse as TolimaInvoiceSchema,
           meikoService,
           invoiceService,
+        ).format();
+
+      case 'Factura Kopps':
+        return new KoppsInvoice(
+          ocrResponse as KoppsInvoiceSchema,
+          excludedService,
+          productService,
         ).format();
 
       default:

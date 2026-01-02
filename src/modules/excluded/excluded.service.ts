@@ -12,7 +12,7 @@ export class ExcludedService {
     const products = await this.prisma.$queryRaw<Excluded[]>`
           SELECT * FROM "excluded"
           WHERE levenshtein("description", ${description}) <= ${threshold}
-          and "companyId" = ${companyId}
+          and "company_id" = ${companyId}
           ORDER BY levenshtein("description", ${description}) ASC
           LIMIT 1;
       `;

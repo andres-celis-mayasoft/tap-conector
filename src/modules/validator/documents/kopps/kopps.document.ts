@@ -99,9 +99,8 @@ export class KoppsInvoice extends Document<KoppsInvoiceSchema> {
   }
 
   private inferEncabezado(): void {
-    const { fecha_factura, razon_social } = Utils.getFields<KoppsHeaderFields>(
-      this.data.encabezado,
-    );
+    const { fecha_factura, razon_social, numero_factura } =
+      Utils.getFields<KoppsHeaderFields>(this.data.encabezado);
 
     if (
       DateTime.fromFormat(fecha_factura?.text || '', 'dd/MM/yyyy').isValid &&
@@ -109,6 +108,11 @@ export class KoppsInvoice extends Document<KoppsInvoiceSchema> {
     ) {
       fecha_factura.confidence = 1;
     }
+
+    if (this.isNumeric(numero_factura?.text?.slice(-5))) {
+      numero_factura.confidence = 1;
+      numero_factura.text = numero_factura?.text?.slice(-5);
+    } else numero_factura.error = 'Número de factura inválido';
 
     if (RAZON_SOCIAL[razon_social.text as any]) {
       razon_social.text = RAZON_SOCIAL[razon_social.text as any];
@@ -267,6 +271,11 @@ export class KoppsInvoice extends Document<KoppsInvoiceSchema> {
 
   private toNumber(field: BodyField | HeaderField | undefined): number {
     return Number(field?.text || 0);
+  }
+
+  private isNumeric(value: string | undefined): boolean {
+    if (!value) return false;
+    return /^-?\d+$/.test(value);
   }
 
   format(): Prisma.ResultCreateManyInput[] {

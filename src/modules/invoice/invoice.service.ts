@@ -986,6 +986,8 @@ export class InvoiceService {
         },
         this.meikoService,
         this,
+        this.excludedService,
+        this.productService
       );
 
       const headers = encabezado;
