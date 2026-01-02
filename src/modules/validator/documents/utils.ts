@@ -173,6 +173,10 @@ export class Utils {
     const parsedMonth = parsedDate.month;
     const currentMonth = DateTime.now().month;
 
+    if(currentMonth === 1 && parsedMonth === 12){
+      return true;
+    }
+    
     let diff = Math.abs(currentMonth - parsedMonth);
 
     return diff < 2;
