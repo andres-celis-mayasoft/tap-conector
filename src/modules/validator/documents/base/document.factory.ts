@@ -27,6 +27,8 @@ import {
   EntregaPostobonInvoice,
   EntregaPostobonInvoiceSchema,
 } from '../entrega-postobon';
+import { EntregaCokeInvoice } from '../entrega-coke/entrega-coke.document';
+import { EntregaCokeInvoiceSchema } from '../entrega-coke/entrega-coke.schema';
 
 const documentMap = {
   'Factura Coke': CokeInvoice,
@@ -42,6 +44,7 @@ const documentMap = {
   'Factura Alpina': AlpinaInvoice,
   'Factura Distribuidor GRPS': DistribuidorGrpsInvoice,
   'Entrega Postobon': EntregaPostobonInvoice,
+  'Recibo Entrega Coke': EntregaCokeInvoice,
 };
 
 export type ProcessedDataSchema =
@@ -57,6 +60,7 @@ export type ProcessedDataSchema =
   | KoppsInvoiceSchema
   | AlpinaInvoiceSchema
   | DistribuidorGrpsInvoiceSchema
+  | EntregaCokeInvoiceSchema
   | EntregaPostobonInvoiceSchema;
 
 export type SupportedInvoiceType = InstanceType<
@@ -163,6 +167,13 @@ export class DocumentFactory {
           meikoService,
           invoiceService,
         );
+
+        case 'Recibo Entrega Coke':
+          return new EntregaCokeInvoice(
+            ocrResponse as EntregaCokeInvoiceSchema,
+            meikoService,
+            invoiceService,
+          );
 
       default:
         throw new Error(`Documento no soportado: ${type}`);

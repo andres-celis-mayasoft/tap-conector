@@ -188,7 +188,7 @@ export class ExtractionService {
             this.logger.log(`🔍 Invoice ${doc.id} - Processing with OCR...`);
             const ocrResult = await this.ocrService.processInvoice({
               filePath: imagePath,
-              typeOfInvoice: doc.photoType === 'Recibo Entrega Coke' ? 'Factura Coke' : doc.photoType,
+              typeOfInvoice: doc.photoType,
             });
 
             if (!ocrResult.success || !ocrResult.data) {
@@ -225,8 +225,6 @@ export class ExtractionService {
               finalType = photoTypeOcr;
             } else finalType = photoType;
 
-            if(photoType === 'Recibo Entrega Coke' && photoTypeOcr === 'Factura Coke') finalType = 'Factura Coke';
-            
             this.logger.log(
               `📋 Invoice ${doc.id} - Document type: ${photoTypeOcr}`,
             );
