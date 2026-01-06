@@ -18,6 +18,15 @@ import { TolimaInvoice } from '../tolima/tolima.document';
 import { KoppsInvoice, KoppsInvoiceSchema } from '../kopps';
 import { ExcludedService } from 'src/modules/excluded/excluded.service';
 import { ProductService } from 'src/modules/product/product.service';
+import { AlpinaInvoice, AlpinaInvoiceSchema } from '../alpina';
+import {
+  DistribuidorGrpsInvoice,
+  DistribuidorGrpsInvoiceSchema,
+} from '../distribuidor-grps';
+import {
+  EntregaPostobonInvoice,
+  EntregaPostobonInvoiceSchema,
+} from '../entrega-postobon';
 
 const documentMap = {
   'Factura Coke': CokeInvoice,
@@ -29,6 +38,10 @@ const documentMap = {
   'Factura Quala': QualaInvoice,
   'Factura Tolima': TolimaInvoice,
   'Factura Kopps': KoppsInvoice,
+  'Factura Otros Proveedores': GeneralInvoice,
+  'Factura Alpina': AlpinaInvoice,
+  'Factura Distribuidor GRPS': DistribuidorGrpsInvoice,
+  'Entrega Postobon': EntregaPostobonInvoice,
 };
 
 export type ProcessedDataSchema =
@@ -41,7 +54,10 @@ export type ProcessedDataSchema =
   | QualaInvoiceSchema
   | GeneralInvoiceSchema
   | TolimaInvoiceSchema
-  | KoppsInvoiceSchema;
+  | KoppsInvoiceSchema
+  | AlpinaInvoiceSchema
+  | DistribuidorGrpsInvoiceSchema
+  | EntregaPostobonInvoiceSchema;
 
 export type SupportedInvoiceType = InstanceType<
   (typeof documentMap)[keyof typeof documentMap]
@@ -118,6 +134,34 @@ export class DocumentFactory {
           ocrResponse as KoppsInvoiceSchema,
           excludedService,
           productService,
+        );
+
+      case 'Factura Otros Proveedores':
+        return new GeneralInvoice(
+          ocrResponse as GeneralInvoiceSchema,
+          meikoService,
+          invoiceService,
+        );
+
+      case 'Factura Alpina':
+        return new AlpinaInvoice(
+          ocrResponse as AlpinaInvoiceSchema,
+          meikoService,
+          invoiceService,
+        );
+
+      case 'Factura Distribuidor GRPS':
+        return new DistribuidorGrpsInvoice(
+          ocrResponse as DistribuidorGrpsInvoiceSchema,
+          meikoService,
+          invoiceService,
+        );
+
+      case 'Entrega Postobon':
+        return new EntregaPostobonInvoice(
+          ocrResponse as EntregaPostobonInvoiceSchema,
+          meikoService,
+          invoiceService,
         );
 
       default:
@@ -197,12 +241,36 @@ export class DocumentFactory {
           productService,
         ).format();
 
-      default:
+      case 'Factura Otros Proveedores':
         return new GeneralInvoice(
           ocrResponse as GeneralInvoiceSchema,
           meikoService,
           invoiceService,
         ).format();
+
+      case 'Factura Alpina':
+        return new AlpinaInvoice(
+          ocrResponse as AlpinaInvoiceSchema,
+          meikoService,
+          invoiceService,
+        ).format();
+      
+        case 'Factura Distribuidor GRPS':
+        return new DistribuidorGrpsInvoice(
+          ocrResponse as DistribuidorGrpsInvoiceSchema,
+          meikoService,
+          invoiceService,
+        ).format();
+      
+        case 'Entrega Postobon':
+        return new EntregaPostobonInvoice(
+          ocrResponse as EntregaPostobonInvoiceSchema,
+          meikoService,
+          invoiceService,
+        ).format();
+
+      default:
+        throw new Error(`Documento no soportado: ${type}`);
     }
   }
 }

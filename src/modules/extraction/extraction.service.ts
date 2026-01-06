@@ -207,7 +207,7 @@ export class ExtractionService {
             this.logger.log(`🔍 Invoice ${doc.id} - Processing with OCR...`);
             const ocrResult = await this.ocrService.processInvoice({
               filePath: imagePath,
-              typeOfInvoice: doc.photoType || '',
+              typeOfInvoice: doc.photoType === 'Recibo Entrega Coke' ? 'Factura Coke' : doc.photoType,
             });
 
             if (!ocrResult.success || !ocrResult.data) {
@@ -236,6 +236,7 @@ export class ExtractionService {
 
             const photoType = doc.photoType;
 
+            
             if (
               photoType === 'Factura Postobon' &&
               photoTypeOcr === 'Factura Tiquete POS Postobon'
@@ -243,39 +244,43 @@ export class ExtractionService {
               finalType = photoTypeOcr;
             } else finalType = photoType;
 
+            if(photoType === 'Recibo Entrega Coke' && photoTypeOcr === 'Factura Coke') finalType = 'Factura Coke';
+            
             this.logger.log(
               `📋 Invoice ${doc.id} - Document type: ${photoTypeOcr}`,
             );
 
-            if (
-              photoType === 'Factura Otros Proveedores' &&
-              photoTypeOcr == 'Factura Otros Proveedores'
-            ) {
-              await this.invoiceService.createFactura({
-                data: {
-                  responseId: factura?.responseId,
-                  responseReceived: factura?.responseReceived,
-                  stickerQr: factura?.stickerQR,
-                  variableName: factura?.variableName,
-                  surveyRecordId: Number(doc.surveyId),
-                  digitalizationDate: new Date(),
-                  extractionDate: new Date(),
-                  photoType: doc.photoType,
-                  link: doc.documentUrl,
-                  id: doc.documentId,
-                },
-              });
-              await this.invoiceService.updateDocument({
-                id: doc.id,
-                mayaDocumentJSON: JSON.stringify(ocrResult.data),
-                status: 'FLUJO_TAP',
-              });
-              return;
-            }
+            // if (
+            //   photoType === 'Factura Otros Proveedores' &&
+            //   photoTypeOcr == 'Factura Otros Proveedores'
+            // ) {
+            //   finalType = 'Factura Otros Proveedores';
+            //   await this.invoiceService.createFactura({
+            //     data: {
+            //       responseId: factura?.responseId,
+            //       responseReceived: factura?.responseReceived,
+            //       stickerQr: factura?.stickerQR,
+            //       variableName: factura?.variableName,
+            //       surveyRecordId: Number(doc.surveyId),
+            //       digitalizationDate: new Date(),
+            //       extractionDate: new Date(),
+            //       photoType: doc.photoType,
+            //       link: doc.documentUrl,
+            //       id: doc.documentId,
+            //     },
+            //   });
+            //   await this.invoiceService.updateDocument({
+            //     id: doc.id,
+            //     mayaDocumentJSON: JSON.stringify(ocrResult.data),
+            //     status: 'FLUJO_TAP',
+            //   });
+            //   return;
+            // }
 
             if (photoTypeOcr === 'Factura Tolima') finalType = 'Factura Tolima';
             if (photoTypeOcr === 'Factura Kopps') finalType = 'Factura Kopps';
-
+            if (photoTypeOcr === 'Factura Otros Proveedores') finalType = 'Factura Otros Proveedores';
+            
             const document = DocumentFactory.create(
               finalType,
               {
