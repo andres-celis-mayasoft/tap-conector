@@ -120,9 +120,7 @@ export class ExtractionService {
       // 6. Create invoice records in our DB with initial PROCESSING status
       const docs = await this.invoiceService.createInvoices(
         documents.map((invoice) => ({
-          status: !PROCESABLES.some((item) => item === invoice.photoType)
-            ? 'FLUJO_TAP'
-            : 'PROCESSING',
+          status: 'PROCESSING',
           documentId: invoice.id,
           surveyId: invoice.surveyRecordId.toString(),
           photoType: invoice.photoType,
@@ -157,23 +155,6 @@ export class ExtractionService {
             const factura = await this.meikoService.getInvoiceById(
               doc.documentId,
             );
-            if (!PROCESABLES.some((item) => item === doc.photoType)) {
-              await this.invoiceService.createFactura({
-                data: {
-                  surveyRecordId: Number(doc.surveyId),
-                  responseId: factura?.responseId,
-                  responseReceived: factura?.responseReceived,
-                  stickerQr: factura?.stickerQR,
-                  variableName: factura?.variableName,
-                  digitalizationDate: new Date(),
-                  extractionDate: new Date(),
-                  photoType: doc.photoType,
-                  link: doc.documentUrl,
-                  id: doc.documentId,
-                },
-              });
-              return;
-            }
 
             // 7.1. Download and validate image
             const { isValid: isDownloadable, path: imagePath } =
