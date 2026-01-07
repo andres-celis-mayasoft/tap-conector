@@ -168,12 +168,20 @@ export class DocumentFactory {
           invoiceService,
         );
 
-        case 'Recibo Entrega Coke':
-          return new EntregaCokeInvoice(
-            ocrResponse as EntregaCokeInvoiceSchema,
-            meikoService,
-            invoiceService,
-          );
+      case 'Recibo Entrega Coke':
+        return new EntregaCokeInvoice(
+          ocrResponse as EntregaCokeInvoiceSchema,
+          meikoService,
+          invoiceService,
+        );
+
+      case 'Recibo Entrega Postobon':
+        return new EntregaPostobonInvoice(
+          ocrResponse as EntregaPostobonInvoiceSchema,
+          meikoService,
+          invoiceService,
+        );
+
 
       default:
         throw new Error(`Documento no soportado: ${type}`);
@@ -265,15 +273,29 @@ export class DocumentFactory {
           meikoService,
           invoiceService,
         ).format();
-      
-        case 'Factura Distribuidor GRPS':
+
+      case 'Factura Distribuidor GRPS':
         return new DistribuidorGrpsInvoice(
           ocrResponse as DistribuidorGrpsInvoiceSchema,
           meikoService,
           invoiceService,
         ).format();
+
+      case 'Entrega Postobon':
+        return new EntregaPostobonInvoice(
+          ocrResponse as EntregaPostobonInvoiceSchema,
+          meikoService,
+          invoiceService,
+        ).format();
+
+      case 'Recibo Entrega Coke':
+        return new EntregaCokeInvoice(
+          ocrResponse as EntregaCokeInvoiceSchema,
+          meikoService,
+          invoiceService,
+        ).format();
       
-        case 'Entrega Postobon':
+      case 'Recibo Entrega Postobon':
         return new EntregaPostobonInvoice(
           ocrResponse as EntregaPostobonInvoiceSchema,
           meikoService,
