@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -362,150 +366,6 @@ export class InvoiceService {
     } catch (error) {
       this.logger.error(
         `❌ Error saving invoice ${invoiceData.id} with fields: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Deliver validated invoice data to our Meiko mirror tables
-   * @param invoiceId - Original Meiko invoice ID
-   * @param meikoInvoiceData - Original Meiko invoice data
-   * @param processedData - Validated invoice data with encabezado and detalles
-   */
-  async deliverToMeikoTables(
-    invoiceId: number,
-    meikoInvoiceData: any,
-    processedData: any,
-  ): Promise<void> {
-    try {
-      this.logger.log(`📦 Delivering invoice ${invoiceId} to Meiko tables...`);
-
-      const encabezado = processedData.encabezado || [];
-      const detalles = processedData.detalles || [];
-
-      // Helper function to get field value by type
-      const getFieldValue = (
-        fields: any[],
-        fieldType: string,
-      ): string | null => {
-        const field = fields.find((f) => f.type === fieldType);
-        return field?.text || null;
-      };
-
-      // Helper function to parse decimal
-      const parseDecimal = (value: string | null): number | null => {
-        if (!value) return null;
-        const parsed = parseFloat(value);
-        return isNaN(parsed) ? null : parsed;
-      };
-
-      // Helper function to parse date
-      const parseDate = (value: string | null): Date | null => {
-        if (!value) return null;
-        // Try multiple date formats
-        const formats = ['dd/MM/yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy'];
-        for (const format of formats) {
-          try {
-            const date = new Date(value);
-            if (!isNaN(date.getTime())) return date;
-          } catch {}
-        }
-        return null;
-      };
-
-      // Extract header fields
-      const fechaFactura = getFieldValue(encabezado, 'fecha_factura');
-      const numeroFactura = getFieldValue(encabezado, 'numero_factura');
-      const razonSocial = getFieldValue(encabezado, 'razon_social');
-      const valorTotalFactura = getFieldValue(
-        encabezado,
-        'valor_total_factura',
-      );
-
-      // Create MeikoInvoice record
-      const meikoInvoice = await this.prismaMeikoService.invoice.create({
-        data: {
-          surveyRecordId: BigInt(meikoInvoiceData.surveyRecordId || 0),
-          responseId: meikoInvoiceData.responseId
-            ? BigInt(meikoInvoiceData.responseId)
-            : null,
-          stickerQR: meikoInvoiceData.stickerQR || null,
-          responseReceived: meikoInvoiceData.responseReceived || null,
-          variableName: meikoInvoiceData.variableName || null,
-          photoType: meikoInvoiceData.photoType || null,
-          link: meikoInvoiceData.link || null,
-          flagDigitalization: 1, // Mark as digitalized
-          digitalizationDate: new Date(),
-          extractionDate: new Date(),
-        },
-      });
-
-      this.logger.log(
-        `✅ Created MeikoInvoice record with id ${meikoInvoice.id}`,
-      );
-
-      // Group details by row
-      const detailsByRow = detalles.reduce((acc: any, field: any) => {
-        if (!acc[field.row]) {
-          acc[field.row] = {};
-        }
-        acc[field.row][field.type] = field;
-        return acc;
-      }, {});
-
-      // Create MeikoResult records for each detail row
-      const meikoResults: any = [];
-      for (const [rowNumber, rowFields] of Object.entries(detailsByRow)) {
-        const fields = rowFields as any;
-
-        if (fields.total_factura_sin_iva?.text === '[ILEGIBLE]') {
-          fields.total_factura_sin_iva.text = '-0.1';
-        }
-        const resultData = {
-          meikoInvoiceId: meikoInvoice.id,
-          surveyRecordId: Number(meikoInvoiceData.surveyRecordId || 0),
-          invoiceNumber: numeroFactura,
-          invoiceDate: parseDate(fechaFactura),
-          businessName: razonSocial,
-          productCode: fields.codigo_producto?.text || null,
-          description: fields.item_descripcion_producto?.text || null,
-          packagingType: fields.tipo_embalaje?.text || null,
-          packagingUnit: parseDecimal(fields.unidades_embalaje?.text),
-          packsSold: parseDecimal(fields.packs_vendidos?.text),
-          saleValue: parseDecimal(fields.valor_venta_item?.text),
-          unitsSold: parseDecimal(fields.unidades_vendidas?.text),
-          totalInvoice: parseDecimal(valorTotalFactura),
-          totalInvoiceWithoutVAT: parseDecimal(
-            fields.total_factura_sin_iva?.text,
-          ),
-          rowNumber: Number(rowNumber),
-          valueIbuaAndOthers: fields.valor_ibua_y_otros?.text
-            ? parseInt(fields.valor_ibua_y_otros.text)
-            : null,
-          confidence: this.calculateRowConfidence(Object.values(fields)),
-        };
-
-        meikoResults.push(resultData);
-      }
-
-      // Create all results
-      if (meikoResults.length > 0) {
-        await this.prismaMeikoService.result.createMany({
-          data: meikoResults,
-        });
-        this.logger.log(
-          `✅ Created ${meikoResults.length} MeikoResult records`,
-        );
-      }
-
-      this.logger.log(
-        `✅ Invoice ${invoiceId} successfully delivered to Meiko tables`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `❌ Error delivering invoice ${invoiceId} to Meiko tables: ${error.message}`,
         error.stack,
       );
       throw error;
@@ -976,23 +836,7 @@ export class InvoiceService {
         throw new Error(`Invoice ${invoiceId} has no surveyId`);
       }
 
-      const result = DocumentFactory.format(
-        saveInvoiceDto.tipoFactura || 'Not supported',
-        {
-          detalles,
-          encabezado,
-          facturaId: invoiceId,
-          surveyRecordId: Number(document.surveyId),
-        },
-        this.meikoService,
-        this,
-        this.excludedService,
-        this.productService
-      );
-
       const headers = encabezado;
-
-      await this.meikoService.createManyFields(result);
 
       const fields = [...headers, ...detalles];
 
@@ -1023,6 +867,34 @@ export class InvoiceService {
             },
           });
         }
+      }
+
+      const result = DocumentFactory.format(
+        saveInvoiceDto.tipoFactura || 'Not supported',
+        {
+          detalles,
+          encabezado,
+          facturaId: invoiceId,
+          surveyRecordId: Number(document.surveyId),
+        },
+        this.meikoService,
+        this,
+        this.excludedService,
+        this.productService,
+      );
+
+      try {
+        await this.meikoService.createManyFields(result);
+      } catch (error) {
+        await this.updateDocument({
+          id: document.id,
+          status: 'PENDING_TO_SEND',
+          deliveryStatus: DeliveryStatus.PROCESADO,
+          errors: `Base de datos Meiko no disponible: ${error.message}`,
+        });
+        throw new InternalServerErrorException(
+          'La factura fue guardada correctamente pero hubo un error al entregarla. Por favor, comuníquese con soporte.',
+        );
       }
 
       await this.meikoService.createStatus({
@@ -1062,6 +934,10 @@ export class InvoiceService {
         `❌ Error saving corrected invoice ${saveInvoiceDto.invoiceId}: ${deliveryError.message}`,
         deliveryError.stack,
       );
+
+      throw new InternalServerErrorException(
+        'Error inesperado. Por favor, comuníquese con soporte.',
+      );
     }
   }
 
@@ -1082,6 +958,9 @@ export class InvoiceService {
         finalType = photoTypeOcr;
       } else finalType = photoType;
 
+      if (photoTypeOcr === 'Factura Otros Proveedores')
+        finalType = 'Factura Otros Proveedores';
+
       const document = DocumentFactory.create(
         finalType,
         {
@@ -1093,12 +972,13 @@ export class InvoiceService {
         this.meikoService,
         this,
         this.excludedService,
-        this.productService
+        this.productService,
       );
       await document.process();
 
       const { data, isValid } = document.get();
 
+      const a = InvoiceUtils.getErrors(data);
       return InvoiceUtils.getErrors(data);
     } catch (error) {
       this.logger.error(
