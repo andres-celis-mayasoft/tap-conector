@@ -840,6 +840,28 @@ export class InvoiceService {
 
       const fields = [...headers, ...detalles];
 
+      const incomingIds = fields
+        .filter((f) => f.id)
+        .map((f) => f.id);
+
+      const existingFields = await this.prisma.field.findMany({
+        where: { documentId: document.documentId },
+        select: { id: true },
+      });
+
+      const existingIds = existingFields.map((f) => f.id);
+
+      const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id));
+
+      if (idsToDelete.length > 0) {
+        this.logger.log(
+          `🗑️ Deleting ${idsToDelete.length} fields no longer present in corrected data, documentId = ${document.documentId}`,
+        );
+        await this.prisma.field.deleteMany({
+          where: { id: { in: idsToDelete } },
+        });
+      }
+
       // Process field updates and creations
       for (const field of fields) {
         if (field.id) {
@@ -892,9 +914,11 @@ export class InvoiceService {
           deliveryStatus: DeliveryStatus.PROCESADO,
           errors: `Base de datos Meiko no disponible: ${error.message}`,
         });
-        throw new InternalServerErrorException(
-          'La factura fue guardada correctamente pero hubo un error al entregarla. Por favor, comuníquese con soporte.',
+        this.logger.error(
+          `❌ Error delivering invoice ${saveInvoiceDto.invoiceId} to Meiko: ${error.message}`,
+          error.stack,
         );
+        return;
       }
 
       await this.meikoService.createStatus({
