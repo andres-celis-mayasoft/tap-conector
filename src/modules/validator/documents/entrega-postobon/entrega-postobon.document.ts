@@ -66,32 +66,32 @@ export class EntregaPostobonInvoice extends Document<EntregaPostobonInvoiceSchem
         invoiceId: this.data.facturaId,
         rowNumber: index + 1,
         surveyRecordId: Number(this.data.surveyRecordId),
-        businessName: isNullOrIllegible(razon_social.text)
+        businessName: isNullOrIllegible(razon_social?.text)
           ? NULL_STRING
-          : razon_social.text,
-        description: isNullOrIllegible(item_descripcion_producto.text)
+          : razon_social?.text,
+        description: isNullOrIllegible(item_descripcion_producto?.text)
           ? NULL_STRING
-          : item_descripcion_producto.text,
-        invoiceDate: isNullOrIllegible(fecha_factura.text)
+          : item_descripcion_producto?.text,
+        invoiceDate: isNullOrIllegible(fecha_factura?.text)
           ? NULL_DATE
-          : toISO8601(fecha_factura.text),
+          : toISO8601(fecha_factura?.text),
         invoiceNumber:  NULL_STRING
           ,
         packagingType: NULL_STRING,
-        packagingUnit: isNullOrIllegible(unidades_embalaje.text)
+        packagingUnit: isNullOrIllegible(unidades_embalaje?.text)
           ? NULL_FLOAT
-          : unidades_embalaje.text,
-        packsSold: isNullOrIllegible(packs_vendidos.text)
+          : unidades_embalaje?.text,
+        packsSold: isNullOrIllegible(packs_vendidos?.text)
           ? NULL_FLOAT
-          : packs_vendidos.text,
+          : packs_vendidos?.text,
         unitsSold: NULL_FLOAT,
         productCode: NULL_STRING,
-        saleValue: isNullOrIllegible(valor_venta_item.text)
+        saleValue: isNullOrIllegible(valor_venta_item?.text)
           ? NULL_NUMBER
-          : valor_venta_item.text,
-        totalInvoice: isNullOrIllegible(valor_total_factura.text)
+          : valor_venta_item?.text,
+        totalInvoice: isNullOrIllegible(valor_total_factura?.text)
           ? NULL_NUMBER
-          : valor_total_factura.text,
+          : valor_total_factura?.text,
         totalInvoiceWithoutVAT: NULL_NUMBER,
         valueIbuaAndOthers: NULL_IBUA,
       });

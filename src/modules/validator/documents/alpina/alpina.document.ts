@@ -67,38 +67,38 @@ export class AlpinaInvoice extends Document<AlpinaInvoiceSchema> {
         invoiceId: this.data.facturaId,
         rowNumber: index + 1,
         surveyRecordId: Number(this.data.surveyRecordId),
-        businessName: isNullOrIllegible(razon_social.text)
+        businessName: isNullOrIllegible(razon_social?.text)
           ? NULL_STRING
-          : razon_social.text,
-        description: isNullOrIllegible(item_descripcion_producto.text)
+          : razon_social?.text,
+        description: isNullOrIllegible(item_descripcion_producto?.text)
           ? NULL_STRING
-          : item_descripcion_producto.text,
-        invoiceDate: isNullOrIllegible(fecha_factura.text)
+          : item_descripcion_producto?.text,
+        invoiceDate: isNullOrIllegible(fecha_factura?.text)
           ? NULL_DATE
-          : toISO8601(fecha_factura.text),
-        invoiceNumber: isNullOrIllegible(numero_factura.text)
+          : toISO8601(fecha_factura?.text),
+        invoiceNumber: isNullOrIllegible(numero_factura?.text)
           ? NULL_STRING
-          : numero_factura.text,
-        packagingType: isNullOrIllegible(tipo_embalaje.text)
+          : numero_factura?.text,
+        packagingType: isNullOrIllegible(tipo_embalaje?.text)
           ? NULL_STRING
-          : tipo_embalaje.text,
+          : tipo_embalaje?.text,
         packagingUnit: NULL_FLOAT,
         packsSold: NULL_FLOAT,
-        unitsSold: isNullOrIllegible(unidades_vendidas.text)
+        unitsSold: isNullOrIllegible(unidades_vendidas?.text)
           ? NULL_FLOAT
-          : unidades_vendidas.text,
-        productCode: isNullOrIllegible(codigo_producto.text)
+          : unidades_vendidas?.text,
+        productCode: isNullOrIllegible(codigo_producto?.text)
           ? NULL_STRING
-          : codigo_producto.text,
-        saleValue: isNullOrIllegible(valor_venta_item.text)
+          : codigo_producto?.text,
+        saleValue: isNullOrIllegible(valor_venta_item?.text)
           ? NULL_NUMBER
-          : valor_venta_item.text,
-        totalInvoice: isNullOrIllegible(valor_total_factura.text)
+          : valor_venta_item?.text,
+        totalInvoice: isNullOrIllegible(valor_total_factura?.text)
           ? NULL_NUMBER
-          : valor_total_factura.text,
-        totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva.text)
+          : valor_total_factura?.text,
+        totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva?.text)
           ? NULL_NUMBER
-          : total_factura_sin_iva.text,
+          : total_factura_sin_iva?.text,
         valueIbuaAndOthers: NULL_IBUA,
       });
     });
