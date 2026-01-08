@@ -172,8 +172,8 @@ model Product {
   id Int                 @id @default(autoincrement())
   description    String    @db.VarChar(500)
   code           String    @db.VarChar(50)
-  packagingUnit  String    @db.VarChar(50) @map("packaging_unit")
-  packagingType  String    @db.VarChar(50) @map("packaging_type")
+  packagingUnit  String?   @db.VarChar(50) @map("packaging_unit")
+  packagingType  String?   @db.VarChar(50) @map("packaging_type")
 
   companyId      Int       @map("company_id")
   company        Company   @relation(fields: [companyId], references: [id])
