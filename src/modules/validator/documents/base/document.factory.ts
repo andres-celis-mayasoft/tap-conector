@@ -42,7 +42,7 @@ const documentMap = {
   'Factura Kopps': KoppsInvoice,
   'Factura Otros Proveedores': GeneralInvoice,
   'Factura Alpina': AlpinaInvoice,
-  'Factura Distribuidor GRPS': DistribuidorGrpsInvoice,
+  'Factura Distribuidor GRPS Alpina': DistribuidorGrpsInvoice,
   'Entrega Postobon': EntregaPostobonInvoice,
   'Recibo Entrega Coke': EntregaCokeInvoice,
 };
@@ -154,7 +154,7 @@ export class DocumentFactory {
           invoiceService,
         );
 
-      case 'Factura Distribuidor GRPS':
+      case 'Factura Distribuidor GRPS Alpina':
         return new DistribuidorGrpsInvoice(
           ocrResponse as DistribuidorGrpsInvoiceSchema,
           meikoService,
@@ -274,7 +274,7 @@ export class DocumentFactory {
           invoiceService,
         ).format();
 
-      case 'Factura Distribuidor GRPS':
+      case 'Factura Distribuidor GRPS Alpina':
         return new DistribuidorGrpsInvoice(
           ocrResponse as DistribuidorGrpsInvoiceSchema,
           meikoService,
