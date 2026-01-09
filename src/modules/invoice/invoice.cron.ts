@@ -23,4 +23,20 @@ export class InvoiceCronService {
       );
     }
   }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async retryFailedInvoices() {
+    try {
+      const retriedCount = await this.invoiceService.retryFailedInvoices(); 
+      if (retriedCount > 0) {
+        this.logger.log(`✅ Retried ${retriedCount} failed invoices for processing`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `❌ Error in retryFailedInvoices cron: ${error.message}`,
+        error.stack,
+      );
+
+    }
+  }
 }

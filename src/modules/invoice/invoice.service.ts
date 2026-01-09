@@ -1192,4 +1192,32 @@ export class InvoiceService {
       throw error;
     }
   }
+  async retryFailedInvoices(): Promise<number> {
+    try {
+      this.logger.log('🔄 Checking for failed invoices to retry...');
+
+      const result = await this.prisma.document.updateMany({
+        where: {
+          deliveryStatus: DeliveryStatus.ERROR_DE_DESCARGA,
+        },
+        data: {
+          status: 'REPROCESS',
+        },
+      });
+
+      if (result.count > 0) {
+        this.logger.log(
+          `✅ Reset status to REPROCESS for ${result.count} documents with download errors`,
+        );
+      }
+
+      return result.count;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error retrying failed invoices: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 }
