@@ -447,6 +447,67 @@ export class InvoiceService {
   }
 
   /**
+   * Get invoice with corrected fields from the Field table
+   * Uses corrected_value instead of value when available
+   * @param documentId - Document ID
+   * @returns Invoice data with encabezado and detalles using corrected values
+   */
+  async getInvoiceWithCorrectedFields(documentId: number): Promise<{
+    encabezado: Array<{ type: string; text: string; confidence: number }>;
+    detalles: Array<{
+      type: string;
+      text: string;
+      confidence: number;
+      row: number;
+    }>;
+  }> {
+    try {
+      this.logger.log(`🔍 Getting corrected fields for document ${documentId}`);
+
+      // Get all fields for this document
+      const fields = await this.prisma.field.findMany({
+        where: {
+          documentId,
+        },
+        orderBy: [{ type: 'asc' }, { row: 'asc' }],
+      });
+
+      // Separate fields into encabezado and detalles, using corrected_value when available
+      const encabezado = fields
+        .filter((field) => field.type === 'ENCABEZADO')
+        .map((field) => ({
+          type: field.name,
+          text: field.corrected_value || field.value || '',
+          confidence: field.confidence ? Number(field.confidence) : 0,
+        }));
+
+      const detalles = fields
+        .filter((field) => field.type === 'DETALLE')
+        .map((field) => ({
+          type: field.name,
+          text: field.corrected_value || field.value || '',
+          confidence: field.confidence ? Number(field.confidence) : 0,
+          row: field.row || 0,
+        }));
+
+      this.logger.log(
+        `✅ Retrieved ${encabezado.length} header fields and ${detalles.length} detail fields with corrected values`,
+      );
+
+      return {
+        encabezado,
+        detalles,
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Error getting corrected fields for document ${documentId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Assign an invoice to a user for manual validation
    * If the user already has an assigned invoice, return that one
    * Otherwise, assign the next available invoice with status PENDING_VALIDATION
@@ -1215,6 +1276,115 @@ export class InvoiceService {
     } catch (error) {
       this.logger.error(
         `❌ Error retrying failed invoices: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Send pending documents to Meiko
+   * Processes documents in PENDING_TO_SEND status and delivers them using corrected field values
+   * @returns Number of documents successfully sent
+   */
+  async sendPendingDocuments(): Promise<number> {
+    try {
+      this.logger.log('📤 Checking for pending documents to send...');
+
+      // Get all documents with PENDING_TO_SEND status
+      const pendingDocuments = await this.prisma.document.findMany({
+        where: {
+          status: 'PENDING_TO_SEND',
+        },
+        orderBy: {
+          id: 'asc',
+        },
+      });
+
+      if (pendingDocuments.length === 0) {
+        return 0;
+      }
+
+      this.logger.log(
+        `📋 Found ${pendingDocuments.length} documents to send to Meiko`,
+      );
+
+      let successCount = 0;
+
+      for (const document of pendingDocuments) {
+        try {
+          this.logger.log(
+            `📤 Processing document ${document.documentId} (${document.photoType})`,
+          );
+
+          if (!document.surveyId) {
+            throw new Error(`Document ${document.documentId} has no surveyId`);
+          }
+
+          // Get corrected fields from Field table
+          const { encabezado, detalles } =
+            await this.getInvoiceWithCorrectedFields(document.documentId);
+
+          // Build invoice data using DocumentFactory
+          const result = DocumentFactory.format(
+            document.photoType || 'Not supported',
+            {
+              detalles: detalles as any,
+              encabezado: encabezado as any,
+              facturaId: document.documentId,
+              surveyRecordId: Number(document.surveyId),
+            } as ProcessedDataSchema,
+            this.meikoService,
+            this,
+            this.excludedService,
+            this.productService,
+          );
+
+          // Send to Meiko
+          await this.meikoService.createManyFields(result);
+
+          // Update status in Meiko
+          await this.meikoService.createStatus({
+            digitalizationStatusId: InvoiceStatus.PROCESADO,
+            invoiceId: document.documentId,
+          });
+
+          // Update document status to DELIVERED
+          await this.updateDocument({
+            id: document.id,
+            status: 'DELIVERED',
+            deliveryStatus: DeliveryStatus.PROCESADO,
+            completedAt: new Date(),
+          });
+
+          this.logger.log(
+            `✅ Document ${document.documentId} delivered successfully`,
+          );
+          successCount++;
+        } catch (error) {
+          this.logger.error(
+            `❌ Error sending document ${document.documentId}: ${error.message}`,
+            error.stack,
+          );
+
+          // Update document with error status
+          await this.updateDocument({
+            id: document.id,
+            status: 'ISSUE',
+            errors: `DELIVERY_ERROR: ${error.message}`,
+            completedAt: new Date(),
+          });
+        }
+      }
+
+      this.logger.log(
+        `✅ Successfully sent ${successCount}/${pendingDocuments.length} documents to Meiko`,
+      );
+
+      return successCount;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error in sendPendingDocuments: ${error.message}`,
         error.stack,
       );
       throw error;
