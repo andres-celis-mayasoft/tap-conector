@@ -74,7 +74,7 @@ export class GeneralInvoice extends Document<GeneralInvoiceSchema> {
         invoiceId: this.data.facturaId,
         rowNumber: index + 1,
         surveyRecordId: Number(this.data.surveyRecordId),
-        businessName: isNullOrIllegible(razon_social.text) ? NULL_STRING : razon_social?.text ,
+        businessName: isNullOrIllegible(razon_social?.text) ? NULL_STRING : razon_social?.text ,
         description: isNullOrIllegible(item_descripcion_producto?.text) ? NULL_STRING : item_descripcion_producto?.text,
         invoiceDate: isNullOrIllegible(fecha_factura?.text) ?  NULL_DATE : toISO8601(fecha_factura?.text) ,
         invoiceNumber: isNullOrIllegible(numero_factura?.text) ? NULL_STRING : numero_factura?.text,
