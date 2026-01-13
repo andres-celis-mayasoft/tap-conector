@@ -449,7 +449,7 @@ export class ExtractionService {
       );
 
       // Wait for all processing tasks to complete
-      await Promise.all(processingTasks);
+      await Promise.allSettled(processingTasks);
 
       // 8. Summary log
       this.logger.log('\n📊 Extraction cron job completed');
