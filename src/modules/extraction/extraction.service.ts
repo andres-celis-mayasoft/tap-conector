@@ -212,11 +212,29 @@ export class ExtractionService {
               mayaDocumentJSON: JSON.stringify(ocrResult.data),
             });
 
+            
             let finalType: string;
             const photoTypeOcr = ocrResult.data.response.tipoFacturaOcr;
-
+            
             const photoType = doc.photoType;
 
+            if(photoTypeOcr ==='ILEGIBLE') {
+              this.logger.warn(
+                `⚠️ Invoice ${doc.id} - OCR result is ILEGIBLE`,
+              );
+              await this.meikoService.createStatus({
+                digitalizationStatusId: InvoiceStatus.NO_PROCESABLE,
+                invoiceId: doc.documentId,
+              });
+              await this.invoiceService.updateDocument({
+                id: doc.id,
+                status: 'DELIVERED',
+                deliveryStatus: DeliveryStatus.NO_PROCESABLE,
+                extracted: false,
+                validated: false,
+              });
+              return;
+            }
             
             if (
               photoType === 'Factura Postobon' &&
