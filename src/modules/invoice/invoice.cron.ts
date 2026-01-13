@@ -40,7 +40,7 @@ export class InvoiceCronService {
     }
   }
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron(CronExpression.EVERY_8_HOURS)
   async sendPendingDocuments() {
     try {
       const sentCount = await this.invoiceService.sendPendingDocuments();
