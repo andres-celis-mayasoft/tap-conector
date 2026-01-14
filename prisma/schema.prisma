@@ -56,6 +56,7 @@ model Field {
   type        String    @map("type")
   extracted   Boolean   @default(false) @map("extracted")
   validated   Boolean   @default(false) @map("validated")
+  coords      String?   @map("coords")
   createdAt  DateTime  @default(now()) @map("created_at")
 
   document    Document  @relation(fields: [documentId], references: [documentId], onDelete: Cascade)

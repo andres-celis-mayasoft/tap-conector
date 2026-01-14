@@ -336,6 +336,7 @@ export class InvoiceService {
           type: 'ENCABEZADO',
           extracted: true,
           validated: field.confidence === 1,
+          coords: field.coords ? JSON.stringify(field.coords) : null,
         }));
 
       // Prepare detail fields (detalles)
@@ -349,6 +350,7 @@ export class InvoiceService {
           type: 'DETALLE',
           extracted: true,
           validated: field.confidence === 1,
+          coords: field.coords ? JSON.stringify(field.coords) : null,
         }));
 
       // Combine all fields
@@ -417,6 +419,7 @@ export class InvoiceService {
           type: field.name,
           text: field.value || '',
           confidence: field.confidence ? Number(field.confidence) : 0,
+          coords: field.coords ? JSON.parse(field.coords) : [],
         }));
 
       const detalles = fields
@@ -427,6 +430,7 @@ export class InvoiceService {
           text: field.value || '',
           confidence: field.confidence ? Number(field.confidence) : 0,
           row: field.row || 0,
+          coords: field.coords ? JSON.parse(field.coords) : [],
         }));
 
       this.logger.log(

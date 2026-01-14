@@ -7,6 +7,7 @@ export type OCR_Field<T> = {
     type: T;
     error?: string,
     row: number;
+    coords?: number[];
 }
 
 export const EMBALAJES = [
