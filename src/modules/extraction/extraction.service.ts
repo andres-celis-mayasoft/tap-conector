@@ -218,9 +218,9 @@ export class ExtractionService {
             
             const photoType = doc.photoType;
 
-            if(photoTypeOcr ==='ILEGIBLE') {
+            if(photoTypeOcr ==='NO PROCESABLE') {
               this.logger.warn(
-                `⚠️ Invoice ${doc.id} - OCR result is ILEGIBLE`,
+                `⚠️ Invoice ${doc.id} - OCR result is NO PROCESABLE`,
               );
               await this.meikoService.createStatus({
                 digitalizationStatusId: InvoiceStatus.NO_PROCESABLE,
