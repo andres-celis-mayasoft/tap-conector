@@ -150,7 +150,7 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
       const { packs_con_unidades } =
         Utils.getFields<InfocargueBodyFields>(product);
 
-      if (pattern.test(packs_con_unidades.text)) {
+      if (pattern.test(packs_con_unidades?.text)) {
         packs_con_unidades.confidence = 1;
       }
     }
