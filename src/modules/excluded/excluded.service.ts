@@ -20,6 +20,16 @@ export class ExcludedService {
     return products[0] || null;
   }
 
+  findByDescription(description: string, companyId: number): Promise<Excluded | null> {
+    return this.prisma.excluded.findFirst({
+      where: {  
+        description: description,
+        companyId: companyId,
+      },
+    });
+  }
+  
+
   create(createExcludedDto: Prisma.ExcludedCreateInput) {
     return 'This action adds a new excluded';
   }

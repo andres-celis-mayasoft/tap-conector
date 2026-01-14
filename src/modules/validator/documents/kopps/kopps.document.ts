@@ -72,7 +72,7 @@ export class KoppsInvoice extends Document<KoppsInvoiceSchema> {
       const { item_descripcion_producto: descripcion } =
         Utils.getFields<KoppsBodyFields>(product);
 
-      const productDB = await this.excludedService.findOneFuzzy(
+      const productDB = await this.excludedService.findByDescription(
         descripcion?.text,
         1,
       );
