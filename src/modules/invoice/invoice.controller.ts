@@ -6,7 +6,11 @@ import {
   Logger,
   Param,
   Query,
+  Res,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { InvoiceService } from './invoice.service';
 import {
   GetInvoiceToFillDto,
@@ -73,6 +77,51 @@ export class InvoiceController {
         error.stack,
       );
       throw error;
+    }
+  }
+
+  /**
+   * Serve invoice image file
+   * GET /invoice/image/:filename
+   * Returns the image file from the uploads directory
+   *
+   * @param filename - Name of the image file (e.g., "76826.jpg")
+   * @param res - Express response object
+   */
+  @Get('image/:filename')
+  async getInvoiceImage(
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ) {
+    try {
+      this.logger.log(`📷 Serving image: ${filename}`);
+
+      // Security: Validate filename to prevent path traversal attacks
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        this.logger.warn(`⚠️ Invalid filename attempted: ${filename}`);
+        throw new BadRequestException('Invalid filename');
+      }
+
+      // Get the image file
+      const imageBuffer = await this.invoiceService.getInvoiceImage(filename);
+
+      // Set appropriate headers
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+
+      // Send the image
+      res.send(imageBuffer);
+    } catch (error) {
+      this.logger.error(
+        `❌ Error serving image ${filename}: ${error.message}`,
+        error.stack,
+      );
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new NotFoundException(`Image ${filename} not found`);
     }
   }
 

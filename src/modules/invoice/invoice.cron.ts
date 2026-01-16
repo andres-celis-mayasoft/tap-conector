@@ -55,4 +55,31 @@ export class InvoiceCronService {
       );
     }
   }
+
+  /**
+   * Delete old invoice images older than 3 days
+   * Runs once per day at 2:00 AM
+   */
+  // @Cron('0 2 * * *')
+  async cleanupOldImages() {
+    try {
+      this.logger.log('🧹 Starting daily cleanup of old images...');
+
+      // Get the target directory from environment variable
+      const targetDir = process.env.INVOICE_IMAGES_DIR || './invoices';
+
+      const deletedCount = await this.invoiceService.deleteOldImages(targetDir);
+
+      if (deletedCount > 0) {
+        this.logger.log(`✅ Daily cleanup completed: ${deletedCount} old images deleted`);
+      } else {
+        this.logger.log('✅ Daily cleanup completed: No old images to delete');
+      }
+    } catch (error) {
+      this.logger.error(
+        `❌ Error in cleanupOldImages cron: ${error.message}`,
+        error.stack,
+      );
+    }
+  }
 }

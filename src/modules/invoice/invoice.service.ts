@@ -186,23 +186,26 @@ export class InvoiceService {
       targetDir,
       `${invoice.id}${extension}`,
     );
+    const tempFile = this.generateTempFilePath();
 
     try {
       this.logger.log(`🟡 Processing invoice ID ${invoice.id}`);
 
+      // Download image
       const data = await this.downloadImage(invoice.documentUrl);
+      this.logger.log(`🟡 Downloaded image for invoice ${invoice.id}`);
 
-      this.logger.log(`🟡 Downloaded `);
-      await this.saveTempFile(finalPath, data);
+      // Save to temporary file
+      await this.saveTempFile(tempFile, data);
+      this.logger.log(`🟡 Saved to temporary file`);
 
-      this.logger.log(`🟡 Saved `);
-      await this.validateImage(finalPath);
+      // Validate image integrity
+      await this.validateImage(tempFile);
+      this.logger.log(`🟡 Validated image`);
 
-      this.logger.log(`🟡 Validated `);
-      // Resize image with specified DPI
-      // await this.resizeImageWithDPI(tempFile, finalPath);
-
-      // this.updateInvoiceMetadata(invoice, finalPath, extension);
+      // Move to final path (this saves the image permanently)
+      await this.moveToFinalPath(tempFile, finalPath);
+      this.logger.log(`🟡 Moved to final path: ${finalPath}`);
 
       this.logger.log(
         `✅ Invoice ${invoice.id_factura} processed successfully`,
@@ -212,7 +215,8 @@ export class InvoiceService {
       this.logger.error(
         `❌ Error processing invoice ${invoice.id_factura}: ${error.message}`,
       );
-      // await this.cleanupTempFile(tempFile);
+      // Cleanup temp file if it exists
+      await this.cleanupTempFile(tempFile);
       await this.handleDownloadError(invoice, error);
       return { path: finalPath, isValid: false };
     }
@@ -1358,7 +1362,6 @@ export class InvoiceService {
             id: document.id,
             status: 'DELIVERED',
             deliveryStatus: DeliveryStatus.PROCESADO,
-            completedAt: new Date(),
           });
 
           this.logger.log(
@@ -1376,7 +1379,6 @@ export class InvoiceService {
             id: document.id,
             status: 'ISSUE',
             errors: `DELIVERY_ERROR: ${error.message}`,
-            completedAt: new Date(),
           });
         }
       }
@@ -1389,6 +1391,116 @@ export class InvoiceService {
     } catch (error) {
       this.logger.error(
         `❌ Error in sendPendingDocuments: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get invoice image file as buffer
+   * Reads the image file from the storage directory and returns it as a buffer
+   * @param filename - Name of the image file (e.g., "76826.jpg")
+   * @returns Image file as Buffer
+   */
+  async getInvoiceImage(filename: string): Promise<Buffer> {
+    try {
+      const targetDir = process.env.INVOICE_IMAGES_DIR || './invoices';
+      const filePath = path.join(targetDir, filename);
+
+      this.logger.log(`📷 Reading image file: ${filePath}`);
+
+      // Check if file exists and read it
+      const imageBuffer = await fs.readFile(filePath);
+
+      this.logger.log(`✅ Image file read successfully: ${filename}`);
+
+      return imageBuffer;
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        this.logger.warn(`⚠️ Image file not found: ${filename}`);
+        throw new Error(`Image file not found: ${filename}`);
+      }
+
+      this.logger.error(
+        `❌ Error reading image file ${filename}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Delete old invoice images that are older than 3 days
+   * This helps manage storage space by removing outdated files
+   * @param targetDir - Directory where invoice images are stored
+   * @returns Number of files deleted
+   */
+  async deleteOldImages(targetDir: string): Promise<number> {
+    try {
+      this.logger.log('🗑️ Checking for old images to delete...');
+
+      // Check if directory exists
+      try {
+        await fs.access(targetDir);
+      } catch {
+        this.logger.warn(`⚠️ Directory ${targetDir} does not exist`);
+        return 0;
+      }
+
+      // Calculate the threshold date (3 days ago)
+      const threeDaysAgo = DateTime.now().minus({ days: 3 }).toJSDate();
+      this.logger.log(
+        `🕐 Deleting images older than ${threeDaysAgo.toISOString()}`,
+      );
+
+      // Read all files in the directory
+      const files = await fs.readdir(targetDir);
+
+      if (files.length === 0) {
+        this.logger.log('ℹ️ No files found in directory');
+        return 0;
+      }
+
+      let deletedCount = 0;
+
+      // Check each file's age and delete if older than 3 days
+      for (const file of files) {
+        try {
+          const filePath = path.join(targetDir, file);
+          const stats = await fs.stat(filePath);
+
+          // Check if it's a file (not a directory)
+          if (!stats.isFile()) {
+            continue;
+          }
+
+          // Check if file is older than 3 days
+          if (stats.mtime < threeDaysAgo) {
+            await fs.unlink(filePath);
+            deletedCount++;
+            this.logger.log(`🗑️ Deleted old image: ${file}`);
+          }
+        } catch (error) {
+          this.logger.error(
+            `❌ Error deleting file ${file}: ${error.message}`,
+          );
+          // Continue with next file even if one fails
+        }
+      }
+
+      if (deletedCount > 0) {
+        this.logger.log(
+          `✅ Successfully deleted ${deletedCount} old images from ${targetDir}`,
+        );
+      } else {
+        this.logger.log('ℹ️ No old images found to delete');
+      }
+
+      return deletedCount;
+    } catch (error) {
+      this.logger.error(
+        `❌ Error in deleteOldImages: ${error.message}`,
         error.stack,
       );
       throw error;
