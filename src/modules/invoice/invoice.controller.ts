@@ -329,4 +329,36 @@ export class InvoiceController {
       throw error;
     }
   }
+
+  /**
+   * Manually trigger sending pending documents to Meiko
+   * POST /invoice/send-pending
+   * Processes all documents with PENDING_TO_SEND status
+   *
+   * @returns Number of documents successfully sent
+   */
+  @Post('send-pending')
+  async sendPendingDocuments() {
+    this.logger.log('📤 Manually triggering send pending documents');
+
+    try {
+      const sentCount = await this.invoiceService.sendPendingDocuments();
+
+      this.logger.log(
+        `✅ Successfully sent ${sentCount} pending documents to Meiko`,
+      );
+
+      return {
+        success: true,
+        message: `Successfully sent ${sentCount} pending documents to Meiko`,
+        count: sentCount,
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Error sending pending documents: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 }
