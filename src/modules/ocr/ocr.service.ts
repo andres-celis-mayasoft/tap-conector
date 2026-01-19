@@ -79,8 +79,9 @@ export class OcrService {
 
       // Read file and add to form data
       const fileStream = fs.createReadStream(request.filePath);
-      formData.append('invoice', fileStream);
-      formData.append('type_of_invoice', request.typeOfInvoice);
+      formData.append('file', fileStream);
+      formData.append('doc_type', request.typeOfInvoice);
+      formData.append('project', 'Invoice');
 
       // Configure request with headers
       const config: AxiosRequestConfig = {
