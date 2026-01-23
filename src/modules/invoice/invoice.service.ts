@@ -421,7 +421,7 @@ export class InvoiceService {
         .map((field) => ({
           id: field.id,
           type: field.name,
-          text: field.value || '',
+          text: field.corrected_value || field.value || '',
           confidence: field.confidence ? Number(field.confidence) : 0,
           coords: field.coords ? JSON.parse(field.coords) : [],
         }));
@@ -431,7 +431,7 @@ export class InvoiceService {
         .map((field) => ({
           id: field.id,
           type: field.name,
-          text: field.value || '',
+          text: field.corrected_value || field.value || '',
           confidence: field.confidence ? Number(field.confidence) : 0,
           row: field.row || 0,
           coords: field.coords ? JSON.parse(field.coords) : [],
@@ -949,7 +949,7 @@ export class InvoiceService {
               documentId: document.documentId,
               row: field.row || null,
               name: field.type,
-              value: field.text,
+              value: 'NEW_FIELD',
               corrected_value: field.text,
               confidence: field.confidence || 1,
               type: field.row ? 'DETALLE' : 'ENCABEZADO',
@@ -980,6 +980,7 @@ export class InvoiceService {
         await this.updateDocument({
           id: document.id,
           status: 'PENDING_TO_SEND',
+          completedAt: new Date(),
           deliveryStatus: DeliveryStatus.PROCESADO,
           errors: `Base de datos Meiko no disponible: ${error.message}`,
         });
