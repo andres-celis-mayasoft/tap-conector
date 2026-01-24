@@ -949,7 +949,7 @@ export class InvoiceService {
               documentId: document.documentId,
               row: field.row || null,
               name: field.type,
-              value: 'NEW_FIELD',
+              value: null,
               corrected_value: field.text,
               confidence: field.confidence || 1,
               type: field.row ? 'DETALLE' : 'ENCABEZADO',
