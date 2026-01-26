@@ -10,7 +10,15 @@ import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { InvoiceService } from 'src/modules/invoice/invoice.service';
-import { isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_IBUA, NULL_NUMBER, NULL_STRING, toISO8601 } from '../common';
+import {
+  isNullOrIllegible,
+  NULL_DATE,
+  NULL_FLOAT,
+  NULL_IBUA,
+  NULL_NUMBER,
+  NULL_STRING,
+  toISO8601,
+} from '../common';
 import { Prisma } from '@generated/client-meiko';
 
 type HeaderField = QualaInvoiceSchema['encabezado'][number];
@@ -40,6 +48,12 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
   }
 
   normalize(): this {
+    Utils.addMissingFields(this.data.detalles, Object.values(QualaBodyFields));
+    Utils.parseAndFixNumber(this.data.detalles, [
+      QualaBodyFields.VALOR_VENTA_ITEM,
+      QualaBodyFields.UNIDADES_VENDIDAS,
+      QualaBodyFields.VALOR_UNITARIO_ITEM,
+    ]);
     return this;
   }
 
@@ -423,23 +437,43 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
       } = Utils.getFields<QualaBodyFields>(product);
 
       output.push({
-              invoiceId: this.data.facturaId,
-              rowNumber: index + 1,
-              surveyRecordId: Number(this.data.surveyRecordId),
-              businessName: isNullOrIllegible(razon_social.text) ? NULL_STRING : razon_social.text ,
-              description: isNullOrIllegible(item_descripcion_producto.text) ? NULL_STRING : item_descripcion_producto.text,
-              invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : toISO8601(fecha_factura.text) ,
-              invoiceNumber: isNullOrIllegible(numero_factura.text) ? NULL_STRING : numero_factura.text,
-              packagingType: NULL_STRING ,
-              packagingUnit: isNullOrIllegible(unidades_embalaje.text) ?  NULL_FLOAT : unidades_embalaje.text,
-              packsSold:  NULL_FLOAT ,
-              unitsSold: isNullOrIllegible(unidades_vendidas.text) ?  NULL_FLOAT : unidades_vendidas.text,
-              productCode: isNullOrIllegible(codigo_producto.text) ? NULL_STRING : codigo_producto.text ,
-              saleValue: isNullOrIllegible(valor_venta_item.text) ?  NULL_NUMBER : valor_venta_item.text,
-              totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
-              totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva.text) ?  NULL_NUMBER : total_factura_sin_iva.text,
-              valueIbuaAndOthers: NULL_IBUA,
-            });
+        invoiceId: this.data.facturaId,
+        rowNumber: index + 1,
+        surveyRecordId: Number(this.data.surveyRecordId),
+        businessName: isNullOrIllegible(razon_social.text)
+          ? NULL_STRING
+          : razon_social.text,
+        description: isNullOrIllegible(item_descripcion_producto.text)
+          ? NULL_STRING
+          : item_descripcion_producto.text,
+        invoiceDate: isNullOrIllegible(fecha_factura.text)
+          ? NULL_DATE
+          : toISO8601(fecha_factura.text),
+        invoiceNumber: isNullOrIllegible(numero_factura.text)
+          ? NULL_STRING
+          : numero_factura.text,
+        packagingType: NULL_STRING,
+        packagingUnit: isNullOrIllegible(unidades_embalaje.text)
+          ? NULL_FLOAT
+          : unidades_embalaje.text,
+        packsSold: NULL_FLOAT,
+        unitsSold: isNullOrIllegible(unidades_vendidas.text)
+          ? NULL_FLOAT
+          : unidades_vendidas.text,
+        productCode: isNullOrIllegible(codigo_producto.text)
+          ? NULL_STRING
+          : codigo_producto.text,
+        saleValue: isNullOrIllegible(valor_venta_item.text)
+          ? NULL_NUMBER
+          : valor_venta_item.text,
+        totalInvoice: isNullOrIllegible(valor_total_factura.text)
+          ? NULL_NUMBER
+          : valor_total_factura.text,
+        totalInvoiceWithoutVAT: isNullOrIllegible(total_factura_sin_iva.text)
+          ? NULL_NUMBER
+          : total_factura_sin_iva.text,
+        valueIbuaAndOthers: NULL_IBUA,
+      });
     });
 
     return output;

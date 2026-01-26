@@ -29,6 +29,14 @@ export class EntregaPostobonInvoice extends Document<EntregaPostobonInvoiceSchem
 
   normalize(): this {
     return this;
+    Utils.addMissingFields(
+      this.data.detalles,
+      Object.values(EntregaPostobonBodyFields),
+    );
+    Utils.parseAndFixNumber(this.data.detalles, [
+      EntregaPostobonBodyFields.VALOR_VENTA_ITEM,
+      EntregaPostobonBodyFields.PACKS_VENDIDOS,
+    ]);
   }
 
   validate(): void {}
@@ -46,11 +54,8 @@ export class EntregaPostobonInvoice extends Document<EntregaPostobonInvoiceSchem
   format(): Prisma.ResultCreateManyInput[] {
     const output: Prisma.ResultCreateManyInput[] = [];
 
-    const {
-      fecha_factura,
-      razon_social,
-      valor_total_factura,
-    } = Utils.getFields<EntregaPostobonHeaderFields>(this.data.encabezado);
+    const { fecha_factura, razon_social, valor_total_factura } =
+      Utils.getFields<EntregaPostobonHeaderFields>(this.data.encabezado);
 
     const products = Utils.groupFields(this.data.detalles);
 
@@ -75,8 +80,7 @@ export class EntregaPostobonInvoice extends Document<EntregaPostobonInvoiceSchem
         invoiceDate: isNullOrIllegible(fecha_factura?.text)
           ? NULL_DATE
           : toISO8601(fecha_factura?.text),
-        invoiceNumber:  NULL_STRING
-          ,
+        invoiceNumber: NULL_STRING,
         packagingType: NULL_STRING,
         packagingUnit: isNullOrIllegible(unidades_embalaje?.text)
           ? NULL_FLOAT

@@ -15,7 +15,6 @@ import {
 } from '../common';
 import { Prisma } from '@generated/client-meiko';
 
-
 export class AlpinaInvoice extends Document<AlpinaInvoiceSchema> {
   constructor(
     data: AlpinaInvoiceSchema,
@@ -26,6 +25,11 @@ export class AlpinaInvoice extends Document<AlpinaInvoiceSchema> {
   }
 
   normalize(): this {
+    Utils.addMissingFields(this.data.detalles, Object.values(AlpinaBodyFields));
+    Utils.parseAndFixNumber(this.data.detalles, [
+      AlpinaBodyFields.VALOR_VENTA_ITEM,
+      AlpinaBodyFields.UNIDADES_VENDIDAS,
+    ]);
     return this;
   }
 

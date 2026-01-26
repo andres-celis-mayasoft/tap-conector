@@ -10,7 +10,15 @@ import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { InvoiceService } from 'src/modules/invoice/invoice.service';
-import { isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_IBUA, NULL_NUMBER, NULL_STRING, toISO8601 } from '../common';
+import {
+  isNullOrIllegible,
+  NULL_DATE,
+  NULL_FLOAT,
+  NULL_IBUA,
+  NULL_NUMBER,
+  NULL_STRING,
+  toISO8601,
+} from '../common';
 import { Prisma } from '@generated/client-meiko';
 
 type HeaderField = InfocargueInvoiceSchema['encabezado'][number];
@@ -40,6 +48,15 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
         continue;
       }
     }
+
+    Utils.addMissingFields(
+      this.data.detalles,
+      Object.values(InfocargueBodyFields),
+    );
+    Utils.parseAndFixNumber(this.data.detalles, [
+      InfocargueBodyFields.VALOR_VENTA_ITEM,
+      InfocargueBodyFields.PACKS_CON_UNIDADES,
+    ]);
     return this;
   }
 
@@ -236,47 +253,58 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
     return Number(field?.text || 0);
   }
 
-    format(): Prisma.ResultCreateManyInput[] {
-      const output: Prisma.ResultCreateManyInput[] = [];
-  
-      const {
-        fecha_factura,
-        razon_social,
-        valor_total_factura,
-      } = Utils.getFields<InfocargueHeaderFields>(this.data.encabezado);
-  
-      const products = Utils.groupFields(this.data.detalles);
-  
-      products.forEach((product, index) => {
-        const {
-          item_descripcion_producto,
-          unidades_embalaje,
-          valor_venta_item,
-          packs_con_unidades,
-        } = Utils.getFields<InfocargueBodyFields>(product);
+  format(): Prisma.ResultCreateManyInput[] {
+    const output: Prisma.ResultCreateManyInput[] = [];
 
-        const { packsSold , unitsSold } = Utils.parsePackConUnidades(packs_con_unidades.text)
-  
-        output.push({
-          invoiceId: this.data.facturaId,
-          rowNumber: index + 1,
-          surveyRecordId: Number(this.data.surveyRecordId),
-          businessName: isNullOrIllegible(razon_social.text) ? NULL_STRING : razon_social.text ,
-          description: isNullOrIllegible(item_descripcion_producto.text) ? NULL_STRING : item_descripcion_producto.text,
-          invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : toISO8601(fecha_factura.text) ,
-          invoiceNumber: NULL_STRING,
-          packagingType: NULL_STRING ,
-          packagingUnit: isNullOrIllegible(unidades_embalaje.text) ?  NULL_FLOAT : unidades_embalaje.text,
-          packsSold: packsSold,
-          unitsSold: unitsSold,
-          productCode:  NULL_STRING  ,
-          saleValue: isNullOrIllegible(valor_venta_item.text) ?  NULL_NUMBER : valor_venta_item.text,
-          totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
-          totalInvoiceWithoutVAT:   NULL_NUMBER ,
-          valueIbuaAndOthers: NULL_IBUA,
-        });
+    const { fecha_factura, razon_social, valor_total_factura } =
+      Utils.getFields<InfocargueHeaderFields>(this.data.encabezado);
+
+    const products = Utils.groupFields(this.data.detalles);
+
+    products.forEach((product, index) => {
+      const {
+        item_descripcion_producto,
+        unidades_embalaje,
+        valor_venta_item,
+        packs_con_unidades,
+      } = Utils.getFields<InfocargueBodyFields>(product);
+
+      const { packsSold, unitsSold } = Utils.parsePackConUnidades(
+        packs_con_unidades.text,
+      );
+
+      output.push({
+        invoiceId: this.data.facturaId,
+        rowNumber: index + 1,
+        surveyRecordId: Number(this.data.surveyRecordId),
+        businessName: isNullOrIllegible(razon_social.text)
+          ? NULL_STRING
+          : razon_social.text,
+        description: isNullOrIllegible(item_descripcion_producto.text)
+          ? NULL_STRING
+          : item_descripcion_producto.text,
+        invoiceDate: isNullOrIllegible(fecha_factura.text)
+          ? NULL_DATE
+          : toISO8601(fecha_factura.text),
+        invoiceNumber: NULL_STRING,
+        packagingType: NULL_STRING,
+        packagingUnit: isNullOrIllegible(unidades_embalaje.text)
+          ? NULL_FLOAT
+          : unidades_embalaje.text,
+        packsSold: packsSold,
+        unitsSold: unitsSold,
+        productCode: NULL_STRING,
+        saleValue: isNullOrIllegible(valor_venta_item.text)
+          ? NULL_NUMBER
+          : valor_venta_item.text,
+        totalInvoice: isNullOrIllegible(valor_total_factura.text)
+          ? NULL_NUMBER
+          : valor_total_factura.text,
+        totalInvoiceWithoutVAT: NULL_NUMBER,
+        valueIbuaAndOthers: NULL_IBUA,
       });
-  
-      return output;
-    }
+    });
+
+    return output;
+  }
 }

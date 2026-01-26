@@ -10,7 +10,16 @@ import { RAZON_SOCIAL } from '../../enums/fields';
 import { Document } from '../base/document';
 import { MeikoService } from 'src/modules/meiko/meiko.service';
 import { InvoiceService } from 'src/modules/invoice/invoice.service';
-import { EMBALAJES, isNullOrIllegible, NULL_DATE, NULL_FLOAT, NULL_IBUA, NULL_NUMBER, NULL_STRING, toISO8601 } from '../common';
+import {
+  EMBALAJES,
+  isNullOrIllegible,
+  NULL_DATE,
+  NULL_FLOAT,
+  NULL_IBUA,
+  NULL_NUMBER,
+  NULL_STRING,
+  toISO8601,
+} from '../common';
 import { Prisma } from '@generated/client-meiko';
 
 type HeaderField = CokeInvoiceSchema['encabezado'][number];
@@ -40,13 +49,21 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
         const valorIBUA = product.find(
           (field) => field.type == CokeBodyFields.VALOR_IBUA_Y_OTROS,
         );
-        if(valorIBUA) valorIBUA.text = '';
-        
+        if (valorIBUA) valorIBUA.text = '';
+
         if (valorField)
           valorField.text = String(this.toNumber(valorField) * -1);
         continue;
       }
     }
+    Utils.addMissingFields(this.data.detalles, Object.values(CokeBodyFields));
+    Utils.parseAndFixNumber(this.data.detalles, [
+      CokeBodyFields.VALOR_VENTA_ITEM,
+      CokeBodyFields.UNIDADES_VENDIDAS,
+      CokeBodyFields.UNIDADES_EMBALAJE,
+      CokeBodyFields.VALOR_UNITARIO_ITEM,
+      CokeBodyFields.VALOR_IBUA_Y_OTROS,
+    ]);
     return this;
   }
 
@@ -148,13 +165,13 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
       }
 
       let productDB;
-        
+
       productDB = await this.meikoService.findByDescription(
         razon_social?.text || '',
         descripcion?.text.slice(1) || '',
       );
-      
-      if(!productDB) {
+
+      if (!productDB) {
         productDB = await this.meikoService.findByDescription(
           razon_social?.text || '',
           descripcion?.text || '',
@@ -265,7 +282,7 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
 
   private guessConfidence(): void {
     Utils.guessConfidence(this.data.encabezado, COKE_THRESOLDS);
-    Utils.guessConfidence(this.data.detalles,COKE_THRESOLDS);
+    Utils.guessConfidence(this.data.detalles, COKE_THRESOLDS);
   }
 
   private isNumeric(value: string | undefined): boolean {
@@ -277,51 +294,68 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
     return Number(field?.text || 0);
   }
 
-    format(): Prisma.ResultCreateManyInput[] {
-          const output: Prisma.ResultCreateManyInput[] = [];
-      
-          const {
-            fecha_factura,
-            razon_social,
-            valor_total_factura,
-            numero_factura,
-          } = Utils.getFields<CokeHeaderFields>(this.data.encabezado);
-      
-          const products = Utils.groupFields(this.data.detalles);
-      
-          products.forEach((product, index) => {
-            const {
-              item_descripcion_producto,
-              unidades_embalaje,
-              unidades_vendidas, 
-              codigo_producto,
-              valor_ibua_y_otros,
-              tipo_embalaje,
-              valor_venta_item,
-              valor_unitario_item,
-            } = Utils.getFields<CokeBodyFields>(product);
-            
-      
-          output.push({
-                  invoiceId: this.data.facturaId,
-                  rowNumber: index + 1,
-                  surveyRecordId: Number(this.data.surveyRecordId),
-                  businessName: isNullOrIllegible(razon_social.text) ? NULL_STRING : razon_social.text ,
-                  description: isNullOrIllegible(item_descripcion_producto.text) ? NULL_STRING : item_descripcion_producto.text,
-                  invoiceDate: isNullOrIllegible(fecha_factura.text) ?  NULL_DATE : toISO8601(fecha_factura.text) ,
-                  invoiceNumber: isNullOrIllegible(numero_factura.text) ? NULL_STRING : numero_factura.text,
-                  packagingType: isNullOrIllegible(tipo_embalaje.text) ? NULL_STRING : tipo_embalaje.text ,
-                  packagingUnit: isNullOrIllegible(unidades_embalaje.text) ?  NULL_FLOAT : unidades_embalaje.text,
-                  packsSold: NULL_FLOAT,
-                  unitsSold: isNullOrIllegible(unidades_vendidas.text) ?  NULL_FLOAT : unidades_vendidas.text,
-                  productCode: isNullOrIllegible(codigo_producto.text) ? NULL_STRING : codigo_producto.text ,
-                  saleValue: isNullOrIllegible(valor_venta_item.text) ?  NULL_NUMBER : valor_venta_item.text,
-                  totalInvoice: isNullOrIllegible(valor_total_factura.text) ?  NULL_NUMBER : valor_total_factura.text,
-                  totalInvoiceWithoutVAT: NULL_NUMBER,
-                  valueIbuaAndOthers: isNullOrIllegible(valor_ibua_y_otros.text) ?  NULL_IBUA : Number(valor_ibua_y_otros.text),
-                });
-              });
-      
-          return output;
-        }
+  format(): Prisma.ResultCreateManyInput[] {
+    const output: Prisma.ResultCreateManyInput[] = [];
+
+    const { fecha_factura, razon_social, valor_total_factura, numero_factura } =
+      Utils.getFields<CokeHeaderFields>(this.data.encabezado);
+
+    const products = Utils.groupFields(this.data.detalles);
+
+    products.forEach((product, index) => {
+      const {
+        item_descripcion_producto,
+        unidades_embalaje,
+        unidades_vendidas,
+        codigo_producto,
+        valor_ibua_y_otros,
+        tipo_embalaje,
+        valor_venta_item,
+        valor_unitario_item,
+      } = Utils.getFields<CokeBodyFields>(product);
+
+      output.push({
+        invoiceId: this.data.facturaId,
+        rowNumber: index + 1,
+        surveyRecordId: Number(this.data.surveyRecordId),
+        businessName: isNullOrIllegible(razon_social.text)
+          ? NULL_STRING
+          : razon_social.text,
+        description: isNullOrIllegible(item_descripcion_producto.text)
+          ? NULL_STRING
+          : item_descripcion_producto.text,
+        invoiceDate: isNullOrIllegible(fecha_factura.text)
+          ? NULL_DATE
+          : toISO8601(fecha_factura.text),
+        invoiceNumber: isNullOrIllegible(numero_factura.text)
+          ? NULL_STRING
+          : numero_factura.text,
+        packagingType: isNullOrIllegible(tipo_embalaje.text)
+          ? NULL_STRING
+          : tipo_embalaje.text,
+        packagingUnit: isNullOrIllegible(unidades_embalaje.text)
+          ? NULL_FLOAT
+          : unidades_embalaje.text,
+        packsSold: NULL_FLOAT,
+        unitsSold: isNullOrIllegible(unidades_vendidas.text)
+          ? NULL_FLOAT
+          : unidades_vendidas.text,
+        productCode: isNullOrIllegible(codigo_producto.text)
+          ? NULL_STRING
+          : codigo_producto.text,
+        saleValue: isNullOrIllegible(valor_venta_item.text)
+          ? NULL_NUMBER
+          : valor_venta_item.text,
+        totalInvoice: isNullOrIllegible(valor_total_factura.text)
+          ? NULL_NUMBER
+          : valor_total_factura.text,
+        totalInvoiceWithoutVAT: NULL_NUMBER,
+        valueIbuaAndOthers: isNullOrIllegible(valor_ibua_y_otros?.text)
+          ? NULL_IBUA
+          : Number(valor_ibua_y_otros.text),
+      });
+    });
+
+    return output;
+  }
 }

@@ -36,6 +36,12 @@ export class KoppsInvoice extends Document<KoppsInvoiceSchema> {
   }
 
   normalize(): this {
+    Utils.addMissingFields(this.data.detalles, Object.values(KoppsBodyFields));
+    Utils.parseAndFixNumber(this.data.detalles, [
+      KoppsBodyFields.VALOR_VENTA_ITEM,
+      KoppsBodyFields.PACKS_VENDIDOS,
+      KoppsBodyFields.VALOR_UNITARIO_ITEM,
+    ]);
     return this;
   }
 

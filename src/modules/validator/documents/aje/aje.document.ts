@@ -33,6 +33,16 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
   }
 
   normalize(): this {
+    Utils.addMissingFields(this.data.detalles, Object.values(AjeBodyFields));
+    Utils.parseAndFixNumber(this.data.detalles, [
+      AjeBodyFields.UNIDADES_VENDIDAS,
+      AjeBodyFields.PACKS_VENDIDOS,
+      AjeBodyFields.UNIDADES_EMBALAJE,
+      AjeBodyFields.VALOR_VENTA_ITEM,
+      AjeBodyFields.PRECIO_ANTES_IVA,
+      AjeBodyFields.VALOR_DESCUENTO_ITEM,
+      AjeBodyFields.VALOR_IVA,
+    ]);
     return this;
   }
 

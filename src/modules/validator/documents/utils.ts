@@ -188,4 +188,108 @@ export class Utils {
     let diff = Math.abs(currentMonth - month);
     return diff < 2;
   }
+
+  static addMissingFields(rows: any[], requiredFields: string[]): any[] {
+    // Get all unique row numbers from the input
+    const rowNumbers = [...new Set(rows.map((r) => r.row))];
+
+    // For each row number, check if all required fields exist
+    for (const rowNum of rowNumbers) {
+      const fieldsInRow = rows.filter((r) => r.row === rowNum);
+      const typesInRow = fieldsInRow.map((r) => r.type);
+
+      for (const fieldType of requiredFields) {
+        if (!typesInRow.includes(fieldType)) {
+          rows.push({
+            type: fieldType,
+            text: '',
+            confidence: 0,
+            row: rowNum,
+          });
+        }
+      }
+    }
+
+    return rows;
+  }
+
+  static parseAndFixNumber(
+    rows: OCR_Field<string>[],
+    fieldsToFix: string[],
+  ): void {
+    for (const row of rows) {
+      if (!fieldsToFix.includes(row.type)) {
+        continue;
+      }
+
+      const value = row.text;
+
+      if (!value || value.trim() === '') {
+        row.text = '';
+        row.confidence = 0;
+        continue;
+      }
+
+      const trimmed = value.trim();
+      const directParse = Number(trimmed);
+
+      if (!isNaN(directParse)) {
+        row.text = trimmed;
+        continue;
+      }
+
+      const fixed = this.fixMalformedNumber(trimmed);
+      const fixedParse = Number(fixed);
+
+      if (!isNaN(fixedParse)) {
+        row.text = fixed;
+        continue;
+      }
+
+      row.text = '';
+      row.confidence = 0;
+    }
+  }
+
+  /**
+   * Corrige formatos numéricos mal formados:
+   * - Si tiene punto Y coma: la coma es separador de miles → eliminar comas
+   * - Si solo tiene coma:
+   *   - 1-2 dígitos después: coma es decimal → cambiar por punto
+   *   - 3+ dígitos después: coma es separador de miles → eliminar coma
+   */
+  static fixMalformedNumber(value: string): string {
+    const hasComma = value.includes(',');
+    const hasDot = value.includes('.');
+
+    if (!hasComma) {
+      return value;
+    }
+
+    if (hasComma && hasDot) {
+      return value.replace(/,/g, '');
+    }
+
+    const commaMatch = value.match(/^-?[\d,]*,(\d+)$/);
+
+    if (commaMatch) {
+      const digitsAfterComma = commaMatch[1].length;
+
+      // 1-2 dígitos después de la coma: es decimal (ej: "1,00", "1,5")
+      if (digitsAfterComma <= 2) {
+        return value.replace(',', '.');
+      }
+
+      // 3+ dígitos después de la coma: es separador de miles (ej: "35,000")
+      return value.replace(/,/g, '');
+    }
+
+    // Si hay múltiples comas (ej: "1,000,000"), son separadores de miles
+    if ((value.match(/,/g) || []).length > 1) {
+      return value.replace(/,/g, '');
+    }
+
+    // Fallback: reemplazar coma por punto
+    return value.replace(',', '.');
+  }
 }

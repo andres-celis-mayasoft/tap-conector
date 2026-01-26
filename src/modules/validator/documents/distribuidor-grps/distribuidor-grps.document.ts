@@ -28,6 +28,14 @@ export class DistribuidorGrpsInvoice extends Document<DistribuidorGrpsInvoiceSch
   }
 
   normalize(): this {
+    Utils.addMissingFields(
+      this.data.detalles,
+      Object.values(DistribuidorGrpsBodyFields),
+    );
+    Utils.parseAndFixNumber(this.data.detalles, [
+      DistribuidorGrpsBodyFields.VALOR_VENTA_ITEM,
+      DistribuidorGrpsBodyFields.UNIDADES_VENDIDAS,
+    ]);
     return this;
   }
 

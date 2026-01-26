@@ -36,6 +36,11 @@ export class TolimaInvoice extends Document<TolimaInvoiceSchema> {
   }
 
   normalize(): this {
+    Utils.addMissingFields(this.data.detalles, Object.values(TolimaBodyFields));
+    Utils.parseAndFixNumber(this.data.detalles, [
+      TolimaBodyFields.VALOR_VENTA_ITEM,
+      TolimaBodyFields.UNIDADES_VENDIDAS,
+    ]);
     return this;
   }
 
@@ -112,8 +117,8 @@ export class TolimaInvoice extends Document<TolimaInvoiceSchema> {
         const { valor_venta_item } = Utils.getFields<TolimaBodyFields>(product);
         valor_venta_item.confidence = 1;
       }
-    }else {
-      valor_total_factura.error = `Valor total factura no coincide : Expected: ${valor_total_factura.text}. Calculated : ${total}`
+    } else {
+      valor_total_factura.error = `Valor total factura no coincide : Expected: ${valor_total_factura.text}. Calculated : ${total}`;
     }
   }
 
@@ -132,7 +137,7 @@ export class TolimaInvoice extends Document<TolimaInvoiceSchema> {
       } = Utils.getFields<TolimaBodyFields>(product);
       let valorVentaCalculado = 0;
       if (cajas.text === '0') {
-        if(unidades_embalaje.text === "") continue;
+        if (unidades_embalaje.text === '') continue;
         unidadesCalculadas =
           this.toNumber(unidades_embalaje) / this.toNumber(unidades_vendidas);
 
