@@ -300,23 +300,6 @@ export class ExtractionService {
               result,
             } = document.get();
 
-            if (!isValid) {
-              await this.meikoService.createStatus({
-                digitalizationStatusId: InvoiceStatus.FECHA_NO_VALIDA,
-                invoiceId: doc.documentId,
-              });
-              await this.invoiceService.updateDocument({
-                id: doc.id,
-                path: imagePath,
-                errors: 'FECHA OBSOLETA',
-                deliveryStatus: DeliveryStatus.FECHA_NO_VALIDA,
-                extracted: false,
-                validated: false,
-                mayaDocumentJSON: JSON.stringify(ocrResult.data),
-                status: 'DELIVERED',
-              });
-              return;
-            }
 
             if (processedData.detalles.length === 0) {
               await this.meikoService.createStatus({
