@@ -23,7 +23,6 @@ import {
 } from '../validator/documents/base/document.factory';
 import { PrismaMeikoService } from 'src/database/services/prisma-meiko.service';
 import { InvoiceUtils } from './utils/Invoice.utils';
-import { Fields } from '../validator/enums/fields';
 import { ExcludedService } from '../excluded/excluded.service';
 import { ProductService } from '../product/product.service';
 
@@ -485,7 +484,7 @@ export class InvoiceService {
         .filter((field) => field.type === 'ENCABEZADO')
         .map((field) => ({
           type: field.name,
-          text: field.corrected_value || field.value || '',
+          text: field.corrected_value || '',
           confidence: field.confidence ? Number(field.confidence) : 0,
         }));
 
@@ -493,7 +492,7 @@ export class InvoiceService {
         .filter((field) => field.type === 'DETALLE')
         .map((field) => ({
           type: field.name,
-          text: field.corrected_value || field.value || '',
+          text: field.corrected_value || '',
           confidence: field.confidence ? Number(field.confidence) : 0,
           row: field.row || 0,
         }));
