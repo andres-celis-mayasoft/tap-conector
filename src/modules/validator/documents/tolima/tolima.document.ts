@@ -41,6 +41,10 @@ export class TolimaInvoice extends Document<TolimaInvoiceSchema> {
       TolimaBodyFields.VALOR_VENTA_ITEM,
       TolimaBodyFields.UNIDADES_VENDIDAS,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      TolimaHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
+    
     return this;
   }
 

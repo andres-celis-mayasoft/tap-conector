@@ -47,6 +47,11 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
       TiquetePosPostobonBodyFields.VALOR_SUBTOTAL_ITEM,
       TiquetePosPostobonBodyFields.VALOR_VENTA_ITEM_TOTAL_NC,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      TiquetePosPostobonHeaderFields.TOTAL_FACTURA_SIN_IVA,
+      TiquetePosPostobonHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
+    
     return this;
   }
 

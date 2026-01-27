@@ -42,6 +42,11 @@ export class KoppsInvoice extends Document<KoppsInvoiceSchema> {
       KoppsBodyFields.PACKS_VENDIDOS,
       KoppsBodyFields.VALOR_UNITARIO_ITEM,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      KoppsHeaderFields.TOTAL_FACTURA_SIN_IVA,
+      KoppsHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
+    
     return this;
   }
 

@@ -41,6 +41,10 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
       PostobonBodyFields.VALOR_VENTA_ITEM,
       PostobonBodyFields.PACKS_VENDIDOS,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      PostobonHeaderFields.TOTAL_FACTURA_SIN_IVA,
+      PostobonHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
     return this;
   }
 

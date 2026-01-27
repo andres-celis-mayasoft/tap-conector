@@ -17,6 +17,7 @@ import {
   toISO8601,
 } from '../common';
 import { Prisma } from '@generated/client-meiko';
+import { PostobonHeaderFields } from '../postobon';
 
 type HeaderField = AjeInvoiceSchema['encabezado'][number];
 type BodyField = AjeInvoiceSchema['detalles'][number];
@@ -42,6 +43,10 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
       AjeBodyFields.PRECIO_ANTES_IVA,
       AjeBodyFields.VALOR_DESCUENTO_ITEM,
       AjeBodyFields.VALOR_IVA,
+    ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      AjeHeaderFields.TOTAL_FACTURA_SIN_IVA,
+      AjeHeaderFields.VALOR_TOTAL_FACTURA,
     ]);
     return this;
   }

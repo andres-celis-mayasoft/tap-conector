@@ -57,6 +57,10 @@ export class InfocargueInvoice extends Document<InfocargueInvoiceSchema> {
       InfocargueBodyFields.VALOR_VENTA_ITEM,
       InfocargueBodyFields.PACKS_CON_UNIDADES,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      InfocargueHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
+    
     return this;
   }
 

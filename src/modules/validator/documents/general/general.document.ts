@@ -26,6 +26,16 @@ export class GeneralInvoice extends Document<GeneralInvoiceSchema> {
   }
 
   normalize(): this {
+    Utils.parseAndFixNumber(this.data.detalles, [
+      GeneralBodyFields.VALOR_VENTA_ITEM,
+      GeneralBodyFields.PACKS_VENDIDOS,
+      GeneralBodyFields.UNIDADES_VENDIDAS,
+    ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      GeneralHeaderFields.TOTAL_FACTURA_SIN_IVA,
+      GeneralHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
+
     return this;
   }
 

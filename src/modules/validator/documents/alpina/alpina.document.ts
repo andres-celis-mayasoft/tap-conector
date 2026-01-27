@@ -30,6 +30,10 @@ export class AlpinaInvoice extends Document<AlpinaInvoiceSchema> {
       AlpinaBodyFields.VALOR_VENTA_ITEM,
       AlpinaBodyFields.UNIDADES_VENDIDAS,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      AlpinaHeaderFields.TOTAL_FACTURA_SIN_IVA,
+      AlpinaHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
     return this;
   }
 

@@ -42,6 +42,10 @@ export class FemsaInvoice extends Document<FemsaInvoiceSchema> {
       FemsaBodyFields.VALOR_UNITARIO_ITEM,
       FemsaBodyFields.VALOR_IBUA_Y_OTROS,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      FemsaHeaderFields.TOTAL_FACTURA_SIN_IVA,
+      FemsaHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
     return this;
   }
 

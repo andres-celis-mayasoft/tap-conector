@@ -67,6 +67,9 @@ export class EntregaCokeInvoice extends Document<EntregaCokeInvoiceSchema> {
       EntregaCokeBodyFields.VALOR_UNITARIO_ITEM,
       EntregaCokeBodyFields.VALOR_IBUA_Y_OTROS,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      EntregaCokeHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
     return this;
   }
 

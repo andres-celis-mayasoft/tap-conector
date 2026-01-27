@@ -54,6 +54,10 @@ export class QualaInvoice extends Document<QualaInvoiceSchema> {
       QualaBodyFields.UNIDADES_VENDIDAS,
       QualaBodyFields.VALOR_UNITARIO_ITEM,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      QualaHeaderFields.TOTAL_FACTURA_SIN_IVA,
+      QualaHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
     return this;
   }
 

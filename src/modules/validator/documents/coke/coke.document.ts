@@ -64,6 +64,9 @@ export class CokeInvoice extends Document<CokeInvoiceSchema> {
       CokeBodyFields.VALOR_UNITARIO_ITEM,
       CokeBodyFields.VALOR_IBUA_Y_OTROS,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      CokeHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
     return this;
   }
 

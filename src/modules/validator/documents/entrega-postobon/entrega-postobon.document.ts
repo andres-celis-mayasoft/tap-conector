@@ -28,7 +28,6 @@ export class EntregaPostobonInvoice extends Document<EntregaPostobonInvoiceSchem
   }
 
   normalize(): this {
-    return this;
     Utils.addMissingFields(
       this.data.detalles,
       Object.values(EntregaPostobonBodyFields),
@@ -37,6 +36,10 @@ export class EntregaPostobonInvoice extends Document<EntregaPostobonInvoiceSchem
       EntregaPostobonBodyFields.VALOR_VENTA_ITEM,
       EntregaPostobonBodyFields.PACKS_VENDIDOS,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      EntregaPostobonHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
+    return this;
   }
 
   validate(): void {}

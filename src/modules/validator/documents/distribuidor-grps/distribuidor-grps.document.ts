@@ -36,6 +36,10 @@ export class DistribuidorGrpsInvoice extends Document<DistribuidorGrpsInvoiceSch
       DistribuidorGrpsBodyFields.VALOR_VENTA_ITEM,
       DistribuidorGrpsBodyFields.UNIDADES_VENDIDAS,
     ]);
+    Utils.parseAndFixNumber(this.data.encabezado, [
+      DistribuidorGrpsHeaderFields.TOTAL_FACTURA_SIN_IVA,
+      DistribuidorGrpsHeaderFields.VALOR_TOTAL_FACTURA,
+    ]);
     return this;
   }
 
