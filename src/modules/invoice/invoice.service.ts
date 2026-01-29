@@ -1436,6 +1436,90 @@ export class InvoiceService {
    * @param targetDir - Directory where invoice images are stored
    * @returns Number of files deleted
    */
+  /**
+   * Get user statistics for the current fortnight period
+   * Returns count of processed documents and modified/created products
+   * @param userId - User ID to get statistics for
+   * @returns Statistics object with documents and products counts
+   */
+  async getUserStats(userId: number): Promise<{
+    userId: number;
+    periodStart: Date;
+    periodEnd: Date;
+    documentsProcessed: number;
+    productsModified: number;
+  }> {
+    try {
+      this.logger.log(`📊 Getting stats for user ${userId}`);
+
+      // Calculate current fortnight period
+      const now = DateTime.now();
+      const day = now.day;
+      let periodStart: DateTime;
+      let periodEnd: DateTime;
+
+      if (day <= 15) {
+        // First fortnight: 1st to 15th
+        periodStart = now.startOf('month');
+        periodEnd = now.set({ day: 15 }).endOf('day');
+      } else {
+        // Second fortnight: 16th to end of month
+        periodStart = now.set({ day: 16 }).startOf('day');
+        periodEnd = now.endOf('month');
+      }
+
+      const startDate = periodStart.toJSDate();
+      const endDate = periodEnd.toJSDate();
+
+      // Count documents processed by user in this period
+      const documentsProcessed = await this.prisma.document.count({
+        where: {
+          assignedUserId: userId,
+          deliveryStatus: 'PROCESADO',
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      });
+
+      // Count distinct products modified by user (rows with corrected_value different from value)
+      const productsResult = await this.prisma.$queryRaw<
+        [{ total_products: bigint }]
+      >`
+        SELECT COUNT(DISTINCT (f.document_id, f.row)) AS total_products
+        FROM "document" d
+        JOIN "field" f ON d.document_id = f.document_id
+        WHERE d.assigned_user_id = ${userId}
+          AND d.created_at >= ${startDate}
+          AND d.created_at <= ${endDate}
+          AND f.corrected_value IS DISTINCT FROM f.value
+          AND f.row IS NOT NULL
+          AND d.delivery_status = 'PROCESADO'
+      `;
+
+      const productsModified = Number(productsResult[0]?.total_products ?? 0);
+
+      this.logger.log(
+        `✅ Stats for user ${userId}: ${documentsProcessed} documents, ${productsModified} products modified`,
+      );
+
+      return {
+        userId,
+        periodStart: startDate,
+        periodEnd: endDate,
+        documentsProcessed,
+        productsModified,
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Error getting stats for user ${userId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
   async deleteOldImages(targetDir: string): Promise<number> {
     try {
       this.logger.log('🗑️ Checking for old images to delete...');
