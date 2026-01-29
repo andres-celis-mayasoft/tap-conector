@@ -49,9 +49,9 @@ export class SaveInvoiceDto {
   @IsString()
   tipoFactura: string;
 
-    
+  @IsOptional() 
   @IsString()
-  photoType?: string;
+  photoType?: string | null;
 }
 
 export class SaveInvoiceResponseDto {
@@ -65,9 +65,9 @@ export class MarkInvoiceStatusDto {
   @IsInt()
   invoiceId: number;
 
-    
+  @IsOptional() 
   @IsString()
-  photoType?: string;
+  photoType?: string | null;
 }
 
 export class MarkInvoiceStatusResponseDto {
