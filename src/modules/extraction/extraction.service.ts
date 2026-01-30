@@ -54,6 +54,11 @@ export class ExtractionService {
 
   // idea, que sea una función recursiva, si no encuentra datos, hace un await de 1 minuto
   async handleExtractionCron(ids?: number[]) {
+
+    if(process.env.IS_PRODUCTION !== 'true') {
+      this.logger.warn('⚠️ Extraction cron job skipped - Not in production environment');
+      return;
+    }
     this.logger.log('🚀 Starting extraction cron job');
 
     try {

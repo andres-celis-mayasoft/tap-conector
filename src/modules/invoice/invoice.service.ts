@@ -25,6 +25,7 @@ import { PrismaMeikoService } from 'src/database/services/prisma-meiko.service';
 import { InvoiceUtils } from './utils/Invoice.utils';
 import { ExcludedService } from '../excluded/excluded.service';
 import { ProductService } from '../product/product.service';
+import { StringUtils } from 'src/utils/string.utils';
 
 @Injectable()
 export class InvoiceService {
@@ -914,7 +915,7 @@ export class InvoiceService {
 
       const existingFields = await this.prisma.field.findMany({
         where: { documentId: document.documentId },
-        select: { id: true },
+        select: { id: true, corrected_value: true },
       });
 
       const existingIds = existingFields.map((f) => f.id);
@@ -930,14 +931,21 @@ export class InvoiceService {
         });
       }
 
+      const existingFieldsMap = new Map(
+        existingFields.map((f) => [f.id, f.corrected_value]),
+      );
+
       // Process field updates and creations
       for (const field of fields) {
         if (field.id) {
           // Update existing field using its ID
+          const currentValue = existingFieldsMap.get(field.id);
+          const hasSignificantChange = StringUtils.hasSignificantChange(currentValue, field.text);
+
           await this.prisma.field.update({
             where: { id: field.id },
             data: {
-              corrected_value: field.text,
+              corrected_value: hasSignificantChange ? field.text : currentValue,
               validated: true,
             },
           });
