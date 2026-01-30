@@ -9,7 +9,12 @@ if [ -z "$ENV" ]; then
   exit 1
 fi
 
-if [ "$ENV" != "prod" ] && [ "$ENV" != "test" ]; then
+
+if [ "$ENV" == "prod" ]; then
+  BRANCH="main"  
+elif [ "$ENV" == "test" ]; then
+  BRANCH="develop"
+else
   echo "❌ Entorno inválido. Usa: prod | test"
   exit 1
 fi
@@ -17,21 +22,27 @@ fi
 COMPOSE_FILE="docker-compose.$ENV.yml"
 ENV_FILE=".env.$ENV"
 PROJECT_NAME="tap-conector-$ENV"
-SERVICE_NAME="backend"
 
-echo "🚀 Deploy backend ($ENV)"
-echo "📦 Compose: $COMPOSE_FILE"
+echo "--------------------------------"
+echo "🌐 Entorno: $ENV | Rama: $BRANCH"
+echo "--------------------------------"
+
+echo "📥 Actualizando código desde Git..."
+git fetch origin 
+
+if [ "$(git rev-parse --abbrev-ref HEAD)" != "$BRANCH" ]; then
+  echo "🔀 Cambiando a la rama $BRANCH..."
+  git checkout $BRANCH
+fi
+
+git pull origin $BRANCH
+
+echo "🚀 Iniciando despliegue de contenedores..."
 
 docker compose \
-  -p $PROJECT_NAME \
-  -f $COMPOSE_FILE \
-  --env-file $ENV_FILE \
-  build
+  -p "$PROJECT_NAME" \
+  -f "$COMPOSE_FILE" \
+  --env-file "$ENV_FILE" \
+  up -d --build --remove-orphans
 
-docker compose \
-  -p $PROJECT_NAME \
-  -f $COMPOSE_FILE \
-  --env-file $ENV_FILE \
-  up -d
-
-echo "✅ Deploy $ENV completado"
+echo "✅ Deploy $ENV completado con éxito"
