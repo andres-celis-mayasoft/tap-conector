@@ -909,9 +909,7 @@ export class InvoiceService {
 
       const fields = [...headers, ...detalles];
 
-      const incomingIds = fields
-        .filter((f) => f.id)
-        .map((f) => f.id);
+      const incomingIds = fields.filter((f) => f.id).map((f) => f.id);
 
       const existingFields = await this.prisma.field.findMany({
         where: { documentId: document.documentId },
@@ -940,12 +938,15 @@ export class InvoiceService {
         if (field.id) {
           // Update existing field using its ID
           const currentValue = existingFieldsMap.get(field.id);
-          const hasSignificantChange = StringUtils.hasSignificantChange(currentValue, field.text);
+          const hasSignificantChange = StringUtils.hasSignificantChange(
+            currentValue,
+            field.text,
+          );
 
           await this.prisma.field.update({
             where: { id: field.id },
             data: {
-              corrected_value: hasSignificantChange ? field.text : currentValue,
+              corrected_value: hasSignificantChange ? currentValue : field.text,
               validated: true,
             },
           });
@@ -1574,9 +1575,7 @@ export class InvoiceService {
             this.logger.log(`🗑️ Deleted old image: ${file}`);
           }
         } catch (error) {
-          this.logger.error(
-            `❌ Error deleting file ${file}: ${error.message}`,
-          );
+          this.logger.error(`❌ Error deleting file ${file}: ${error.message}`);
           // Continue with next file even if one fails
         }
       }
