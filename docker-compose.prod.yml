@@ -9,11 +9,11 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "${DB_PORT}:5432"
+      - '${DB_PORT}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,21 +27,21 @@ services:
     container_name: tap-conector-app
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3000
-      DB_USER : ${DB_USER:-postgres}
+      PORT: ${PORT:-3000}
+      DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_NAME : ${DB_NAME:-tap_main}
-      DB_PORT : ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-tap_main}
+      DB_PORT: ${DB_PORT:-5432}
       DATABASE_URL: ${DATABASE_URL}
-      DATABASE_MEIKO_URL : ${DATABASE_MEIKO_URL}
+      DATABASE_MEIKO_URL: ${DATABASE_MEIKO_URL}
       INVOICE_PROCESSING_THREADS: ${INVOICE_PROCESSING_THREADS:-4}
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-here}
       IS_PRODUCTION: ${IS_PRODUCTION:-false}
-      JWT_EXPIRES_IN : ${JWT_EXPIRES_IN:-1d}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
       OCR_API_URL: ${OCR_API_URL}
-      OCR_API_KEY : ${OCR_API_KEY}
+      OCR_API_KEY: ${OCR_API_KEY}
     ports:
-      - "3000:3000"
+      - '${PORT:-3000}'
     depends_on:
       postgres:
         condition: service_healthy
