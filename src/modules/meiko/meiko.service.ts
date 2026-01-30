@@ -132,35 +132,14 @@ export class MeikoService {
     return this.prismaMeiko.result.findFirst(args);
   }
 
-  /**
-   * Create a MeikoResult entry in the main database
-   *
-   * @param data MeikoResult data to create
-   * @returns Created MeikoResult record
-   */
-  async createFields(data: PrismaMeiko.ResultCreateInput) {
-    try {
-      this.logger.log(`Creating MeikoResult entry`);
-      this.logger.log('Row :', data.rowNumber);
-      this.logger.log('idFactura :', data.invoice.connect?.id);
-
-      const result = await this.prismaMeiko.result.create({
-        data,
-      });
-
-      this.logger.log(`MeikoResult created successfully with id: ${result.id}`);
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `Error creating MeikoResult: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
   async createManyFields(data: PrismaMeiko.ResultCreateManyInput[]) {
     try {
+
+      if(process.env.IS_PRODUCTION === 'false'){
+        this.logger.log('Skipping createManyFields in non-production environment');
+        return { count: data.length };
+      }
+
       const result = await this.prismaMeiko.result.createMany({
         data,
       });
@@ -186,6 +165,12 @@ export class MeikoService {
    */
   async createStatus(data: Prisma.EstadoDigitalizacionFacturaCreateInput) {
     try {
+
+      if(process.env.IS_PRODUCTION === 'false'){
+        this.logger.log('Skipping createStatus in non-production environment');
+        return;
+      }
+
       this.logger.log(`Creating EstadoDigitalizacionFactura entry`);
 
       const estado = await this.prismaMeiko.estadoDigitalizacionFactura.upsert({
