@@ -3,7 +3,6 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: tap-conector-postgres
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -24,7 +23,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tap-conector-app
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3000}
