@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: idp-postgres-test 
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - '${DB_PORT}:5432'
+    volumes:
+      - postgres_data_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meiko-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: idp-backend-test
+    environment:
+      NODE_ENV: test
+      PORT: ${PORT:-3000}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-tap_test}
+      DB_PORT: ${DB_PORT:-5432}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_MEIKO_URL: ${DATABASE_MEIKO_URL}
+      INVOICE_PROCESSING_THREADS: 2
+      JWT_SECRET: ${JWT_SECRET:-test-secret}
+      IS_PRODUCTION: false
+      JWT_EXPIRES_IN: 1h
+      OCR_API_URL: ${OCR_API_URL}
+      OCR_API_KEY: ${OCR_API_KEY}
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - meiko-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data_test:
+    driver: local
+
+networks:
+  meiko-network:
+    external: true
+    driver: bridge
