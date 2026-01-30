@@ -946,7 +946,7 @@ export class InvoiceService {
           await this.prisma.field.update({
             where: { id: field.id },
             data: {
-              corrected_value: hasSignificantChange ? currentValue : field.text,
+              corrected_value: field.text,
               validated: true,
             },
           });
