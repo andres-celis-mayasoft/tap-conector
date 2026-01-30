@@ -913,7 +913,7 @@ export class InvoiceService {
 
       const existingFields = await this.prisma.field.findMany({
         where: { documentId: document.documentId },
-        select: { id: true, corrected_value: true },
+        select: { id: true, value: true },
       });
 
       const existingIds = existingFields.map((f) => f.id);
@@ -930,7 +930,7 @@ export class InvoiceService {
       }
 
       const existingFieldsMap = new Map(
-        existingFields.map((f) => [f.id, f.corrected_value]),
+        existingFields.map((f) => [f.id, f.value]),
       );
 
       // Process field updates and creations
@@ -946,7 +946,7 @@ export class InvoiceService {
           await this.prisma.field.update({
             where: { id: field.id },
             data: {
-              corrected_value: field.text,
+              corrected_value: hasSignificantChange ? field.text : currentValue,
               validated: true,
             },
           });
