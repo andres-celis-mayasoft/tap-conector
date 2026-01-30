@@ -3,6 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: idp-postgres-prod
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -23,6 +24,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: idp-backend-prod
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3000}
@@ -39,7 +41,7 @@ services:
       OCR_API_URL: ${OCR_API_URL}
       OCR_API_KEY: ${OCR_API_KEY}
     ports:
-      - '${PORT:-3000}'
+      - "${PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,7 +51,8 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
+    external: true
+    name: tap-conector_postgres_data
 
 networks:
   meiko-network:
