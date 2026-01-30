@@ -39,7 +39,7 @@ services:
       OCR_API_URL: ${OCR_API_URL}
       OCR_API_KEY: ${OCR_API_KEY}
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-3000}:${PORT:-3000}"
     depends_on:
       postgres:
         condition: service_healthy
