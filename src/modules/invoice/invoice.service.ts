@@ -933,6 +933,22 @@ export class InvoiceService {
         existingFields.map((f) => [f.id, f.value]),
       );
 
+      // Identify completely new product rows (all fields in the row have no id)
+      const rowFieldsMap = new Map<number, boolean[]>();
+      for (const field of fields) {
+        if (field.row) {
+          const existing = rowFieldsMap.get(field.row) || [];
+          existing.push(!field.id);
+          rowFieldsMap.set(field.row, existing);
+        }
+      }
+      const newProductRows = new Set<number>();
+      for (const [row, isNewFlags] of rowFieldsMap) {
+        if (isNewFlags.every((isNew) => isNew)) {
+          newProductRows.add(row);
+        }
+      }
+
       // Process field updates and creations
       for (const field of fields) {
         if (field.id) {
@@ -952,12 +968,14 @@ export class InvoiceService {
           });
         } else {
           // Create new field (created in frontend)
+          // If the row is completely new (all fields are new), mark as NEW_PRODUCT
+          const isNewProduct = field.row && newProductRows.has(field.row);
           await this.prisma.field.create({
             data: {
               documentId: document.documentId,
               row: field.row || null,
               name: field.type,
-              value: '',
+              value: isNewProduct ? 'NEW_PRODUCT' : '',
               corrected_value: field.text,
               confidence: field.confidence || 1,
               type: field.row ? 'DETALLE' : 'ENCABEZADO',
@@ -1451,7 +1469,12 @@ export class InvoiceService {
    * @param userId - User ID to get statistics for
    * @returns Statistics object with documents and products counts
    */
-  async getUserStats(userId: number): Promise<{
+  async getUserStats(
+    userId: number,
+    year?: number,
+    month?: number,
+    fortnight?: 1 | 2,
+  ): Promise<{
     userId: number;
     periodStart: Date;
     periodEnd: Date;
@@ -1459,22 +1482,35 @@ export class InvoiceService {
     productsModified: number;
   }> {
     try {
-      this.logger.log(`📊 Getting stats for user ${userId}`);
+      this.logger.log(
+        `📊 Getting stats for user ${userId}, year=${year}, month=${month}, fortnight=${fortnight}`,
+      );
 
-      // Calculate current fortnight period
+      // Calculate fortnight period based on params or current date
       const now = DateTime.now();
-      const day = now.day;
       let periodStart: DateTime;
       let periodEnd: DateTime;
 
-      if (day <= 15) {
-        // First fortnight: 1st to 15th
-        periodStart = now.startOf('month');
-        periodEnd = now.set({ day: 15 }).endOf('day');
+      if (year && month && fortnight) {
+        // Use provided params
+        const baseDate = DateTime.fromObject({ year, month, day: 1 });
+        if (fortnight === 1) {
+          periodStart = baseDate.startOf('month');
+          periodEnd = baseDate.set({ day: 15 }).endOf('day');
+        } else {
+          periodStart = baseDate.set({ day: 16 }).startOf('day');
+          periodEnd = baseDate.endOf('month');
+        }
       } else {
-        // Second fortnight: 16th to end of month
-        periodStart = now.set({ day: 16 }).startOf('day');
-        periodEnd = now.endOf('month');
+        // Use current date (default behavior)
+        const day = now.day;
+        if (day <= 15) {
+          periodStart = now.startOf('month');
+          periodEnd = now.set({ day: 15 }).endOf('day');
+        } else {
+          periodStart = now.set({ day: 16 }).startOf('day');
+          periodEnd = now.endOf('month');
+        }
       }
 
       const startDate = periodStart.toJSDate();
@@ -1485,29 +1521,43 @@ export class InvoiceService {
         where: {
           assignedUserId: userId,
           deliveryStatus: 'PROCESADO',
-          createdAt: {
+          completedAt: {
             gte: startDate,
             lte: endDate,
           },
         },
       });
 
-      // Count distinct products modified by user (rows with corrected_value different from value)
-      const productsResult = await this.prisma.$queryRaw<
-        [{ total_products: bigint }]
-      >`
-        SELECT COUNT(DISTINCT (f.document_id, f.row)) AS total_products
-        FROM "document" d
-        JOIN "field" f ON d.document_id = f.document_id
-        WHERE d.assigned_user_id = ${userId}
-          AND d.created_at >= ${startDate}
-          AND d.created_at <= ${endDate}
-          AND f.corrected_value IS DISTINCT FROM f.value
-          AND f.row IS NOT NULL
-          AND d.delivery_status = 'PROCESADO'
-      `;
+      // Check if this is January 2026 (special case)
+      const isJanuary2026 =
+        periodStart.year === 2026 && periodStart.month === 1;
 
-      const productsModified = Number(productsResult[0]?.total_products ?? 0);
+      let productsModified: number;
+
+      if (isJanuary2026) {
+        // Special case for January 2026: sum of corrected products + new products
+        productsModified = await this.getJanuary2026Products(
+          userId,
+          startDate,
+          endDate,
+        );
+      } else {
+        // General case: count distinct products modified by user
+        const productsResult = await this.prisma.$queryRaw<
+          [{ total_products: bigint }]
+        >`
+          SELECT COUNT(DISTINCT (f.document_id, f.row)) AS total_products
+          FROM "document" d
+          JOIN "field" f ON d.document_id = f.document_id
+          WHERE d.assigned_user_id = ${userId}
+            AND d.completed_at >= ${startDate}
+            AND d.completed_at <= ${endDate}
+            AND f.corrected_value IS DISTINCT FROM f.value
+            AND f.row IS NOT NULL
+            AND d.delivery_status = 'PROCESADO'
+        `;
+        productsModified = Number(productsResult[0]?.total_products ?? 0);
+      }
 
       this.logger.log(
         `✅ Stats for user ${userId}: ${documentsProcessed} documents, ${productsModified} products modified`,
@@ -1527,6 +1577,81 @@ export class InvoiceService {
       );
       throw error;
     }
+  }
+
+  /**
+   * Special calculation for January 2026 fortnights
+   * Returns the sum of corrected products + new products
+   */
+  private async getJanuary2026Products(
+    userId: number,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<number> {
+    // Query 1: Count corrected products (corrected_value <> value)
+    const correctedResult = await this.prisma.$queryRaw<
+      [{ corrected_products: bigint }]
+    >`
+      SELECT COUNT(DISTINCT ("row", f.document_id)) AS corrected_products
+      FROM public.field f
+      JOIN "document" d ON f.document_id = d.document_id AND d.delivery_status = 'PROCESADO'
+      WHERE f.created_at >= ${startDate}
+        AND f.created_at < ${endDate}
+        AND d.assigned_user_id = ${userId}
+        AND "row" IS NOT NULL
+        AND d.assigned_user_id IS NOT NULL
+        AND corrected_value <> value
+    `;
+
+    // Query 2: Count new products (rows created after header)
+    const newProductsResult = await this.prisma.$queryRaw<
+      [{ new_products: bigint }]
+    >`
+      WITH header AS (
+        SELECT
+          field.document_id,
+          MAX(field.created_at) AS header_created_at
+        FROM public.field
+        JOIN public.document ON public.document.document_id = public.field.document_id
+        WHERE type = 'ENCABEZADO'
+          AND assigned_user_id = ${userId}
+        GROUP BY field.document_id
+      ),
+      product_rows AS (
+        SELECT
+          f.document_id,
+          f."row",
+          MIN(f.created_at) AS row_created_at
+        FROM field f
+        WHERE f."row" IS NOT NULL
+          AND f.created_at >= ${startDate}
+          AND f.created_at < ${endDate}
+        GROUP BY f.document_id, f."row"
+      ),
+      new_product_rows AS (
+        SELECT DISTINCT
+          r.document_id,
+          r."row"
+        FROM product_rows r
+        JOIN header h ON h.document_id = r.document_id
+        WHERE r.row_created_at > h.header_created_at
+          AND r.row_created_at >= ${startDate}
+          AND r.row_created_at < ${endDate}
+      )
+      SELECT COUNT(*) AS new_products
+      FROM new_product_rows
+    `;
+
+    const correctedProducts = Number(
+      correctedResult[0]?.corrected_products ?? 0,
+    );
+    const newProducts = Number(newProductsResult[0]?.new_products ?? 0);
+
+    this.logger.log(
+      `📊 January 2026 special case - Corrected: ${correctedProducts}, New: ${newProducts}`,
+    );
+
+    return correctedProducts + newProducts;
   }
 
   async deleteOldImages(targetDir: string): Promise<number> {
