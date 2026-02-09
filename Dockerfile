@@ -17,6 +17,7 @@ COPY src ./src
 
 RUN npx prisma generate --schema=prisma/schema.prisma
 RUN npx prisma generate --schema=prisma/schema-meiko.prisma
+RUN npx prisma generate --schema=prisma/schema-digmatch.prisma
 
 RUN npm run build
 
