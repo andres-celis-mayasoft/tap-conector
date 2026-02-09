@@ -386,7 +386,7 @@ export class StickerService {
     this.logger.log('Processing pending stickers');
 
     // 1. Extract new stickers from client DB
-    // COMENTADO TEMPORALMENTE await this.extractPendingFromClient();
+    await this.extractPendingFromClient();
 
     // 2. Deliver completed stickers to client DB
     await this.deliverCompletedToClient();
