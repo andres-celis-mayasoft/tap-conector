@@ -77,6 +77,8 @@ export class EntregaCokeInvoice extends Document<EntregaCokeInvoiceSchema> {
     const { fecha_factura } = Utils.getFields<EntregaCokeHeaderFields>(
       this.data.encabezado,
     );
+    
+    fecha_factura.text = Utils.fixYear(fecha_factura.text);
     const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {

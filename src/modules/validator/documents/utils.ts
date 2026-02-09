@@ -86,6 +86,13 @@ export class Utils {
     return value.replace(',', '.');
   }
 
+  static fixYear(date: string): string {
+    const parts = date.split('/');
+    if (parts.length !== 3) return date;
+    const currentYear = DateTime.now().year;
+    return `${parts[0]}/${parts[1]}/${currentYear}`;
+  }
+
   static isValidDate(date: string) {
     const parsedDate = DateTime.fromFormat(date, 'dd/MM/yyyy');
     if (!parsedDate.isValid) {

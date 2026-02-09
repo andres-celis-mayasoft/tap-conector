@@ -54,6 +54,8 @@ export class AjeInvoice extends Document<AjeInvoiceSchema> {
   validate(): void {
     const { fecha_factura, fecha_vencimiento } =
       Utils.getFields<AjeHeaderFields>(this.data.encabezado);
+    
+    fecha_factura.text = Utils.fixYear(fecha_factura.text);
 
     const date = Utils.inferDate(fecha_factura.text, fecha_vencimiento.text);
     fecha_factura.text = date.date1.toFormat('dd/MM/yyyy').toString();

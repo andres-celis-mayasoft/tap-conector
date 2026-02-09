@@ -16,32 +16,59 @@ import {
   GetInvoiceToFillDto,
   InvoiceToFillResponseDto,
 } from './dto/invoice-to-fill.dto';
-import {
-  SaveInvoiceDto,
-  SaveInvoiceResponseDto,
-  MarkInvoiceStatusDto,
-  MarkInvoiceStatusResponseDto,
-} from './dto/save-invoice.dto';
+import { SaveInvoiceDto, InvoiceStatus, DocumentType } from './dto/save-invoice.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { StickerService } from '../sticker/sticker.service';
 
 @Controller('invoice')
 export class InvoiceController {
   private readonly logger = new Logger(InvoiceController.name);
 
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly stickerService: StickerService,
+  ) {}
 
   @Get('invoice-to-fill')
   async getInvoiceToFill(
     @CurrentUser('id') userId: number,
   ): Promise<InvoiceToFillResponseDto> {
-    this.logger.log(`📋 User ${userId} requesting invoice to fill`);
+    this.logger.log(`User ${userId} requesting invoice to fill`);
 
     try {
+      // 1. First try to assign a sticker
+      const sticker = await this.stickerService.assignNextToUser(userId);
+
+      if (sticker) {
+        this.logger.log(`Assigned sticker ${sticker.externalId} to user ${userId}`);
+        return {
+          invoiceId: sticker.externalId,
+          surveyId: sticker.submissionId,
+          invoiceUrl: sticker.photoLink || '',
+          photoType: 'STICKER',
+          photoTypeOcr: 'STICKER',
+          path: '',
+          status: sticker.status,
+          errors: sticker.errors || undefined,
+          assignedAt: sticker.assignedAt || new Date(),
+          encabezado: [
+            {
+              type: 'sticker_value',
+              text: '',
+              confidence: 0,
+            },
+          ],
+          detalles: [],
+          documentType: DocumentType.STICKER
+        };
+      }
+
+      // 2. If no stickers available, try to assign an invoice
       const invoice = await this.invoiceService.assignInvoiceToUser(userId);
 
       if (!invoice) {
-        this.logger.warn(`⚠️ No invoices available for user ${userId}`);
+        this.logger.warn(`No invoices available for user ${userId}`);
         return {
           invoiceId: 0,
         } as any;
@@ -64,16 +91,17 @@ export class InvoiceController {
         assignedAt: invoice.assignedAt || new Date(),
         encabezado: invoiceWithFields.encabezado,
         detalles: invoiceWithFields.detalles,
+        documentType: DocumentType.INVOICE
       };
 
       this.logger.log(
-        `✅ Assigned invoice ${invoice.documentId} to user ${userId}`,
+        `Assigned invoice ${invoice.documentId} to user ${userId}`,
       );
 
       return response;
     } catch (error) {
       this.logger.error(
-        `❌ Error getting invoice to fill for user ${userId}: ${error.message}`,
+        `Error getting invoice to fill for user ${userId}: ${error.message}`,
         error.stack,
       );
       throw error;
@@ -84,9 +112,6 @@ export class InvoiceController {
    * Serve invoice image file
    * GET /invoice/image/:filename
    * Returns the image file from the uploads directory
-   *
-   * @param filename - Name of the image file (e.g., "76826.jpg")
-   * @param res - Express response object
    */
   @Get('image/:filename')
   async getInvoiceImage(
@@ -94,11 +119,15 @@ export class InvoiceController {
     @Res() res: Response,
   ) {
     try {
-      this.logger.log(`📷 Serving image: ${filename}`);
+      this.logger.log(`Serving image: ${filename}`);
 
       // Security: Validate filename to prevent path traversal attacks
-      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-        this.logger.warn(`⚠️ Invalid filename attempted: ${filename}`);
+      if (
+        filename.includes('..') ||
+        filename.includes('/') ||
+        filename.includes('\\')
+      ) {
+        this.logger.warn(`Invalid filename attempted: ${filename}`);
         throw new BadRequestException('Invalid filename');
       }
 
@@ -113,11 +142,14 @@ export class InvoiceController {
       res.send(imageBuffer);
     } catch (error) {
       this.logger.error(
-        `❌ Error serving image ${filename}: ${error.message}`,
+        `Error serving image ${filename}: ${error.message}`,
         error.stack,
       );
 
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
 
@@ -125,13 +157,6 @@ export class InvoiceController {
     }
   }
 
-  /**
-   * Save corrected invoice data from manual validation
-   * Updates the invoice fields with corrected values
-   *
-   * @param saveInvoiceDto - Invoice data with corrections
-   * @returns Success response with delivery status
-   */
   @Public()
   @Post('test-invoice')
   async testInvoice(
@@ -146,13 +171,11 @@ export class InvoiceController {
 
       return result;
     } catch (error) {
-      this.logger.error(
-        `❌ Error testing invoice  ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Error testing invoice: ${error.message}`, error.stack);
       throw error;
     }
   }
+
   @Public()
   @Get('report')
   async report(
@@ -165,165 +188,83 @@ export class InvoiceController {
       const active = await this.invoiceService.getActiveUsers();
       const missing = await this.invoiceService.getMissing(startDate, endDate);
 
-      return { users, status , active, missing };
+      return { users, status, active, missing };
     } catch (error) {
       this.logger.error(
-        `❌ Error testing invoice  ${error.message}`,
+        `Error generating report: ${error.message}`,
         error.stack,
       );
       throw error;
     }
   }
 
+  /**
+   * Save document data from manual validation
+   * Handles both invoices and stickers based on documentType
+   * Handles all status types: COMPLETED, OUTDATED, NOT_FOR_STUDY, ILLEGIBLE, OMIT
+   */
   @Post('save-invoice')
   async saveInvoice(
     @CurrentUser('id') userId: number,
     @Body() saveInvoiceDto: SaveInvoiceDto,
   ) {
+    const { invoiceId, tipoFactura, status, documentType } = saveInvoiceDto;
+    const effectiveStatus = status || InvoiceStatus.COMPLETED;
+    const isSticker = documentType === DocumentType.STICKER || tipoFactura === 'Sticker';
+
     this.logger.log(
-      `💾 User ${userId} saving invoice ${saveInvoiceDto.invoiceId}`,
+      `User ${userId} saving ${isSticker ? 'sticker' : 'invoice'} ${invoiceId} with status ${effectiveStatus}`,
     );
 
     try {
-      await this.invoiceService.saveCorrectedInvoice({
-        ...saveInvoiceDto,
-        userId
-      });
+      // Route to sticker service if documentType is STICKER
+      if (isSticker) {
+        await this.stickerService.saveCorrectedSticker({
+          userId,
+          stickerId: invoiceId,
+          fields: saveInvoiceDto.encabezado,
+        });
+
+        this.logger.log(`Sticker ${invoiceId} saved successfully`);
+        return { success: true, documentType: 'STICKER' };
+      }
+
+      // Handle Invoice based on status
+      switch (effectiveStatus) {
+        case InvoiceStatus.COMPLETED:
+          await this.invoiceService.saveCorrectedInvoice({
+            ...saveInvoiceDto,
+            userId,
+          });
+          break;
+
+        case InvoiceStatus.OUTDATED:
+          await this.invoiceService.markAsOutdated(invoiceId);
+          break;
+
+        case InvoiceStatus.NOT_FOR_STUDY:
+          await this.invoiceService.markAsNotApplyStudy(invoiceId);
+          break;
+
+        case InvoiceStatus.ILLEGIBLE:
+          await this.invoiceService.markAsIllegible(invoiceId);
+          break;
+
+        case InvoiceStatus.OMIT:
+          await this.invoiceService.omitDocument(invoiceId);
+          break;
+
+        default:
+          throw new BadRequestException(`Invalid status: ${effectiveStatus}`);
+      }
 
       this.logger.log(
-        `✅ Invoice ${saveInvoiceDto.invoiceId} saved successfully. `,
+        `Invoice ${invoiceId} processed with status ${effectiveStatus}`,
       );
-
-      return { success: true}
+      return { success: true, documentType: 'INVOICE' };
     } catch (error) {
       this.logger.error(
-        `❌ Error saving invoice ${saveInvoiceDto.invoiceId}: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Mark invoice as outdated
-   * Inserts status record and updates document to DELIVERED
-   *
-   * @param markStatusDto - Contains invoice ID
-   * @returns Success response
-   */
-  @Post('outdated')
-  async markAsOutdated(
-    @CurrentUser('id') userId: number,
-    @Body() markStatusDto: MarkInvoiceStatusDto,
-  ): Promise<MarkInvoiceStatusResponseDto> {
-    this.logger.log(
-      `🔄 User ${userId} marking invoice ${markStatusDto.invoiceId} as outdated`,
-    );
-
-    try {
-      const result = await this.invoiceService.markAsOutdated(
-        markStatusDto.invoiceId,
-      );
-
-      this.logger.log(
-        `✅ Invoice ${markStatusDto.invoiceId} marked as outdated successfully`,
-      );
-
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `❌ Error marking invoice ${markStatusDto.invoiceId} as outdated: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
-  @Post('not-for-study')
-  async notForStudy(
-    @CurrentUser('id') userId: number,
-    @Body() markStatusDto: MarkInvoiceStatusDto,
-  ): Promise<MarkInvoiceStatusResponseDto> {
-    this.logger.log(
-      `🔄 User ${userId} marking invoice ${markStatusDto.invoiceId} as not for study`,
-    );
-
-    try {
-      const result = await this.invoiceService.markAsNotApplyStudy(
-        markStatusDto.invoiceId,
-      );
-
-      this.logger.log(
-        `✅ Invoice ${markStatusDto.invoiceId} marked as not fors study successfully`,
-      );
-
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `❌ Error marking invoice ${markStatusDto.invoiceId} as not for study: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-  
-  @Post('omit')
-  async omit(
-    @CurrentUser('id') userId: number,
-    @Body() markStatusDto: MarkInvoiceStatusDto,
-  ): Promise<MarkInvoiceStatusResponseDto> {
-    this.logger.log(
-      `🔄 User ${userId} marking invoice ${markStatusDto.invoiceId} as omitted`,
-    );
-
-    try {
-      const result = await this.invoiceService.omitDocument(
-        markStatusDto.invoiceId,
-      );
-
-      this.logger.log(
-        `✅ Invoice ${markStatusDto.invoiceId} marked as omitted successfully`,
-      );
-
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `❌ Error marking invoice ${markStatusDto.invoiceId} as omitted: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Mark invoice as illegible
-   * Inserts status record and updates document to DELIVERED
-   *
-   * @param markStatusDto - Contains invoice ID
-   * @returns Success response
-   */
-  @Post('illegible')
-  async markAsIllegible(
-    @CurrentUser('id') userId: number,
-    @Body() markStatusDto: MarkInvoiceStatusDto,
-  ): Promise<MarkInvoiceStatusResponseDto> {
-    this.logger.log(
-      `🔄 User ${userId} marking invoice ${markStatusDto.invoiceId} as illegible`,
-    );
-
-    try {
-      const result = await this.invoiceService.markAsIllegible(
-        markStatusDto.invoiceId,
-      );
-
-      this.logger.log(
-        `✅ Invoice ${markStatusDto.invoiceId} marked as illegible successfully`,
-      );
-
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `❌ Error marking invoice ${markStatusDto.invoiceId} as illegible: ${error.message}`,
+        `Error saving ${isSticker ? 'sticker' : 'invoice'} ${invoiceId}: ${error.message}`,
         error.stack,
       );
       throw error;
@@ -333,19 +274,16 @@ export class InvoiceController {
   /**
    * Manually trigger sending pending documents to Meiko
    * POST /invoice/send-pending
-   * Processes all documents with PENDING_TO_SEND status
-   *
-   * @returns Number of documents successfully sent
    */
   @Post('send-pending')
   async sendPendingDocuments() {
-    this.logger.log('📤 Manually triggering send pending documents');
+    this.logger.log('Manually triggering send pending documents');
 
     try {
       const sentCount = await this.invoiceService.sendPendingDocuments();
 
       this.logger.log(
-        `✅ Successfully sent ${sentCount} pending documents to Meiko`,
+        `Successfully sent ${sentCount} pending documents to Meiko`,
       );
 
       return {
@@ -355,7 +293,7 @@ export class InvoiceController {
       };
     } catch (error) {
       this.logger.error(
-        `❌ Error sending pending documents: ${error.message}`,
+        `Error sending pending documents: ${error.message}`,
         error.stack,
       );
       throw error;

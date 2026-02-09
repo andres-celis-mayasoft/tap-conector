@@ -51,7 +51,7 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
       TiquetePosPostobonHeaderFields.TOTAL_FACTURA_SIN_IVA,
       TiquetePosPostobonHeaderFields.VALOR_TOTAL_FACTURA,
     ]);
-    
+
     return this;
   }
 
@@ -59,6 +59,8 @@ export class TiquetePosPostobonInvoice extends Document<TiquetePosPostobonInvoic
     const { fecha_factura } = Utils.getFields<TiquetePosPostobonHeaderFields>(
       this.data.encabezado,
     );
+    fecha_factura.text = Utils.fixYear(fecha_factura.text);
+
     const isValidDate = Utils.isValidDate(fecha_factura?.text);
 
     if (!isValidDate) {

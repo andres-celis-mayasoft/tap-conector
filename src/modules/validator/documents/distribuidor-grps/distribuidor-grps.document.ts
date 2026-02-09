@@ -43,7 +43,25 @@ export class DistribuidorGrpsInvoice extends Document<DistribuidorGrpsInvoiceSch
     return this;
   }
 
-  validate(): void {}
+  validate(): void {
+    const { fecha_factura } = Utils.getFields<DistribuidorGrpsHeaderFields>(
+      this.data.encabezado,
+    );
+
+    fecha_factura.text = Utils.fixYear(fecha_factura.text);
+    const isValidDate = Utils.isValidDate(fecha_factura.text);
+
+    if (!isValidDate) {
+      fecha_factura.error = 'Fecha inválida (formato)';
+      return;
+    }
+
+    const isValid = Utils.hasMonthsPassed(fecha_factura.text);
+    this.isValid = isValid;
+    if (!isValid) {
+      fecha_factura.error = 'Fecha obsoleta';
+    }
+  }
 
   async infer(): Promise<this> {
     return this;

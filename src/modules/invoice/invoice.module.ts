@@ -5,9 +5,12 @@ import { InvoiceCronService } from './invoice.cron';
 import { MeikoService } from '../meiko/meiko.service';
 import { ExcludedService } from '../excluded/excluded.service';
 import { ProductService } from '../product/product.service';
+import { StickerService } from '../sticker/sticker.service';
+import { StickerModule } from '../sticker/sticker.module';
 
 @Module({
   controllers: [InvoiceController],
+  imports: [StickerModule],
   providers: [InvoiceService, InvoiceCronService, MeikoService, ExcludedService, ProductService],
   exports: [InvoiceService],
 })

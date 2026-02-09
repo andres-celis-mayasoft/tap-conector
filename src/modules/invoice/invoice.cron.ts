@@ -8,7 +8,7 @@ export class InvoiceCronService {
 
   constructor(private readonly invoiceService: InvoiceService) {}
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  // @Cron(CronExpression.EVERY_MINUTE)
   async releaseUnresolvedInvoices() {
     try {
       const releasedCount = await this.invoiceService.releaseUnresolvedInvoices();
@@ -24,7 +24,7 @@ export class InvoiceCronService {
     }
   }
 
-  @Cron(CronExpression.EVERY_HOUR)
+  // @Cron(CronExpression.EVERY_HOUR)
   async retryFailedInvoices() {
     try {
       const retriedCount = await this.invoiceService.retryFailedInvoices();
@@ -40,7 +40,7 @@ export class InvoiceCronService {
     }
   }
 
-  @Cron(CronExpression.EVERY_8_HOURS)
+  // @Cron(CronExpression.EVERY_8_HOURS)
   async sendPendingDocuments() {
     try {
       const sentCount = await this.invoiceService.sendPendingDocuments();

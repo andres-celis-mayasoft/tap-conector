@@ -76,6 +76,7 @@ model User {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   assignedDocuments Document[]
+  assignedStickers  Sticker[]
 
   @@map("user")
 }
@@ -189,5 +190,36 @@ model Excluded {
   companyId      Int       @map("company_id")
   company        Company   @relation(fields: [companyId], references: [id])
   @@map("excluded")
+}
+
+// Sticker Model (from DigMatch database with human validation support)
+model Sticker {
+  id                   Int       @id @default(autoincrement())
+  externalId           Int       @unique @map("external_id") // ID from DigMatch DB
+  submissionId         String    @map("submission_id") @db.VarChar(100)
+  photoType            String?   @map("photo_type") @db.VarChar(50)
+  photoLink            String?   @map("photo_link") @db.Text
+
+  // Processing fields
+  status               String    @default("PENDING") @map("status") @db.VarChar(50)
+  errors               String?   @map("errors") @db.Text
+
+  // Manual validation assignment tracking
+  assignedUserId       Int?      @map("assigned_user_id")
+  assignedAt           DateTime? @map("assigned_at")
+  completedAt          DateTime? @map("completed_at")
+
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  assignedUser         User?     @relation(fields: [assignedUserId], references: [id])
+
+  @@index([submissionId])
+  @@index([photoType])
+  @@index([status])
+  @@index([assignedUserId])
+  @@index([submissionId, photoType])
+  @@map("sticker")
 }
 

@@ -1,4 +1,5 @@
 import { IsInt, IsOptional } from 'class-validator';
+import { DocumentType } from './save-invoice.dto';
 
 export class InvoiceToFillResponseDto {
   invoiceId: number;
@@ -23,6 +24,7 @@ export class InvoiceToFillResponseDto {
     confidence: number;
     row: number;
   }>;
+  documentType: DocumentType;
 }
 
 export class GetInvoiceToFillDto {

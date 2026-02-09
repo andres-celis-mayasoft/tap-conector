@@ -882,12 +882,11 @@ export class InvoiceService {
     detalles: any;
     tipoFactura: string;
   }): Promise<any> {
-    try {
-      const { userId, invoiceId, encabezado, detalles } = saveInvoiceDto;
+    const { userId, invoiceId, encabezado, detalles } = saveInvoiceDto;
 
-      this.logger.log(
-        `💾 Saving corrected invoice ${invoiceId} by user ${userId}`,
-      );
+    try {
+      this.logger.log(`Saving corrected invoice ${invoiceId} by user ${userId}`);
+
       const document = await this.prisma.document.findFirst({
         where: {
           documentId: invoiceId,
@@ -896,33 +895,30 @@ export class InvoiceService {
       });
 
       if (!document) {
-        throw new Error(
-          `Invoice ${invoiceId} is not assigned to user ${userId}`,
-        );
+        throw new Error(`Invoice ${invoiceId} is not assigned to user ${userId}`);
       }
 
-      if (!document?.surveyId) {
+      if (!document.surveyId) {
         throw new Error(`Invoice ${invoiceId} has no surveyId`);
       }
 
-      const headers = encabezado;
-
-      const fields = [...headers, ...detalles];
-
+      // Combine header and detail fields
+      const fields = [...encabezado, ...detalles];
       const incomingIds = fields.filter((f) => f.id).map((f) => f.id);
 
+      // Get existing fields
       const existingFields = await this.prisma.field.findMany({
         where: { documentId: document.documentId },
         select: { id: true, value: true },
       });
 
       const existingIds = existingFields.map((f) => f.id);
-
       const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id));
 
+      // Delete removed fields
       if (idsToDelete.length > 0) {
         this.logger.log(
-          `🗑️ Deleting ${idsToDelete.length} fields no longer present in corrected data, documentId = ${document.documentId}`,
+          `Deleting ${idsToDelete.length} fields no longer present, documentId = ${document.documentId}`,
         );
         await this.prisma.field.deleteMany({
           where: { id: { in: idsToDelete } },

@@ -38,6 +38,7 @@ export class GeneralInvoice extends Document<GeneralInvoiceSchema> {
       GeneralBodyFields.VALOR_VENTA_ITEM,
       GeneralBodyFields.PACKS_VENDIDOS,
       GeneralBodyFields.UNIDADES_VENDIDAS,
+      GeneralBodyFields.UNIDADES_EMBALAJE,
     ]);
     Utils.parseAndFixNumber(this.data.encabezado, [
       GeneralHeaderFields.TOTAL_FACTURA_SIN_IVA,

@@ -29,6 +29,7 @@ import {
 } from '../entrega-postobon';
 import { EntregaCokeInvoice } from '../entrega-coke/entrega-coke.document';
 import { EntregaCokeInvoiceSchema } from '../entrega-coke/entrega-coke.schema';
+import { StickerDocument, StickerSchema, StickerResult } from '../sticker';
 
 const documentMap = {
   'Factura Coke': CokeInvoice,
@@ -182,7 +183,6 @@ export class DocumentFactory {
           invoiceService,
         );
 
-
       default:
         throw new Error(`Documento no soportado: ${type}`);
     }
@@ -294,16 +294,39 @@ export class DocumentFactory {
           meikoService,
           invoiceService,
         ).format();
-      
+
       case 'Recibo Entrega Postobon':
         return new EntregaPostobonInvoice(
           ocrResponse as EntregaPostobonInvoiceSchema,
           meikoService,
           invoiceService,
         ).format();
-
+      case 'Sticker':
+      case 'STICKER': {
+        // Stickers don't use Meiko Result table - they go to DigMatch
+        return [];
+      }
       default:
         throw new Error(`Documento no soportado: ${type}`);
     }
+  }
+
+  /**
+   * Creates and processes a Sticker document
+   * Stickers have their own processing pipeline separate from invoices
+   */
+  static createSticker(data: StickerSchema): StickerDocument {
+    return new StickerDocument(data);
+  }
+
+  /**
+   * Process and format a Sticker document
+   * Returns the result in DigMatch format
+   */
+  static formatSticker(data: StickerSchema): StickerResult {
+    const sticker = new StickerDocument(data);
+    sticker.normalize();
+    sticker.validate();
+    return sticker.format();
   }
 }

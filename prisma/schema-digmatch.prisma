@@ -1,0 +1,40 @@
+// DigMatch Database Schema
+// Separate Prisma schema for DigMatch MySQL database
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "generated/client-digmatch"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_DIGMATCH_URL")
+}
+
+model Sticker {
+  id                   Int       @id @default(autoincrement()) @map("id_solicitud")
+  submissionId         String    @map("submission_id") @db.VarChar(100)
+  photoType            String?   @map("tipo_foto") @db.VarChar(50)
+  photoLink            String?   @map("link_foto") @db.Text
+  uploadDate           DateTime  @default(now()) @map("fecha_carga")
+  digitalizationDate   DateTime? @map("fecha_digitalizacion")
+
+  // Relations
+  result               StickerResult?
+
+  @@index([photoType], map: "idx_tipo_foto")
+  @@index([submissionId], map: "idx_sub")
+  @@index([submissionId, photoType], map: "idx_llave")
+  @@map("digitalizacion_fotos_match")
+}
+
+model StickerResult {
+  requestId           Int     @id @map("id_solicitud")
+  digitalizedValue    String? @map("valor_digitalizado") @db.Text
+  observations        String? @map("observaciones") @db.Text
+
+  // Relations
+  request             Sticker @relation(fields: [requestId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("resultado_digitalizacion_fotos_match")
+}

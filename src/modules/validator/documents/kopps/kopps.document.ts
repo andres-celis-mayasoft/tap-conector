@@ -54,6 +54,8 @@ export class KoppsInvoice extends Document<KoppsInvoiceSchema> {
     const { fecha_factura } = Utils.getFields<KoppsHeaderFields>(
       this.data.encabezado,
     );
+    
+    fecha_factura.text = Utils.fixYear(fecha_factura.text);
     const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {

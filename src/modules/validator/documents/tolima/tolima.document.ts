@@ -44,7 +44,7 @@ export class TolimaInvoice extends Document<TolimaInvoiceSchema> {
     Utils.parseAndFixNumber(this.data.encabezado, [
       TolimaHeaderFields.VALOR_TOTAL_FACTURA,
     ]);
-    
+
     return this;
   }
 
@@ -52,6 +52,8 @@ export class TolimaInvoice extends Document<TolimaInvoiceSchema> {
     const { fecha_factura } = Utils.getFields<TolimaHeaderFields>(
       this.data.encabezado,
     );
+    fecha_factura.text = Utils.fixYear(fecha_factura.text);
+
     const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {

@@ -5,10 +5,24 @@ import {
   IsArray,
   ValidateNested,
   IsOptional,
+  IsEnum,
   Min,
   Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export enum InvoiceStatus {
+  COMPLETED = 'COMPLETED',
+  OUTDATED = 'OUTDATED',
+  NOT_FOR_STUDY = 'NOT_FOR_STUDY',
+  ILLEGIBLE = 'ILLEGIBLE',
+  OMIT = 'OMIT',
+}
+
+export enum DocumentType {
+  INVOICE = 'INVOICE',
+  STICKER = 'STICKER',
+}
 
 export class FieldUpdateDto {
   @IsOptional()
@@ -49,29 +63,21 @@ export class SaveInvoiceDto {
   @IsString()
   tipoFactura: string;
 
-  @IsOptional() 
+  @IsOptional()
   @IsString()
   photoType?: string | null;
+
+  @IsOptional()
+  @IsEnum(InvoiceStatus)
+  status?: InvoiceStatus;
+
+  @IsOptional()
+  @IsEnum(DocumentType)
+  documentType?: DocumentType;
 }
 
 export class SaveInvoiceResponseDto {
   success: boolean;
-  message: string;
-  invoiceId: number;
-  delivered: boolean; // If confidence reached 100%, it was auto-delivered
-}
-
-export class MarkInvoiceStatusDto {
-  @IsInt()
-  invoiceId: number;
-
-  @IsOptional() 
-  @IsString()
-  photoType?: string | null;
-}
-
-export class MarkInvoiceStatusResponseDto {
-  success: boolean;
-  message: string;
-  invoiceId: number;
+  message?: string;
+  invoiceId?: number;
 }

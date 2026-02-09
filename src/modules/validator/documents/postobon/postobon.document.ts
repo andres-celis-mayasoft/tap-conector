@@ -52,6 +52,8 @@ export class PostobonInvoice extends Document<PostobonInvoiceSchema> {
     const { fecha_factura } = Utils.getFields<PostobonHeaderFields>(
       this.data.encabezado,
     );
+    fecha_factura.text = Utils.fixYear(fecha_factura.text);
+
     const isValidDate = Utils.isValidDate(fecha_factura.text);
 
     if (!isValidDate) {

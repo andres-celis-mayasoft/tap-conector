@@ -37,7 +37,25 @@ export class AlpinaInvoice extends Document<AlpinaInvoiceSchema> {
     return this;
   }
 
-  validate(): void {}
+  validate(): void {
+    const { fecha_factura } = Utils.getFields<AlpinaHeaderFields>(
+      this.data.encabezado,
+    );
+
+    fecha_factura.text = Utils.fixYear(fecha_factura.text);
+    const isValidDate = Utils.isValidDate(fecha_factura.text);
+
+    if (!isValidDate) {
+      fecha_factura.error = 'Fecha inválida (formato)';
+      return;
+    }
+
+    const isValid = Utils.hasMonthsPassed(fecha_factura.text);
+    this.isValid = isValid;
+    if (!isValid) {
+      fecha_factura.error = 'Fecha obsoleta';
+    }
+  }
 
   async infer(): Promise<this> {
     return this;
@@ -47,7 +65,12 @@ export class AlpinaInvoice extends Document<AlpinaInvoiceSchema> {
     return this;
   }
 
-  prune() {}
+  prune() {
+    this.data.detalles = Utils.removeFields(this.data.detalles, [
+      AlpinaBodyFields.TIPO_EMBALAJE,
+    ]);
+    return this;
+  }
 
   format(): Prisma.ResultCreateManyInput[] {
     const output: Prisma.ResultCreateManyInput[] = [];
@@ -67,7 +90,6 @@ export class AlpinaInvoice extends Document<AlpinaInvoiceSchema> {
         item_descripcion_producto,
         unidades_vendidas,
         codigo_producto,
-        tipo_embalaje,
         valor_venta_item,
       } = Utils.getFields<AlpinaBodyFields>(product);
 
@@ -87,9 +109,7 @@ export class AlpinaInvoice extends Document<AlpinaInvoiceSchema> {
         invoiceNumber: isNullOrIllegible(numero_factura?.text)
           ? NULL_STRING
           : numero_factura?.text,
-        packagingType: isNullOrIllegible(tipo_embalaje?.text)
-          ? NULL_STRING
-          : tipo_embalaje?.text,
+        packagingType: NULL_STRING,
         packagingUnit: NULL_FLOAT,
         packsSold: NULL_FLOAT,
         unitsSold: isNullOrIllegible(unidades_vendidas?.text)

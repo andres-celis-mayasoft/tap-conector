@@ -14,6 +14,8 @@ import { UsersModule } from './modules/users/users.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { ExcludedModule } from './modules/excluded/excluded.module';
 import { ProductModule } from './modules/product/product.module';
+import { StickerModule } from './modules/sticker/sticker.module';
+import { AssignmentModule } from './modules/assignment/assignment.module';
 
 @Module({
   imports: [
@@ -22,6 +24,7 @@ import { ProductModule } from './modules/product/product.module';
       envFilePath: '.env',
     }),
     DatabaseModule,
+    AssignmentModule,
     AuthModule,
     UsersModule,
     MeikoModule,
@@ -30,7 +33,8 @@ import { ProductModule } from './modules/product/product.module';
     OcrModule,
     ValidatorModule,
     ExcludedModule,
-    ProductModule
+    ProductModule,
+    StickerModule,
   ],
   controllers: [AppController],
   providers: [
