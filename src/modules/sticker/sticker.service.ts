@@ -25,7 +25,7 @@ export class StickerService {
 
   // ==================== EXTRACTION (from Meiko) ====================
 
-  async extractPendingFromClient(limit = 100): Promise<StickerEntity[]> {
+  async extractPendingFromClient(limit = 2): Promise<StickerEntity[]> {
     this.logger.log(`Extracting pending stickers from client DB (limit: ${limit})`);
 
     // Get max externalId from our DB to only fetch new stickers

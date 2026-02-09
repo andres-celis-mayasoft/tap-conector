@@ -58,7 +58,19 @@ export class AlpinaInvoice extends Document<AlpinaInvoiceSchema> {
   }
 
   async infer(): Promise<this> {
+    const { numero_factura } = Utils.getFields<AlpinaHeaderFields>(
+      this.data.encabezado,
+    );
+    if (this.isNumeric(numero_factura?.text?.slice(-5))) {
+      numero_factura.confidence = 1;
+      numero_factura.text = numero_factura?.text?.slice(-5);
+    } else numero_factura.error = 'Número de factura inválido';
     return this;
+  }
+
+  private isNumeric(value: string | undefined): boolean {
+    if (!value) return false;
+    return /^-?\d+$/.test(value);
   }
 
   async exclude(): Promise<this> {
