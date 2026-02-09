@@ -70,7 +70,7 @@ export class StickerService {
         });
 
         const valueField = fields.find((f) => f.type === 'value');
-        const observationField = fields.find((f) => f.type === 'observation');
+        const observationField = fields.find((f) => f.type === 'observations');
 
         const result = {
           digitalizedValue: valueField?.corrected_value || valueField?.value || null,
