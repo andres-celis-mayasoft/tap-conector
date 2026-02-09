@@ -65,6 +65,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.prisma.sticker;
   }
 
+  get stickerField() {
+    return this.prisma.stickerField;
+  }
+
   get $queryRaw() {
     return this.prisma.$queryRaw.bind(this.prisma);
   }

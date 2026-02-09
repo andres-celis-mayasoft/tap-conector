@@ -214,6 +214,7 @@ model Sticker {
 
   // Relations
   assignedUser         User?     @relation(fields: [assignedUserId], references: [id])
+  fields               StickerField[]
 
   @@index([submissionId])
   @@index([photoType])
@@ -221,5 +222,25 @@ model Sticker {
   @@index([assignedUserId])
   @@index([submissionId, photoType])
   @@map("sticker")
+}
+
+model StickerField {
+  id              Int       @id @default(autoincrement())
+  stickerId       Int       @map("sticker_id")
+  row             Int?      @db.SmallInt @map("row")
+  name            String    @map("name")
+  value           String?   @map("value")
+  corrected_value String?   @map("corrected_value")
+  confidence      Decimal?  @db.Decimal(5, 2) @map("confidence")
+  type            String    @map("type")
+  extracted       Boolean   @default(false) @map("extracted")
+  validated       Boolean   @default(false) @map("validated")
+  coords          String?   @map("coords")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  sticker         Sticker   @relation(fields: [stickerId], references: [id], onDelete: Cascade)
+
+  @@index([stickerId])
+  @@map("sticker_field")
 }
 

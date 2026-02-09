@@ -65,8 +65,8 @@ export class StickerService {
     for (const sticker of needsDelivery) {
       try {
         // Fetch fields from local DB
-        const fields = await this.prisma.field.findMany({
-          where: { documentId: sticker.externalId },
+        const fields = await this.prisma.stickerField.findMany({
+          where: { stickerId: sticker.id },
         });
 
         const valueField = fields.find((f) => f.type === 'value');
@@ -208,7 +208,7 @@ export class StickerService {
 
     // Save fields if provided
     if (fields && fields.length > 0) {
-      await this.saveFields(sticker.externalId, fields);
+      await this.saveFields(sticker.id, fields);
     }
 
     sticker.markAsCompleted();
@@ -216,15 +216,15 @@ export class StickerService {
   }
 
   async saveFields(
-    externalId: number,
+    stickerId: number,
     fields: StickerFieldDto[],
   ): Promise<void> {
-    this.logger.log(`Saving ${fields.length} fields for sticker ${externalId}`);
+    this.logger.log(`Saving ${fields.length} fields for sticker ${stickerId}`);
 
     for (const field of fields) {
       if (field.id) {
         // Update existing field
-        await this.prisma.field.update({
+        await this.prisma.stickerField.update({
           where: { id: field.id },
           data: {
             corrected_value: field.text,
@@ -234,9 +234,9 @@ export class StickerService {
         });
       } else {
         // Create new field
-        await this.prisma.field.create({
+        await this.prisma.stickerField.create({
           data: {
-            documentId: externalId,
+            stickerId,
             name: field.type,
             type: field.type,
             value: '',
@@ -249,7 +249,7 @@ export class StickerService {
       }
     }
 
-    this.logger.log(`Saved fields for sticker ${externalId}`);
+    this.logger.log(`Saved fields for sticker ${stickerId}`);
   }
 
   /**
@@ -282,8 +282,8 @@ export class StickerService {
       }
 
       // Get existing fields for this sticker
-      const existingFields = await this.prisma.field.findMany({
-        where: { documentId: sticker.externalId },
+      const existingFields = await this.prisma.stickerField.findMany({
+        where: { stickerId: sticker.id },
         select: { id: true, value: true },
       });
 
@@ -294,15 +294,15 @@ export class StickerService {
       // Delete removed fields
       if (idsToDelete.length > 0) {
         this.logger.log(
-          `Deleting ${idsToDelete.length} fields no longer present, stickerId = ${sticker.externalId}`,
+          `Deleting ${idsToDelete.length} fields no longer present, stickerId = ${sticker.id}`,
         );
-        await this.prisma.field.deleteMany({
+        await this.prisma.stickerField.deleteMany({
           where: { id: { in: idsToDelete } },
         });
       }
 
       // Save/update fields
-      await this.saveFields(sticker.externalId, fields);
+      await this.saveFields(sticker.id, fields);
 
       // Mark sticker as completed
       await this.prisma.sticker.update({
