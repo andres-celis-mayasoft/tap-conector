@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaDigMatchService } from 'src/database/services/prisma-digmatch.service';
 import { StickerEntity } from '../domain/sticker.entity';
-import { IStickerRepository, FindStickersOptions, StickerResultData } from './sticker.repository';
+import {
+  IStickerRepository,
+  FindStickersOptions,
+  StickerResultData,
+} from './sticker.repository';
 import { StickerClientMapper } from '../mappers/sticker-client.mapper';
 
 @Injectable()
@@ -82,22 +86,25 @@ export class StickerClientRepository implements IStickerRepository {
     return sticker;
   }
 
-  async createResult(sticker: StickerEntity, result: StickerResultData): Promise<void> {
+  async createResult(
+    sticker: StickerEntity,
+    result: StickerResultData,
+  ): Promise<void> {
     this.logger.log(`Creating result for sticker ${sticker.externalId}`);
     // COMENTADO TEMPORALMENTE POR AMBIENTE
     // Create or update the result in DigMatch DB
-    // await this.prismaDigMatch.stickerResult.upsert({
-    //   where: { requestId: sticker.externalId },
-    //   create: {
-    //     requestId: sticker.externalId,
-    //     digitalizedValue: result.digitalizedValue,
-    //     observations: result.observations,
-    //   },
-    //   update: {
-    //     digitalizedValue: result.digitalizedValue,
-    //     observations: result.observations,
-    //   },
-    // });
+    await this.prismaDigMatch.stickerResult.upsert({
+      where: { requestId: sticker.externalId },
+      create: {
+        requestId: sticker.externalId,
+        digitalizedValue: result.digitalizedValue,
+        observations: result.observations,
+      },
+      update: {
+        digitalizedValue: result.digitalizedValue,
+        observations: result.observations,
+      },
+    });
 
     this.logger.log(`Result created for sticker ${sticker.externalId}`);
   }
