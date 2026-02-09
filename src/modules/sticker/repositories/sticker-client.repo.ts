@@ -91,16 +91,9 @@ export class StickerClientRepository implements IStickerRepository {
     result: StickerResultData,
   ): Promise<void> {
     this.logger.log(`Creating result for sticker ${sticker.externalId}`);
-    // COMENTADO TEMPORALMENTE POR AMBIENTE
-    // Create or update the result in DigMatch DB
-    await this.prismaDigMatch.stickerResult.upsert({
-      where: { requestId: sticker.externalId },
-      create: {
+    await this.prismaDigMatch.stickerResult.create({
+      data: {
         requestId: sticker.externalId,
-        digitalizedValue: result.digitalizedValue,
-        observations: result.observations,
-      },
-      update: {
         digitalizedValue: result.digitalizedValue,
         observations: result.observations,
       },
