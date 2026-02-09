@@ -9,7 +9,7 @@ export class StickerCron {
 
   constructor(private readonly stickerService: StickerService) {}
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async processPendingStickers() {
     if (this.isProcessing) {
       this.logger.warn('Previous sticker processing still running, skipping this cycle');
