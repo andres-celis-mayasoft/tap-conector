@@ -103,7 +103,7 @@ export class ExtractionService {
 
       const documents = ids
         ? await this.meikoService.getInvoices({ where: { id: { in: ids } } })
-        : await this.meikoService.getInvoicesByMaxId(maxId);
+        : []
 
       const documentsReprocess = await this.invoiceService.getDocuments({
         where: { status: 'REPROCESS' },
