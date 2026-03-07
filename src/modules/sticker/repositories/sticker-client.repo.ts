@@ -114,4 +114,30 @@ export class StickerClientRepository implements IStickerRepository {
       },
     });
   }
+
+  async countPending(minId: number): Promise<number> {
+    return this.prismaDigMatch.sticker.count({
+      where: {
+        id: { gt: minId },
+        digitalizationDate: null,
+      },
+    });
+  }
+
+  async countToday(): Promise<number> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return this.prismaDigMatch.sticker.count({
+      where: {
+        uploadDate: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+    });
+  }
 }

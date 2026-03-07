@@ -380,6 +380,14 @@ export class StickerService {
     await this.ownRepo.delete(id);
   }
 
+  async getStickerReport(): Promise<{ pending: number; today: number }> {
+    const [pending, today] = await Promise.all([
+      this.clientRepo.countPending(146712),
+      this.clientRepo.countToday(),
+    ]);
+    return { pending, today };
+  }
+
   // ==================== PROCESSING (Cron job entry point) ====================
 
   async processPending(): Promise<void> {

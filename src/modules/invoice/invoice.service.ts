@@ -26,6 +26,7 @@ import { InvoiceUtils } from './utils/Invoice.utils';
 import { ExcludedService } from '../excluded/excluded.service';
 import { ProductService } from '../product/product.service';
 import { StringUtils } from 'src/utils/string.utils';
+import { StickerService } from '../sticker/sticker.service';
 
 @Injectable()
 export class InvoiceService {
@@ -37,6 +38,7 @@ export class InvoiceService {
     private readonly meikoService: MeikoService,
     private readonly excludedService: ExcludedService,
     private readonly productService: ProductService,
+    private readonly stickerService: StickerService,
   ) {}
 
   createFactura(doc: Prisma.MeikoDocumentCreateArgs) {
@@ -1184,6 +1186,18 @@ export class InvoiceService {
     } catch (error) {
       this.logger.error(
         `❌ Error generating status report: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  async getStickerReport() {
+    try {
+      return await this.stickerService.getStickerReport();
+    } catch (error) {
+      this.logger.error(
+        `❌ Error generating sticker report: ${error.message}`,
         error.stack,
       );
       throw error;

@@ -183,12 +183,15 @@ export class InvoiceController {
     @Query('endDate') endDate: string,
   ) {
     try {
-      const status = await this.invoiceService.reportByStatus();
-      const users = await this.invoiceService.reportDeliveredByUser();
-      const active = await this.invoiceService.getActiveUsers();
-      const missing = await this.invoiceService.getMissing(startDate, endDate);
+      const [status, users, active, missing, stickers] = await Promise.all([
+        this.invoiceService.reportByStatus(),
+        this.invoiceService.reportDeliveredByUser(),
+        this.invoiceService.getActiveUsers(),
+        this.invoiceService.getMissing(startDate, endDate),
+        this.invoiceService.getStickerReport(),
+      ]);
 
-      return { users, status, active, missing };
+      return { users, status, active, missing, stickers };
     } catch (error) {
       this.logger.error(
         `Error generating report: ${error.message}`,
