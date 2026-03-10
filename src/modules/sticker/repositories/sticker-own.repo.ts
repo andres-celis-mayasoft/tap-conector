@@ -57,7 +57,7 @@ export class StickerOwnRepository implements IStickerRepository {
     return stickers.map(StickerOwnMapper.toDomain);
   }
 
-  async findNeedsDelivery(limit = 100): Promise<StickerEntity[]> {
+  async findNeedsDelivery(limit = 1000): Promise<StickerEntity[]> {
     const stickers = await this.prisma.sticker.findMany({
       where: {
         status: StickerStatus.COMPLETED,

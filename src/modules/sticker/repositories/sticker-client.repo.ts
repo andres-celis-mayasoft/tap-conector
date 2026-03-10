@@ -125,11 +125,14 @@ export class StickerClientRepository implements IStickerRepository {
   }
 
   async countToday(): Promise<number> {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const offsetMs = 4 * 60 * 60 * 1000;
+    const now = new Date(Date.now() - offsetMs);
 
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    const startOfDay = new Date(now);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(now);
+    endOfDay.setUTCHours(23, 59, 59, 999);
 
     return this.prismaDigMatch.sticker.count({
       where: {
